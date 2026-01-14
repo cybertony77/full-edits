@@ -1,0 +1,574 @@
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/router";
+import BackToDashboard from "../../components/BackToDashboard";
+import CenterSelect from "../../components/CenterSelect";
+import GradeSelect from '../../components/GradeSelect';
+import AccountStateSelect from '../../components/AccountStateSelect';
+import Title from '../../components/Title';
+import { useCreateStudent } from '../../lib/api/students';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../../lib/phoneUtils';
+
+
+export default function AddStudent() {
+  const containerRef = useRef(null);
+  const [form, setForm] = useState({
+    id: "",
+    name: "",
+    age: "",
+    grade: "",
+    school: "",
+    phone: "",
+    parentsPhone: "",
+    main_center: "",
+    comment: "",
+    account_state: "Activated", // Default to Activated
+  });
+  const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(""); // Separate state for success message text
+  const [newId, setNewId] = useState("");
+  const [showQRButton, setShowQRButton] = useState(false);
+  const [error, setError] = useState("");
+  const [openDropdown, setOpenDropdown] = useState(null); // 'grade', 'center', or null
+  const [idError, setIdError] = useState("");
+  const [idChecking, setIdChecking] = useState(false);
+  const [idValid, setIdValid] = useState(false);
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  // Auto-hide success message text after 5 seconds, but keep success state for buttons
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+        // Also blur any focused input to close browser autocomplete
+        if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+          document.activeElement.blur();
+        }
+      }
+    };
+
+    // Also handle when a dropdown opens to close others
+    const handleDropdownOpen = () => {
+      // Close any open dropdowns when a new one opens
+      if (openDropdown) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('focusin', handleDropdownOpen);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('focusin', handleDropdownOpen);
+    };
+  }, [openDropdown]);
+
+  // Debounced ID checking
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (form.id && form.id.trim() !== '') {
+        checkStudentId(form.id);
+      }
+    }, 500); // Check after 500ms of no typing
+
+    return () => clearTimeout(timer);
+  }, [form.id]);
+
+  const router = useRouter();
+  
+  // React Query hook for creating students
+  const createStudentMutation = useCreateStudent();
+
+  // Check if student ID is available
+  const checkStudentId = async (id) => {
+    if (!id || id.trim() === '') {
+      setIdError('');
+      setIdValid(false);
+      return;
+    }
+
+    setIdChecking(true);
+    setIdError('');
+
+    try {
+      const response = await fetch(`/api/students/${id}`);
+      if (response.ok) {
+        // Student exists with this ID
+        setIdError('This ID is used, please use another ID');
+        setIdValid(false);
+      } else if (response.status === 404) {
+        // Student doesn't exist, ID is available
+        setIdError('');
+        setIdValid(true);
+      } else {
+        setIdError('Error checking ID availability');
+        setIdValid(false);
+      }
+    } catch (error) {
+      setIdError('Error checking ID availability');
+      setIdValid(false);
+    } finally {
+      setIdChecking(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    // Reset QR button if user starts entering new data (when form was previously empty)
+    if (showQRButton && !form.name && !form.age && !form.grade && !form.school && !form.phone && !form.parentsPhone && !form.main_center) {
+      setShowQRButton(false);
+      setNewId("");
+    }
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess(false);
+    
+    // Validate custom ID
+    if (!form.id || form.id.trim() === '') {
+      setError("Student ID is required");
+      return;
+    }
+    
+    if (!idValid) {
+      setError("Please enter a valid, unused student ID");
+      return;
+    }
+    
+    // Validate phone numbers
+    const studentPhone = formatPhoneForDB(form.phone);
+    const parentPhone = formatPhoneForDB(form.parentsPhone);
+    
+    // Check if phone numbers are valid (not just country code)
+    if (!studentPhone || studentPhone.length <= 2) {
+      setError("Please enter a valid student phone number");
+      return;
+    }
+    
+    if (!parentPhone || parentPhone.length <= 2) {
+      setError("Please enter a valid parent phone number");
+      return;
+    }
+    
+    // Check if student phone number is the same as parent phone number
+    if (studentPhone === parentPhone) {
+      setError("Student phone number cannot be the same as parent phone number");
+      return;
+    }
+    
+    // Map parentsPhone to parents_phone for backend
+    const payload = { ...form, parents_phone: parentPhone };
+    // Handle age - set to null if empty, otherwise convert to number
+    payload.age = form.age && form.age.trim() !== '' ? Number(form.age) : null;
+    payload.phone = studentPhone; // Save with country code
+    let gradeClean = payload.grade.toLowerCase().replace(/\./g, '');
+    payload.grade = gradeClean;
+    // Optional main_comment: send as main_comment field
+    const mc = form.comment && form.comment.trim() !== '' ? form.comment.trim() : null;
+    payload.main_comment = mc;
+    delete payload.comment;
+    delete payload.parentsPhone;
+    
+    createStudentMutation.mutate(payload, {
+      onSuccess: (data) => {
+        setSuccess(true);
+        setSuccessMessage(`✅ Student added successfully! ID: ${form.id}`); // Use custom ID
+        setNewId(form.id); // Use custom ID
+        setShowQRButton(true); // Show QR button after successful submission
+      },
+      onError: (err) => {
+        setError(err.response?.data?.error || err.message);
+      }
+    });
+  };
+
+  const handleCreateQR = () => {
+    if (newId) {
+      router.push(`/dashboard/qr_generator?mode=single&id=${newId}`);
+    }
+  };
+
+  const handleAttendStudent = () => {
+    if (newId) {
+      router.push(`/dashboard/scan_page?studentId=${newId}&autoSearch=true`);
+    }
+  };
+
+  const handleAddAnotherStudent = () => {
+    setForm({
+      id: "",
+      name: "",
+      age: "",
+      grade: "",
+      school: "",
+      phone: "",
+      parentsPhone: "",
+      main_center: "",
+      comment: "",
+      account_state: "Activated", // Reset to default
+    });
+    setSuccess(false);
+    setSuccessMessage(""); // Clear success message
+    setNewId("");
+    setShowQRButton(false);
+    setError("");
+  };
+
+  const goBack = () => {
+    router.push("/dashboard");
+  };
+
+  return (
+    <div style={{ padding: "20px 5px 20px 5px" }}>
+      <div ref={containerRef} style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
+        <style jsx>{`
+          .title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 32px;
+          }
+          .form-container {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+          }
+          .form-group {
+            margin-bottom: 24px;
+          }
+          .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.95rem;
+          }
+          .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            background: #ffffff;
+            color: #000000;
+          }
+          .form-input:focus {
+            outline: none;
+            border-color: #87CEEB;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.1);
+          }
+          .form-input::placeholder {
+            color: #adb5bd;
+          }
+          .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #87CEEB 0%, #B0E0E6 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(135, 206, 235, 0.3);
+            margin-top: 8px;
+          }
+          .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(135, 206, 235, 0.4);
+          }
+          .success-message {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 16px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+          }
+          .error-message {
+            background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 16px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
+          }
+          .id-feedback {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+          }
+          .id-feedback.checking {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+          }
+          .id-feedback.taken {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+          }
+          .id-feedback.available {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+          }
+          .error-border {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+          }
+        `}</style>
+        <Title>Add Student</Title>
+        <div className="form-container">
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Student ID <span style={{color: 'red'}}>*</span></label>
+              <input
+                className={`form-input ${idError ? 'error-border' : ''}`}
+                name="id"
+                placeholder="Enter student ID"
+                value={form.id}
+                onChange={handleChange}
+                required
+                autocomplete="off"
+              />
+              {/* ID availability feedback */}
+              {form.id && (
+                <div>
+                  {idChecking && (
+                    <div className="id-feedback checking">
+                      🔍 Checking availability...
+                    </div>
+                  )}
+                  {!idChecking && idError && (
+                    <div className="id-feedback taken">
+                      ❌ {idError}
+                    </div>
+                  )}
+                  {!idChecking && idValid && !idError && (
+                    <div className="id-feedback available">
+                      ✅ This ID is available
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="form-group">
+              <label>Full Name <span style={{color: 'red'}}>*</span></label>
+              <input
+                className="form-input"
+                name="name"
+                placeholder="Enter student's full name"
+                value={form.name}
+                onChange={handleChange}
+                required
+                autocomplete="off"
+              />
+            </div>
+            <div className="form-group">
+              <label>Age (Optional)</label>
+              <input
+                className="form-input"
+                name="age"
+                type="number"
+                min="10"
+                max="30"
+                placeholder="Enter student's age (optional)"
+                value={form.age}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="form-group">
+              <label>Grade <span style={{color: 'red'}}>*</span></label>
+              <GradeSelect 
+                selectedGrade={form.grade} 
+                onGradeChange={(grade) => handleChange({ target: { name: 'grade', value: grade } })} 
+                required 
+                isOpen={openDropdown === 'grade'}
+                onToggle={() => setOpenDropdown(openDropdown === 'grade' ? null : 'grade')}
+                onClose={() => setOpenDropdown(null)}
+              />
+            </div>
+            <div className="form-group">
+              <label>School <span style={{color: 'red'}}>*</span></label>
+              <input
+                className="form-input"
+                name="school"
+                placeholder="Enter student's school"
+                value={form.school}
+                onChange={handleChange}
+                required
+                autocomplete="off"
+              />
+            </div>
+            <div className="form-group">
+              <label>Phone <span style={{color: 'red'}}>*</span></label>
+              <PhoneInput
+                country="eg"
+                enableSearch
+                value={form.phone || ''}
+                onChange={(value) => {
+                  const validation = validateEgyptPhone(value);
+                  setForm({ ...form, phone: validation.value });
+                }}
+                onKeyDown={(e) => handleEgyptPhoneKeyDown(e, form.phone)}
+                containerClass="phone-container"
+                inputClass="phone-input"
+                buttonClass="phone-flag-btn"
+                dropdownClass="phone-dropdown"
+                placeholder="Enter Phone Number"
+              />
+            </div>
+            <div className="form-group">
+              <label>Parent's Phone (Whatsapp) <span style={{color: 'red'}}>*</span></label>
+              <PhoneInput
+                country="eg"
+                enableSearch
+                value={form.parentsPhone || ''}
+                onChange={(value) => {
+                  const validation = validateEgyptPhone(value);
+                  setForm({ ...form, parentsPhone: validation.value });
+                }}
+                onKeyDown={(e) => handleEgyptPhoneKeyDown(e, form.parentsPhone)}
+                containerClass="phone-container"
+                inputClass="phone-input"
+                buttonClass="phone-flag-btn"
+                dropdownClass="phone-dropdown"
+                placeholder="Enter Parent Number"
+              />
+            </div>
+            <div className="form-group">
+              <label>Main Center <span style={{color: 'red'}}>*</span></label>
+              <CenterSelect 
+                selectedCenter={form.main_center} 
+                onCenterChange={(center) => handleChange({ target: { name: 'main_center', value: center } })} 
+                required 
+                isOpen={openDropdown === 'center'}
+                onToggle={() => setOpenDropdown(openDropdown === 'center' ? null : 'center')}
+                onClose={() => setOpenDropdown(null)}
+              />
+            </div>
+            <AccountStateSelect
+              value={form.account_state}
+              onChange={(value) => handleChange({ target: { name: 'account_state', value } })}
+              required={true}
+            />
+          <div className="form-group">
+            <label>Main Comment (Optional)</label>
+            <textarea
+              className="form-input"
+              name="comment"
+              placeholder="Enter any notes about this student"
+              value={form.comment}
+              onChange={handleChange}
+              rows={3}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+            <button 
+              type="submit" 
+              disabled={createStudentMutation.isPending || idChecking || (idError && !idValid)} 
+              className="submit-btn"
+            >
+              {createStudentMutation.isPending ? "Adding..." : "Add Student"}
+            </button>
+          </form>
+        </div>
+        
+        {/* Success message and buttons outside form container */}
+        {success && (
+          <div>
+            {successMessage && (
+              <div className="success-message">{successMessage}</div>
+            )}
+            {showQRButton && (
+              <div style={{ marginTop: 12 }}>
+                <button className="submit-btn" onClick={handleCreateQR}>
+                🏷️ Create QR Code for this ID: {newId}
+                </button>
+              </div>
+            )}
+            {showQRButton && (
+              <div style={{ marginTop: 12 }}>
+                <button 
+                  className="submit-btn" 
+                  onClick={handleAttendStudent}
+                  style={{
+                    background: 'linear-gradient(250deg, rgb(23, 162, 184) 0%, rgb(32, 201, 151) 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    padding: '14px 20px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(0, 123, 255, 0.3)',
+                    width: '100%'
+                  }}
+                >
+                  ✅ Attend This Student
+                </button>
+              </div>
+            )}
+            <div style={{ marginTop: 12 }}>
+              <button 
+                className="submit-btn" 
+                onClick={handleAddAnotherStudent}
+                style={{
+                  background: 'linear-gradient(135deg, #17a2b8 0%, #20c997 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  padding: '14px 20px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(23, 162, 184, 0.3)',
+                  width: '100%'
+                }}
+              >
+                ➕ Add Another Student
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Error message outside form container */}
+        {error && (
+          <div className="error-message">❌ {error}</div>
+        )}
+      </div>
+    </div>
+  );
+} 

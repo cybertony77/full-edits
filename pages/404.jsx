@@ -306,7 +306,7 @@ export default function Custom404() {
             className="btn btn-primary"
             onClick={() => router.push('/')}
           >
-            <span className="icon">🏠</span>
+            <i className="fa fa-sign-in" aria-hidden="true" style={{ fontSize: '1.1rem' }}></i>
             Go to Login
           </button>
           <button 

@@ -124,7 +124,16 @@ export function SessionTable({
       {showSchool && <Table.Td style={{ width: '150px', minWidth: '150px', textAlign: 'center', fontSize: '15px' }}>{student.school || 'N/A'}</Table.Td>}
       <Table.Td style={{ width: '140px', minWidth: '140px', fontFamily: 'monospace', fontSize: '15px', textAlign: 'center' }}>{student.phone || ''}</Table.Td>
       <Table.Td style={{ width: '140px', minWidth: '140px', fontFamily: 'monospace', fontSize: '15px', textAlign: 'center' }}>{student.parents_phone || student.parentsPhone || ''}</Table.Td>
-      <Table.Td style={{ width: '160px', minWidth: '160px', fontSize: '15px', textAlign: 'center', color: student.email ? '#495057' : '#6c757d' }}>
+      <Table.Td style={{ 
+        width: '160px', 
+        minWidth: '160px', 
+        fontSize: '15px', 
+        textAlign: 'center', 
+        color: student.email ? '#495057' : '#6c757d',
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+        maxWidth: '160px'
+      }}>
         {student.email || 'No Email'}
       </Table.Td>
       {showMainCenter && <Table.Td style={{ textAlign: 'center', width: '120px', minWidth: '120px', fontSize: '15px' }}>{student.main_center}</Table.Td>}

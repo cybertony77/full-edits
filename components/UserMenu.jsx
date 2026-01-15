@@ -321,7 +321,10 @@ export default function UserMenu() {
               ) : null}
             </div>
           )}
-          <button style={menuBtnStyle} onClick={handleLogout}>Logout</button>
+          <button style={menuBtnStyle} onClick={handleLogout}>
+            <i className="fa fa-sign-out" aria-hidden="true" style={{ marginRight: '8px', color: '#dc3545' }}></i>
+            Logout
+          </button>
           {userData.role === 'student' && (
             <>
               <button style={menuBtnStyle} onClick={handleChangePassword}>Change My Password</button>

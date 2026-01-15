@@ -324,7 +324,14 @@ export default function AllAssistants() {
                       <Table.Td style={{ fontWeight: 'bold', color: '#1FA8DC', textAlign: 'center' }}>{assistant.id}</Table.Td>
                       <Table.Td style={{ fontWeight: '600', textAlign: 'center' }}>{assistant.name}</Table.Td>
                       <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem', textAlign: 'center' }}>{assistant.phone}</Table.Td>
-                      <Table.Td style={{ fontSize: '0.9rem', textAlign: 'center', color: assistant.email ? '#495057' : '#6c757d' }}>
+                      <Table.Td style={{ 
+                        fontSize: '0.9rem', 
+                        textAlign: 'center', 
+                        color: assistant.email ? '#495057' : '#6c757d',
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        maxWidth: '18%'
+                      }}>
                         {assistant.email || 'No Email'}
                       </Table.Td>
                       <Table.Td style={{ 

@@ -23,7 +23,8 @@ export default function BackToDashboard({ style = {}, className = "", text = "Ba
       }}
       onClick={() => href ? router.push(href) : router.back()}
     >
-      <span style={{ fontSize: "1.2em", marginRight: 6 }}>←</span> {text}
+      {typeof text === 'string' && <span style={{ fontSize: "1.3em", marginRight: 6 }}>←</span>}
+      {typeof text === 'string' ? text : <span style={{ display: 'inline-flex', alignItems: 'center' }}>{text}</span>}
     </button>
   );
 } 

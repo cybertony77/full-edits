@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import { sendPasswordChangeEmail } from '../../lib/emailUtils';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -117,8 +118,27 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No valid fields to update' });
       }
       
+      // Check if password was changed
+      const passwordChanged = update.password !== undefined;
+      
       const result = await db.collection('users').updateOne({ id }, { $set: update });
       if (result.matchedCount === 0) return res.status(404).json({ error: 'Assistant not found' });
+      
+      // Send password change email notification if password was changed
+      if (passwordChanged) {
+        const assistant = await db.collection('users').findOne({ id });
+        if (assistant && assistant.email) {
+          const userName = assistant.name || 'User';
+          const userRole = assistant.role || 'assistant';
+          try {
+            await sendPasswordChangeEmail(assistant.email, userName, userRole);
+          } catch (emailError) {
+            console.error('Failed to send password change email:', emailError);
+            // Don't fail the request if email fails
+          }
+        }
+      }
+      
       res.json({ success: true });
     } else if (req.method === 'DELETE') {
       // Delete assistant

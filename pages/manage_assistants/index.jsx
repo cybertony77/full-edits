@@ -14,136 +14,124 @@ export default function ManageAssistants() {
   }, []);
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      padding: '20px 5px 20px 5px',
+    <div className="page-wrapper" style={{ 
+      padding: "20px",
       display: 'flex',
       flexDirection: 'column',
-      minHeight: '100vh'
+      overflow: 'auto',
+      paddingBottom: '20px',
+      marginTop: '20px'
     }}>
-      <div style={{ flex: 1 }}>
-        <div className="main-container" style={{ maxWidth: 600, margin: '100px auto', textAlign: 'center' }}>
-          <div style={{
+      <div className="main-container" style={{ maxWidth: 600, margin: "10px auto", textAlign: "center", width: '100%' }}>
+        <Title
+          backText="Back"
+          href="/dashboard"
+          backButtonStyle={{
+            background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            padding: '8px 16px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: '0.3s',
+            boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
+            fontSize: 15,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            marginBottom: '40px',
-            width: '100%'
-          }}>
-                       <Title 
-               backText="Back to Main Dashboard" 
-               href="/dashboard"
-               style={{ 
-                 '--button-margin-left': '80px'
-               }}
-             >
-               Manage Assistants
-             </Title>
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/settings.svg" alt="Settings" width={32} height={32} />
+            Manage Assistants
           </div>
-          <style jsx>{`
-            @media (max-width: 600px) {
-              .header-row-responsive {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 16px;
-              }
-              .manage-title {
-                font-size: 2rem;
-                text-align: left;
-                margin-bottom: 8px;
-                word-break: normal;
-                white-space: normal;
-                overflow-wrap: break-word;
-              }
-              .back-btn-wrap {
-                margin-left: 0 !important;
-                justify-content: flex-start;
-              }
+        </Title>
+        
+        <style jsx>{`
+          .page-wrapper {
+            padding: 10px 35px 5px 35px;
+          }
+          
+          .main-container {
+            max-width: 600px;
+            margin: 10px auto;
+            text-align: center;
+            width: 100%;
+            padding: 0 10px;
+          }
+          
+          .dashboard-btn {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 16px 12px;
+            background: linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 16px rgba(31, 168, 220, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+          .dashboard-btn:hover {
+            background: linear-gradient(90deg, #5F9EA0 0%, #87CEEB 100%);
+            transform: translateY(-2px) scale(1.03);
+          }
+          
+          @media (max-width: 768px) {
+            .dashboard-btn {
+              padding: 12px 0;
+              font-size: 1rem;
+              margin-bottom: 12px;
             }
-            @media (max-width: 768px) {
-              .dashboard-btn {
-                padding: 12px 0;
-                font-size: 1rem;
-                margin-bottom: 12px;
-              }
-              h1 {
-                font-size: 1.8rem !important;
-              }
-            }
-            @media (max-width: 480px) {
-              .dashboard-btn {
-                padding: 10px 0;
-                font-size: 0.95rem;
-                margin-bottom: 10px;
-              }
-              h1 {
-                font-size: 1.5rem !important;
-              }
+          }
+          
+          @media (max-width: 480px) {
+            .page-wrapper {
+              padding: 10px 15px 5px 15px;
             }
             .dashboard-btn {
-              width: 100%;
-              margin-bottom: 16px;
-              padding: 14px 0;
-              background: linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 1.1rem;
-              font-weight: 600;
-              letter-spacing: 1px;
-              box-shadow: 0 2px 8px rgba(135, 206, 235, 0.2);
-              cursor: pointer;
-              transition: background 0.2s, transform 0.2s;
+              padding: 10px 0;
+              font-size: 0.95rem;
+              margin-bottom: 10px;
             }
-            .dashboard-btn:hover {
-              background: linear-gradient(90deg, #5F9EA0 0%, #87CEEB 100%);
-              transform: translateY(-2px) scale(1.03);
-            }
-            
-            .main-container {
-              max-width: 380px;
-              margin: 100px auto;
-              text-align: center;
-            }
-            
-            @media (max-width: 768px) {
-              .main-container {
-                max-width: 450px !important;
-              }
-            }
-            
-            @media (max-width: 480px) {
-              .main-container {
-                max-width: 380px !important;
-              }
-            }
-          `}</style>
+          }
+        `}</style>
           <button
             className="dashboard-btn"
             onClick={() => router.push('/manage_assistants/all_assistants')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            👥 All Assistants
+            <Image src="/users.svg" alt="All Assistants" width={20} height={20} />
+            All Assistants
           </button>
           <button
             className="dashboard-btn"
             onClick={() => router.push('/manage_assistants/add_assistant')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            ➕ Add Assistant
+            <Image src="/user-plus2.svg" alt="Add Assistant" width={20} height={20} />
+            Add Assistant
           </button>
           <button
             className="dashboard-btn"
             onClick={() => router.push('/manage_assistants/edit_assistant')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            ✏️ Edit Assistant
+            <Image src="/user-edit2.svg" alt="Edit Assistant" width={20} height={20} />
+            Edit Assistant
           </button>
           <button
             className="dashboard-btn"
-            style={{ background: 'linear-gradient(90deg, #dc3545 0%, #ff6b6b 100%)' }}
+            style={{ background: 'linear-gradient(90deg, #dc3545 0%, #ff6b6b 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             onClick={() => router.push('/manage_assistants/delete_assistant')}
           >
-            🗑️ Delete Assistant
+            <Image src="/trash2.svg" alt="Delete Assistant" width={20} height={20} />
+            Delete Assistant
           </button>
-        </div>
       </div>
     </div>
   );

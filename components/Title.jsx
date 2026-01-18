@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import BackToDashboard from './BackToDashboard';
 
-export default function Title({ children, style = {}, className = '', backText = 'Back to Dashboard', href }) {
+export default function Title({ children, style = {}, className = '', backText = 'Back to Dashboard', href, backButtonStyle }) {
   const router = useRouter();
   
   // Auto-detect student dashboard pages and use appropriate href
@@ -29,7 +29,14 @@ export default function Title({ children, style = {}, className = '', backText =
       <h1 className="title-text" style={{ margin: 0, fontWeight: 700, fontSize: '2rem', color: '#fff' }}>
         {children}
       </h1>
-      <BackToDashboard style={{ marginLeft: 'var(--button-margin-left, 16px)', fontSize: 15, padding: '8px 16px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)', width: 'var(--button-width, auto)' }} text={displayText} href={defaultHref} />
+      <BackToDashboard style={{ 
+        marginLeft: 'var(--button-margin-left, 16px)', 
+        fontSize: 15, 
+        padding: '8px 16px', 
+        boxShadow: '0 4px 16px rgba(0,0,0,0.2)', 
+        width: 'var(--button-width, auto)',
+        ...backButtonStyle
+      }} text={displayText} href={defaultHref} />
       <style jsx>{`
         @media (max-width: 768px) {
           .title-text {

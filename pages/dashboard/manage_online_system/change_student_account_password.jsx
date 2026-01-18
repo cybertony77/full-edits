@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import Title from '../../../components/Title';
 import { useStudents, useStudent } from '../../../lib/api/students';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -698,7 +699,12 @@ export default function ChangeStudentAccountPassword() {
           }
         `}</style>
 
-        <Title backText="Back" href="/dashboard/manage_online_system">Change Student Account Password</Title>
+        <Title backText="Back" href="/dashboard/manage_online_system">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/key.svg" alt="Change Password" width={32} height={32} />
+            Change Student Account Password
+          </div>
+        </Title>
 
         <div className="form-container">
           <form onSubmit={handleIdSubmit} className="fetch-form">

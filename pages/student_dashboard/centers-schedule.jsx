@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import Title from '../../components/Title';
 import { useProfile } from '../../lib/api/auth';
 import { useStudent } from '../../lib/api/students';
@@ -128,7 +129,12 @@ export default function CentersSchedule() {
       margin: "40px auto",
       padding: "20px 15px 20px 15px" 
     }}>
-      <Title>📅 Centers Schedule</Title>
+      <Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Image src="/calendar.svg" alt="Calendar" width={32} height={32} />
+          Centers Schedule
+        </div>
+      </Title>
       
       <div className="schedule-container" style={{ 
         maxWidth: '800px', 
@@ -297,7 +303,8 @@ export default function CentersSchedule() {
                               e.target.style.textDecoration = 'none';
                             }}
                           >
-                            📍 Location
+                            <Image src="/maps.svg" alt="Location" width={20} height={20} />
+                            Location
                           </span>
                         ) : (
                           <span style={{ color: '#999' }}>N/A</span>

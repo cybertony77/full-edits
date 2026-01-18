@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import Title from '../../components/Title';
 import SubscriptionCard from '../../components/SubscriptionCard';
 
@@ -12,45 +13,60 @@ export default function SubscriptionDashboard() {
     }}>
       <div className="page-container">
         <Title backText="Back to Dashboard" href="/dashboard">
-          Subscription Dashboard
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/dollar.svg" alt="Subscription" width={32} height={32} />
+            Subscription Dashboard
+          </div>
         </Title>
 
         <div className="subscription-buttons">
           <button
             className="subscription-btn"
             onClick={() => router.push('/subscription_dashboard/yearly')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            📅 Yearly Subscription
+            <Image src="/calendar.svg" alt="Yearly" width={20} height={20} />
+            Yearly Subscription
           </button>
           <button
             className="subscription-btn"
             onClick={() => router.push('/subscription_dashboard/monthly')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            📆 Monthly Subscription
+            <Image src="/calendar3.svg" alt="Monthly" width={20} height={20} />
+            Monthly Subscription
           </button>
           <button
             className="subscription-btn"
             onClick={() => router.push('/subscription_dashboard/daily')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            📋 Daily Subscription
+            <Image src="/notes5.svg" alt="Daily" width={20} height={20} />
+            Daily Subscription
           </button>
           <button
             className="subscription-btn"
             onClick={() => router.push('/subscription_dashboard/hourly')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            ⏰ Hourly Subscription
+            <Image src="/clock2.svg" alt="Hourly" width={20} height={20} />
+            Hourly Subscription
           </button>
           <button
             className="subscription-btn"
             onClick={() => router.push('/subscription_dashboard/minutely')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            ⏱️ Minutely Subscription
+            <Image src="/timer.svg" alt="Minutely" width={20} height={20} />
+            Minutely Subscription
           </button>
           <button
             className="subscription-btn cancel-btn"
             onClick={() => router.push('/subscription_dashboard/cancel')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
           >
-            ❌ Cancel Subscription
+            <Image src="/cross-circle.svg" alt="Cancel" width={25} height={25} />
+            Cancel Subscription
           </button>
         </div>
 

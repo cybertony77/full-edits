@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import BackToDashboard from "../../components/BackToDashboard";
 import CenterSelect from "../../components/CenterSelect";
 import GradeSelect from '../../components/GradeSelect';
@@ -349,7 +350,12 @@ export default function AddStudent() {
             box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
           }
         `}</style>
-        <Title>Add Student</Title>
+        <Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/user-plus2.svg" alt="Add Student" width={32} height={32} />
+            Add Student
+          </div>
+        </Title>
         <div className="form-container">
           <form onSubmit={handleSubmit}>
             <div className="form-group">

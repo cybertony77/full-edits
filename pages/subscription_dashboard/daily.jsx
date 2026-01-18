@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import Title from '../../components/Title';
 import DurationSelect from '../../components/DurationSelect';
 import { useSubscription, useCreateSubscription } from '../../lib/api/subscription';
@@ -103,8 +104,11 @@ export default function DailySubscription() {
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <div className="page-container">
-        <Title backText="Back to Subscription Dashboard" href="/subscription_dashboard">
-          Daily Subscription
+        <Title backText="Back" href="/subscription_dashboard">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/notes5.svg" alt="Daily" width={32} height={32} />
+            Daily Subscription
+          </div>
         </Title>
 
         <div className="subscription-form-container">

@@ -565,7 +565,12 @@ export default function EditHomework() {
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-          <Title backText="Back" href="/dashboard/manage_online_system/homeworks">Edit Homework</Title>
+          <Title backText="Back" href="/dashboard/manage_online_system/homeworks">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/edit.svg" alt="Edit" width={32} height={32} />
+              Edit Homework
+            </div>
+          </Title>
           <div style={{
             background: 'white',
             borderRadius: '16px',
@@ -602,7 +607,12 @@ export default function EditHomework() {
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-          <Title backText="Back" href="/dashboard/manage_online_system/homeworks">Edit Homework</Title>
+          <Title backText="Back" href="/dashboard/manage_online_system/homeworks">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/edit.svg" alt="Edit" width={32} height={32} />
+              Edit Homework
+            </div>
+          </Title>
           <div style={{ textAlign: 'center', padding: '40px', color: '#dc3545' }}>❌ Homework not found</div>
         </div>
       </div>
@@ -780,10 +790,14 @@ export default function EditHomework() {
                         borderRadius: '6px',
                         cursor: 'pointer',
                         fontSize: '0.9rem',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
                       }}
                     >
-                      🗑️ Remove Question
+                      <Image src="/trash2.svg" alt="Remove" width={18} height={18} style={{ display: 'inline-block' }} />
+                      Remove Question
                     </button>
                   )}
                 </div>
@@ -1053,7 +1067,8 @@ export default function EditHomework() {
                                   gap: '6px'
                                 }}
                               >
-                                🗑️ Remove
+                                <Image src="/trash2.svg" alt="Remove" width={18} height={18} style={{ display: 'inline-block' }} />
+                                Remove
                               </button>
                             )}
                             {showAddButton && (
@@ -1074,7 +1089,8 @@ export default function EditHomework() {
                                   gap: '6px'
                                 }}
                               >
-                                ➕ Add Option
+                                <Image src="/plus.svg" alt="Add" width={18} height={18} style={{ display: 'inline-block' }} />
+                                Add Option
                               </button>
                             )}
                           </div>
@@ -1154,10 +1170,15 @@ export default function EditHomework() {
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '1rem',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
                 }}
               >
-                ➕ Add Question
+                <Image src="/plus.svg" alt="Add" width={20} height={20} style={{ display: 'inline-block' }} />
+                Add Question
               </button>
             </div>
 

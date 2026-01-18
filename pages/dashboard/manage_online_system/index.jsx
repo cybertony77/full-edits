@@ -130,7 +130,30 @@ export default function ManageOnlineSystem() {
       paddingBottom: '20px'
     }}>
       <div className="main-container" style={{ maxWidth: 600, margin: "10px auto", textAlign: "center", width: '100%' }}>
-        <Title>Manage Online System</Title>
+        <Title
+          backText="Back"
+          href="/dashboard"
+          backButtonStyle={{
+            background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            padding: '8px 16px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: '0.3s',
+            boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
+            fontSize: 15,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/settings2.svg" alt="Settings" width={32} height={32} />
+            Manage Online System
+          </div>
+        </Title>
         
         <style jsx>{`
           .page-wrapper {
@@ -252,35 +275,40 @@ export default function ManageOnlineSystem() {
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/homeworks")}
           >
-            📝 Homeworks
+            <Image src="/books.svg" alt="Homeworks" width={20} height={20} />
+            Homeworks
           </button>
 
           <button
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/quizzes")}
           >
-            📊 Quizzes
+            <Image src="/notepad.svg" alt="Quizzes" width={20} height={20} />
+            Quizzes
           </button>
 
           <button 
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/verification_accounts_codes")}
           >
-            🔐 Verification Accounts Codes (VAC)
+            <Image src="/lock-cog.svg" alt="VAC" width={20} height={20} />
+            Verification Accounts Codes (VAC)
           </button>
 
           <button
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/verification_video_codes")}
           >
-            🔐 Verification Video Codes (VVC)
+            <Image src="/lock-cog.svg" alt="VVC" width={20} height={20} />
+            Verification Video Codes (VVC)
           </button>
 
           <button
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/change_student_account_password")}
           >
-            🔑 Change Student Account Password
+            <Image src="/key.svg" alt="Change Password" width={20} height={20} />
+            Change Student Account Password
           </button>
 
           <button
@@ -288,21 +316,24 @@ export default function ManageOnlineSystem() {
             onClick={() => router.push("/dashboard/manage_online_system/delete_student_account")}
             style={{ background: "linear-gradient(90deg, #dc3545 0%, #ff6b6b 100%)" }}
           >
-            🗑️ Delete Student Account
+            <Image src="/trash2.svg" alt="Delete" width={20} height={20} />
+            Delete Student Account
           </button>
 
           <button
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/preview_student_homeworks")}
           >
-            📚 Preview Student Homeworks
+            <Image src="/books.svg" alt="Preview Homeworks" width={20} height={20} />
+            Preview Student Homeworks
           </button>
 
           <button
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/preview_student_quizzes")}
           >
-            📝 Preview Student Quizzes
+            <Image src="/notepad.svg" alt="Preview Quizzes" width={20} height={20} />
+            Preview Student Quizzes
           </button>
 
         </div>

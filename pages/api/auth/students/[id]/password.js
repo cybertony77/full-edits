@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../../lib/authMiddleware';
+import { sendPasswordChangeEmail } from '../../../lib/emailUtils';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -113,6 +114,19 @@ export default async function handler(req, res) {
         { id: studentId, role: 'student' },
         { $set: { password: hashedPassword } }
       );
+
+      // Send password change email notification
+      if (userAccount.email) {
+        // Get student name from students collection
+        const student = await db.collection('students').findOne({ id: studentId });
+        const userName = student?.name || userAccount.name || 'User';
+        try {
+          await sendPasswordChangeEmail(userAccount.email, userName, 'student');
+        } catch (emailError) {
+          console.error('Failed to send password change email:', emailError);
+          // Don't fail the request if email fails
+        }
+      }
 
       res.status(200).json({ message: 'Password updated successfully' });
 

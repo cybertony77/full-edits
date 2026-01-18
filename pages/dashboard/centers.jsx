@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Image from 'next/image';
 import apiClient from '../../lib/axios';
 import Title from '../../components/Title';
 import GradeSelect from '../../components/GradeSelect';
@@ -487,7 +488,12 @@ export default function Centers() {
       margin: "40px auto",
       padding: "20px 15px 20px 15px" 
     }}>
-      <Title style={{ justifyContent: 'space-between', gap: '20px' }}>🏢 Centers Management</Title>
+      <Title style={{ justifyContent: 'space-between', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Image src="/centers.svg" alt="Centers" width={32} height={32} />
+          Centers Management
+        </div>
+      </Title>
       
       {/* Main Container */}
       <div className="main-container" style={{ 
@@ -547,7 +553,8 @@ export default function Centers() {
             onMouseEnter={(e) => e.target.style.backgroundColor = '#218838'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#28a745'}
           >
-            ➕ Add Center
+            <Image src="/plus.svg" alt="Add" width={20} height={20} />
+            Add Center
           </button>
         </div>
 
@@ -628,7 +635,7 @@ export default function Centers() {
                       gap: '6px',
                       width: '100%'
                     }}>
-                      <span>📍</span>
+                      <Image src="/maps.svg" alt="Location" width={20} height={20} />
                       <span
                         onClick={() => window.open(center.location, '_blank')}
                         className="location-link"
@@ -673,16 +680,17 @@ export default function Centers() {
                       fontSize: '0.9rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px'
                     }}
                   >
-                    📋 Details
+                    <Image src="/details.svg" alt="Details" width={18} height={18} />
+                    Details
                   </button>
                   <button
                     onClick={() => handleEditCenter(center)}
                     style={{
                       padding: '8px 16px',
-                      backgroundColor: '#007bff',
+                      backgroundColor: '#28a745',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
@@ -690,10 +698,11 @@ export default function Centers() {
                       fontSize: '0.9rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px'
                     }}
                   >
-                    ✏️ Edit
+                    <Image src="/edit.svg" alt="Edit" width={18} height={18} />
+                    Edit
                   </button>
                   <button
                     onClick={() => handleDeleteCenter(center)}
@@ -708,11 +717,12 @@ export default function Centers() {
                       fontSize: '0.9rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '6px',
                       opacity: deleteMutation.isPending ? 0.6 : 1
                     }}
                   >
-                    🗑️ Delete
+                    <Image src="/trash2.svg" alt="Delete" width={18} height={18} />
+                    Delete
                   </button>
                 </div>
               </div>
@@ -811,7 +821,10 @@ export default function Centers() {
         >
           <div className="add-center-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Add New Center</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/plus.svg" alt="Add" width={24} height={24} />
+                Add New Center
+              </h3>
               <button
                 type="button"
                 onClick={cancelAdd}
@@ -959,7 +972,7 @@ export default function Centers() {
                                   className="remove-timing-btn"
                                   title="Remove timing"
                                 >
-                                  🗑️
+                                  <Image src="/trash2.svg" alt="Remove" width={18} height={18} />
                                 </button>
                               </div>
                             </div>
@@ -968,8 +981,10 @@ export default function Centers() {
                                 type="button"
                                 onClick={() => addTimingToGrade(gradeIndex)}
                                 className="add-timing-btn"
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                               >
-                                ➕ Add another timing
+                                <Image src="/plus.svg" alt="Add" width={18} height={18} />
+                                Add another timing
                               </button>
                             )}
                           </div>
@@ -983,8 +998,10 @@ export default function Centers() {
                       type="button"
                       onClick={addNewGrade}
                       className="add-grade-btn"
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
-                      ➕ Add another grade
+                      <Image src="/plus.svg" alt="Add" width={18} height={18} />
+                      Add another grade
                     </button>
                   )}
                 </div>
@@ -1023,7 +1040,10 @@ export default function Centers() {
         >
           <div className="rename-center-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Edit Center</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/edit.svg" alt="Edit" width={24} height={24} />
+                Edit Center
+              </h3>
               <button
                 type="button"
                 onClick={cancelEdit}
@@ -1171,7 +1191,7 @@ export default function Centers() {
                                   className="remove-timing-btn"
                                   title="Remove timing"
                                 >
-                                  🗑️
+                                  <Image src="/trash2.svg" alt="Remove" width={18} height={18} />
                                 </button>
                               </div>
                             </div>
@@ -1180,8 +1200,10 @@ export default function Centers() {
                                 type="button"
                                 onClick={() => addTimingToEditGrade(gradeIndex)}
                                 className="add-timing-btn"
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                               >
-                                ➕ Add another timing
+                                <Image src="/plus.svg" alt="Add" width={18} height={18} />
+                                Add another timing
                               </button>
                             )}
                           </div>
@@ -1195,8 +1217,10 @@ export default function Centers() {
                       type="button"
                       onClick={addEditGrade}
                       className="add-grade-btn"
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
-                      ➕ Add another grade
+                      <Image src="/plus.svg" alt="Add" width={18} height={18} />
+                      Add another grade
                     </button>
                   )}
                 </div>
@@ -1235,7 +1259,10 @@ export default function Centers() {
         >
           <div className="details-content" onClick={(e) => e.stopPropagation()}>
             <div className="details-header">
-              <h3>Center Details</h3>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/details.svg" alt="Details" width={24} height={24} />
+                Center Details
+              </h3>
               <button
                 type="button"
                 onClick={handleCloseDetails}
@@ -1249,8 +1276,8 @@ export default function Centers() {
               <div className="details-info">
                 <h4>{centerDetails.name}</h4>
                 {centerDetails.location && (
-                  <p>
-                    📍{' '}
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Image src="/maps.svg" alt="Location" width={20} height={20} />
                     <span
                       onClick={() => window.open(centerDetails.location, '_blank')}
                       className="details-location-link"

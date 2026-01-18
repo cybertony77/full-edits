@@ -103,63 +103,73 @@ export default function Dashboard() {
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/scan_page")}
         >
-          📱 QR Code Scanner
+          <Image src="/scan.svg" alt="Scan" width={20} height={20} />
+          QR Code Scanner
         </button>
 
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/all_students")}
         >
-          👥 All Students
+          <Image src="/users.svg" alt="All Students" width={20} height={20} />
+          All Students
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/student_info")}
         >
-          📋 Student Info
+          <Image src="/user2.svg" alt="Student Info" width={20} height={20} />
+          Student Info
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/add_student")}
         >
-              ➕ Add Student
+          <Image src="/user-plus2.svg" alt="Add Student" width={20} height={20} />
+          Add Student
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/edit_student")}
         >
-              ✏️ Edit Student
+          <Image src="/user-edit2.svg" alt="Edit Student" width={20} height={20} />
+          Edit Student
         </button>
         <button 
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/delete_student")}
           style={{ background: "linear-gradient(90deg, #dc3545 0%, #ff6b6b 100%)" }}
         >
-          🗑️ Delete Student
+          <Image src="/trash2.svg" alt="Delete Student" width={20} height={20} />
+          Delete Student
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/qr_generator")}
         >
-          🏷️ Create QR Code
+          <Image src="/qrcode.svg" alt="QR Code" width={20} height={20} />
+          Create QR Code
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/centers")}
         >
-          🏢 Centers
+          <Image src="/center.svg" alt="Centers" width={20} height={20} />
+          Centers
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push('/dashboard/session_info')}
         >
-          📊 Session Info
+          <Image src="/chart6.svg" alt="Session Info" width={20} height={20} />
+          Session Info
         </button>
         <button
           className="dashboard-btn"
           onClick={() => router.push("/dashboard/history")}
         >
-          📋 History
+          <Image src="/history.svg" alt="History" width={20} height={20} />
+          History
         </button>
       </div>
       </div>

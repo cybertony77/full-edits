@@ -164,13 +164,13 @@ export default function MyInfo() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('❌ Please select an image file');
+      setError('Please select an image file');
       return;
     }
 
     // Validate file size (5 MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('❌ Sorry, Max profile picture size is 5 MB, Please try another picture');
+      setError('Sorry, Max profile picture size is 5 MB, Please try another picture');
       return;
     }
 
@@ -216,7 +216,7 @@ export default function MyInfo() {
         throw new Error('Upload failed');
       }
     } catch (err) {
-      setError(err.response?.data?.error || '❌ Failed to upload image. Please try again.');
+      setError(err.response?.data?.error || 'Failed to upload image. Please try again.');
       setImagePreview(null);
       setProfilePicturePublicId(null);
     } finally {
@@ -267,7 +267,7 @@ export default function MyInfo() {
       const fileInput = document.getElementById('profile-picture-upload-myinfo');
       if (fileInput) fileInput.value = '';
     } catch (err) {
-      setError('❌ Failed to remove image. Please try again.');
+      setError('Failed to remove image. Please try again.');
     } finally {
       setUploadingImage(false);
     }
@@ -452,7 +452,12 @@ export default function MyInfo() {
           }
         `}</style>
 
-        <Title href="/student_dashboard/">My Information</Title>
+        <Title href="/student_dashboard/">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/user-circle3.svg" alt="User" width={35} height={35} />
+            My Information
+          </div>
+        </Title>
 
         {isLoading ? (
           <div className="info-container" style={{ textAlign: 'center', padding: '40px' }}>
@@ -668,19 +673,7 @@ export default function MyInfo() {
                     }}
                     title="Edit email"
                   >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#1FA8DC"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
+                    <Image src="/edit3.svg" alt="Edit" width={20} height={20} />
                   </button>
                 </div>
               </div>
@@ -869,10 +862,6 @@ export default function MyInfo() {
                 </Table>
               </ScrollArea>
             )}
-            
-            {student && !studentDeleted && (
-              <NeedHelp style={{ padding: '16px' }} />
-            )}
           </div>
         ) : null}
         
@@ -883,6 +872,7 @@ export default function MyInfo() {
               studentId={student.id} 
               hasAuthToken={true} 
             />
+            <NeedHelp style={{ padding: '16px', marginTop: '16px' }} />
           </div>
         )}
         
@@ -969,6 +959,8 @@ export default function MyInfo() {
         >
           <button
             onClick={() => setDetailsOpen(false)}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             style={{
               position: 'absolute',
               top: '16px',
@@ -984,6 +976,8 @@ export default function MyInfo() {
               cursor: 'pointer',
               fontSize: '20px',
               zIndex: 1000,
+              transition: 'transform 0.3s ease',
+              transform: 'scale(1)',
               '@media (max-width: 768px)': {
                 width: '36px',
                 height: '36px',
@@ -994,7 +988,7 @@ export default function MyInfo() {
             }}
             aria-label="Close details"
           >
-            ❌
+            <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
           </button>
           
           <div style={{ 
@@ -1213,8 +1207,9 @@ export default function MyInfo() {
                                   '0 2px 4px rgba(244, 67, 54, 0.2)' : '0 2px 4px rgba(66, 165, 245, 0.2)'
                               }}>
                                 {info.quizDegree == null ? '0/0' : 
-                                 (info.quizDegree === "Didn't Attend The Quiz" ? "❌ Didn't Attend" : 
-                                  info.quizDegree === "No Quiz" ? "🚫 No Quiz" : String(info.quizDegree))}
+                                  info.quizDegree === "Didn't Attend The Quiz" ? '❌ Didn\'t Attend' : 
+                                  info.quizDegree === "No Quiz" ? "🚫 No Quiz" : 
+                                  String(info.quizDegree)}
                               </div>
                             )}
                           </Table.Td>

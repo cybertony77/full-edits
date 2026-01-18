@@ -93,7 +93,7 @@ export default function InstallApp({ isOpen, onClose }) {
           position: absolute;
           top: 20px;
           right: 20px;
-          background: #dc3545;
+          background:rgb(255, 255, 255);
           border: none;
           font-size: 20px;
           color: white;
@@ -104,15 +104,12 @@ export default function InstallApp({ isOpen, onClose }) {
           align-items: center;
           justify-content: center;
           border-radius: 50%;
-          transition: all 0.2s ease;
+          transition: all 0.3s ease;
           padding: 0;
           line-height: 1;
-          box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
         }
         .close-btn:hover {
-          background: #c82333;
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
         }
         .close-btn:active {
           transform: scale(0.95);
@@ -220,11 +217,11 @@ export default function InstallApp({ isOpen, onClose }) {
       <div className="modal-overlay">
         <div className="modal-content" ref={modalRef}>
           <button className="close-btn" onClick={onClose} aria-label="Close">
-            ✕
+            <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
           </button>
           <div className="modal-header">
             <Image 
-              src="/install.svg" 
+              src="/download.svg" 
               alt="Install App" 
               width={35} 
               height={35}
@@ -234,20 +231,48 @@ export default function InstallApp({ isOpen, onClose }) {
           </div>
           <ul className="instructions-list">
             <li className="instruction-item">
-              <strong>📱 Android</strong>
-              <p>Open in Chrome →<span className="icon-install">⋮</span>Menu → Add to Home Screen</p>
+              <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/android.svg" alt="Android" width={20} height={20} />
+                Android
+              </strong>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                Open in Chrome <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} />
+                <Image src="/dots-vertical.svg" alt="⋮" width={16} height={16} style={{ display: 'inline-block' }} />
+                Menu <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} /> Add to Home Screen
+              </p>
             </li>
             <li className="instruction-item">
-              <strong>🍏 iOS (iPhone / iPad)</strong>
-              <p>Open in Safari →<span className="icon-install">⬆</span>Share → Add to Home Screen</p>
+              <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/apple.svg" alt="Apple" width={20} height={20} />
+                iOS (iPhone / iPad)
+              </strong>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                Open in Safari <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} />
+                <Image src="/arrow-big-up.svg" alt="⬆" width={16} height={16} style={{ display: 'inline-block' }} />
+                Share <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} /> Add to Home Screen
+              </p>
             </li>
             <li className="instruction-item">
-              <strong>🖥 Windows</strong>
-              <p>Open in Chrome / Edge → Install<span className="icon-install">⬇</span>icon in address bar → Install</p>
+              <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/windows2.svg" alt="Windows" width={20} height={20} />
+                Windows
+              </strong>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                Open in Chrome / Edge <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} /> Install
+                <Image src="/desktop-down.svg" alt="⬇" width={16} height={16} style={{ display: 'inline-block' }} />
+                icon in address bar <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} /> Install
+              </p>
             </li>
             <li className="instruction-item">
-              <strong>🍎 macOS</strong>
-              <p>Open in Chrome / Edge → Install<span className="icon-install">⬇</span>icon in address bar → Install</p>
+              <strong style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image src="/mac2.svg" alt="Mac" width={20} height={20} />
+                macOS
+              </strong>
+              <p style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                Open in Chrome / Edge <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} /> Install
+                <Image src="/desktop-down.svg" alt="⬇" width={16} height={16} style={{ display: 'inline-block' }} />
+                icon in address bar <Image src="/arrow-right.svg" alt="→" width={16} height={16} style={{ display: 'inline-block' }} /> Install
+              </p>
             </li>
           </ul>
         </div>

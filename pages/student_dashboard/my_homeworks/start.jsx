@@ -728,9 +728,9 @@ export default function HomeworkStart() {
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: "8px",
               flex: "1 1 calc(50% - 6px)",
-              minWidth: "140px",
               maxWidth: "244px"
             }}
             onMouseEnter={(e) => {
@@ -742,13 +742,7 @@ export default function HomeworkStart() {
               e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 256 512"
-              style={{ width: "16px", height: "16px", transform: "rotate(180deg)" }}
-            >
-              <path fill="currentColor" d="M247.1 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L179.2 256 41.9 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/>
-            </svg>
+            <Image src="/chevron-left.svg" alt="Previous" width={20} height={20} />
             Previous
           </button>
         )}
@@ -767,9 +761,9 @@ export default function HomeworkStart() {
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: "8px",
               flex: isFirstQuestion ? "1 1 100%" : "1 1 calc(50% - 6px)",
-              minWidth: "140px",
               maxWidth: isFirstQuestion ? "500px" : "244px"
             }}
             onMouseEnter={(e) => {
@@ -782,13 +776,7 @@ export default function HomeworkStart() {
             }}
           >
             Next
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 256 512"
-              style={{ width: "16px", height: "16px" }}
-            >
-              <path fill="currentColor" d="M247.1 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L179.2 256 41.9 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/>
-            </svg>
+            <Image src="/chevron-right.svg" alt="Next" width={20} height={20} />
           </button>
         )}
 
@@ -811,8 +799,10 @@ export default function HomeworkStart() {
                 ? "0 2px 8px rgba(108, 117, 125, 0.3)"
                 : "0 4px 16px rgba(40, 167, 69, 0.3)",
               opacity: isSubmitting ? 0.7 : 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               flex: isFirstQuestion ? "1 1 100%" : "1 1 calc(50% - 6px)",
-              minWidth: "140px",
               maxWidth: isFirstQuestion ? "500px" : "244px"
             }}
             onMouseEnter={(e) => {
@@ -828,7 +818,7 @@ export default function HomeworkStart() {
               }
             }}
           >
-            {isSubmitting ? "Submitting..." : "Submit"}
+            {isSubmitting ? "Submitting..." : "✅ Submit"}
           </button>
         )}
       </div>

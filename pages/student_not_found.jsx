@@ -307,21 +307,21 @@ export default function StudentNotFound() {
               }
             }}
           >
-            <span className="icon">⬅️</span>
+            <Image src="/arrow-left.svg" alt="Back" width={25} height={25} />
             Go Back
           </button>
           <button 
             className="btn btn-secondary"
             onClick={() => router.push('/contact_assistants')}
           >
-            <span className="icon">👥</span>
+            <Image src="/message.svg" alt="Contact" width={20} height={20} />
             Contact Assistants
           </button>
           <button 
             className="btn btn-contact"
             onClick={() => router.push('/contact_developer')}
           >
-            <span className="icon">💬</span>
+            <Image src="/message2.svg" alt="Contact" width={20} height={20} />
             Contact Developer
           </button>
         </div>

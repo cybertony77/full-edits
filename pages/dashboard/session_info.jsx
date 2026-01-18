@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { AVAILABLE_CENTERS } from '../../constants/centers';
 import GradeSelect from '../../components/GradeSelect';
 import CenterSelect from '../../components/CenterSelect';
@@ -949,7 +950,12 @@ export default function SessionInfo() {
             }
           }
         `}</style>
-        <Title>Session Info</Title>
+        <Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/chart6.svg" alt="Session Info" width={32} height={32} />
+            Session Info
+          </div>
+        </Title>
         {error && <div className="error-message">❌ {error}</div>}
         
         {/* Show week info if week is selected */}

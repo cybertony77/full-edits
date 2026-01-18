@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import Title from "../../components/Title";
 import { useProfile, useUpdateProfile } from '../../lib/api/auth';
 import apiClient from '../../lib/axios';
@@ -45,22 +46,23 @@ export default function ChangePassword() {
 
     // Validation
     if (!form.currentPassword || !form.newPassword || !form.confirmPassword) {
-      setError("❌ All fields are required");
+      setError('All fields are required');
       return;
     }
 
     if (form.newPassword !== form.confirmPassword) {
-      setError("❌ New password and confirm password do not match");
+      setError('New password and confirm password do not match');
       return;
     }
 
     if (form.newPassword.length < 8) {
-      setError("❌ New password must be at least 8 characters");
+      setError('New password must be at least 8 characters');
       return;
     }
 
-    if (form.currentPassword === form.newPassword) {
-      setError("❌ New password must be different from current password");
+    // Trim whitespace and compare
+    if (form.currentPassword.trim() === form.newPassword.trim()) {
+      setError('New password must be different from current password');
       return;
     }
 
@@ -70,8 +72,9 @@ export default function ChangePassword() {
         currentPassword: form.currentPassword
       });
     } catch (verifyError) {
-      const errorMessage = verifyError.response?.data?.error || "❌ Current password is incorrect";
-      setError(errorMessage);
+      const errorMessage = verifyError.response?.data?.error || 'Current password is incorrect';
+      // Remove ❌ if it's already in the error message
+      setError(errorMessage.replace(/^❌\s*/, ''));
       return;
     }
 
@@ -84,7 +87,9 @@ export default function ChangePassword() {
           setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
         },
         onError: (err) => {
-          setError(err.response?.data?.error || "❌ Failed to update password");
+          const errorMessage = err.response?.data?.error || 'Failed to update password';
+          // Remove ❌ if it's already in the error message
+          setError(errorMessage.replace(/^❌\s*/, ''));
         }
       }
     );
@@ -173,7 +178,12 @@ export default function ChangePassword() {
             box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
           }
         `}</style>
-        <Title>Change My Password</Title>
+        <Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/key2.svg" alt="Key" width={32} height={32} />
+            Change My Password
+          </div>
+        </Title>
         <div className="form-container">
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -302,7 +312,7 @@ export default function ChangePassword() {
             </button>
           </form>
           {success && <div className="success-message">✅ Password changed successfully!</div>}
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="error-message">{typeof error === 'string' ? `❌ ${error}` : error}</div>}
           <NeedHelp style={{ padding: '16px' }} />
         </div>
       </div>

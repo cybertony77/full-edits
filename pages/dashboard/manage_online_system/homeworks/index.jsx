@@ -219,7 +219,12 @@ export default function Homeworks() {
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-          <Title backText="Back" href="/dashboard/manage_online_system">Homeworks</Title>
+          <Title backText="Back" href="/dashboard/manage_online_system">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/books.svg" alt="Homeworks" width={32} height={32} />
+              Homeworks
+            </div>
+          </Title>
           
           {/* White Background Container */}
           <div className="homeworks-container" style={{
@@ -263,7 +268,12 @@ export default function Homeworks() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-        <Title backText="Back" href="/dashboard/manage_online_system">Homeworks</Title>
+        <Title backText="Back" href="/dashboard/manage_online_system">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/books.svg" alt="Homeworks" width={32} height={32} />
+            Homeworks
+          </div>
+        </Title>
 
         {/* Search Bar */}
         <div className="search-bar-container" style={{ marginBottom: 20, width: '100%' }}>
@@ -372,18 +382,14 @@ export default function Homeworks() {
                 fontSize: '1rem',
                 fontWeight: '600',
                 transition: 'all 0.2s ease',
-                boxShadow: '0 2px 8px rgba(31, 168, 220, 0.2)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#0d5a7a';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#1FA8DC';
-                e.target.style.transform = 'translateY(0)';
+                boxShadow: '0 2px 8px rgba(31, 168, 220, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              ➕ Add Homework
+              <Image src="/plus.svg" alt="Add" width={23} height={23} style={{ marginRight: '6px', display: 'inline-block' }} />
+              Add Homework
             </button>
           </div>
 
@@ -441,18 +447,15 @@ export default function Homeworks() {
                         cursor: 'pointer',
                         fontSize: '0.9rem',
                         fontWeight: '600',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#0d5a7a';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#1FA8DC';
-                        e.target.style.transform = 'translateY(0)';
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
                       }}
                     >
-                      📊 Analytics
+                      <Image src="/chart2.svg" alt="Analytics" width={18} height={18} style={{ display: 'inline-block' }} />
+                      Analytics
                     </button>
                     <button
                       onClick={() => router.push(`/dashboard/manage_online_system/homeworks/edit?id=${homework._id}`)}
@@ -465,18 +468,15 @@ export default function Homeworks() {
                         cursor: 'pointer',
                         fontSize: '0.9rem',
                         fontWeight: '600',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#218838';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#28a745';
-                        e.target.style.transform = 'translateY(0)';
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
                       }}
                     >
-                      ✏️ Edit
+                      <Image src="/edit.svg" alt="Edit" width={18} height={18} style={{ display: 'inline-block' }} />
+                      Edit
                     </button>
                     <button
                       onClick={() => openConfirmDeleteModal(homework)}
@@ -489,18 +489,15 @@ export default function Homeworks() {
                         cursor: 'pointer',
                         fontSize: '0.9rem',
                         fontWeight: '600',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.backgroundColor = '#c82333';
-                        e.target.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.backgroundColor = '#dc3545';
-                        e.target.style.transform = 'translateY(0)';
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
                       }}
                     >
-                      🗑️ Delete
+                      <Image src="/trash2.svg" alt="Delete" width={18} height={18} style={{ display: 'inline-block' }} />
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -547,11 +544,14 @@ export default function Homeworks() {
                 onClick={closeAnalytics} 
                 aria-label="Close"
               >
-                ✕
+                <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
               </button>
 
               <div className="analytics-header">
-                <h2>Homework Analytics</h2>
+                <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                  <Image src="/chart2.svg" alt="Analytics" width={32} height={32} />
+                  Homework Analytics
+                </h2>
                 {selectedHomeworkForAnalytics && (
                   <p className="analytics-subtitle">
                     {selectedHomeworkForAnalytics.grade} • Week {selectedHomeworkForAnalytics.week} • {selectedHomeworkForAnalytics.lesson_name}
@@ -736,7 +736,6 @@ export default function Homeworks() {
           position: absolute;
           top: 20px;
           right: 20px;
-          background: #dc3545;
           border: none;
           font-size: 20px;
           color: white;
@@ -750,12 +749,9 @@ export default function Homeworks() {
           transition: all 0.2s ease;
           padding: 0;
           line-height: 1;
-          box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
         }
         .analytics-close-btn:hover {
-          background: #c82333;
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
         }
         .analytics-close-btn:active {
           transform: scale(0.95);

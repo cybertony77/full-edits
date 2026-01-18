@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { QRCode } from "react-qrcode-logo";
 import html2canvas from "html2canvas";
+import Image from 'next/image';
 import { useProfile } from '../lib/api/auth';
 import { useStudent } from '../lib/api/students';
 
@@ -159,7 +160,7 @@ export default function QRCodeModal({ isOpen, onClose }) {
         }
         .spinner-text {
           margin-top: 20px;
-          color: #666;
+          color: #ffffff;
           font-size: 16px;
           font-weight: 600;
         }
@@ -294,7 +295,8 @@ export default function QRCodeModal({ isOpen, onClose }) {
                 <div className="qr-id-text">{`ID No. ${studentData.id}`}</div>
               </div>
               <button className="download-btn" onClick={downloadSingleQR}>
-                📥 Download QR
+                <Image src="/download.svg" alt="Download" width={20} height={20} />
+                Download QR
               </button>
             </>
           ) : (

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import { AVAILABLE_CENTERS } from "../../constants/centers";
 import Title from "../../components/Title";
 import AttendanceWeekSelect from "../../components/AttendanceWeekSelect";
@@ -1250,7 +1251,12 @@ export default function QR() {
         }
       `}</style>
 
-             <Title>QR Code Scanner</Title>
+             <Title>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                 <Image src="/scan.svg" alt="Scan" width={32} height={32} />
+                 QR Code Scanner
+               </div>
+             </Title>
 
       <div className="input-section">
         <form onSubmit={handleManualSubmit} className="input-group">
@@ -2399,10 +2405,15 @@ export default function QR() {
                 cursor: 'pointer',
                 boxShadow: '0 4px 16px rgba(23, 162, 184, 0.3)',
                 width: '100%',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
               }}
             >
-              🏷️ Create QR Code for this student • ID: {student.id}
+              <Image src="/qrcode.svg" alt="QR Code" width={20} height={20} />
+              Create QR Code for this student • ID: {student.id}
             </button>
           </div>
           {/* comment success shown below the student card */}

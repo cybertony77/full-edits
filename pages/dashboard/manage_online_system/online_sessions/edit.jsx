@@ -765,7 +765,7 @@ export default function EditOnlineSession() {
       <div className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
         <Title backText="Back" href="/dashboard/manage_online_system/online_sessions">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Image src="/play-pause.svg" alt="Play Pause" width={32} height={32} />
+            <Image src="/edit.svg" alt="Edit" width={32} height={32} />
             Edit Online Session
           </div>
         </Title>
@@ -1373,7 +1373,8 @@ export default function EditOnlineSession() {
                   gap: '8px'
                 }}
               >
-                <span>+</span> Add Another Video
+                <Image src="/plus.svg" alt="Add" width={20} height={20} style={{ display: 'inline-block' }} />
+                Add Another Video
               </button>
 
               {errors.videos && (

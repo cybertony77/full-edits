@@ -456,7 +456,12 @@ export default function PreviewStudentQuizzes() {
           }
         `}</style>
 
-        <Title backText="Back" href="/dashboard/manage_online_system">Preview Student Quizzes</Title>
+        <Title backText="Back" href="/dashboard/manage_online_system">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/notepad.svg" alt="Preview Quizzes" width={32} height={32} />
+            Preview Student Quizzes
+          </div>
+        </Title>
 
         <div className="form-container">
           <form onSubmit={handleIdSubmit} className="fetch-form">
@@ -710,7 +715,7 @@ export default function PreviewStudentQuizzes() {
                                 }
                               }}
                             >
-                              <Image src="/reset.svg" alt="Reset" width={18} height={18} />
+                              <Image src="/refresh.svg" alt="Reset" width={18} height={18} />
                               {resettingId === quizResult.quiz_id ? 'Resetting...' : 'Reset'}
                             </button>
                           </div>

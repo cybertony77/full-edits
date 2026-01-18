@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import Image from 'next/image';
 
 export default function BackToDashboard({ style = {}, className = "", text = "Back to Dashboard", href }) {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function BackToDashboard({ style = {}, className = "", text = "Ba
       }}
       onClick={() => href ? router.push(href) : router.back()}
     >
-      {typeof text === 'string' && <span style={{ fontSize: "1.3em", marginRight: 6 }}>←</span>}
+      {typeof text === 'string' && <Image src="/arrow-left.svg" alt="Back" width={25} height={25} />}
       {typeof text === 'string' ? text : <span style={{ display: 'inline-flex', alignItems: 'center' }}>{text}</span>}
     </button>
   );

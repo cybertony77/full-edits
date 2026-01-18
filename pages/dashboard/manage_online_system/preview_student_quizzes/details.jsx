@@ -87,7 +87,12 @@ export default function PreviewQuizDetails() {
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-          <Title backText="Back" href={`/dashboard/manage_online_system/preview_student_quizzes?student_id=${student_id}`}>Quiz Details</Title>
+          <Title backText="Back" href={`/dashboard/manage_online_system/preview_student_quizzes?student_id=${student_id}`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/notepad.svg" alt="Quiz Details" width={32} height={32} />
+              Quiz Details
+            </div>
+          </Title>
           
           <div className="details-container" style={{
             background: 'white',
@@ -196,7 +201,12 @@ export default function PreviewQuizDetails() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-        <Title backText="Back" href={`/dashboard/manage_online_system/preview_student_quizzes`}>Quiz Details</Title>
+        <Title backText="Back" href={`/dashboard/manage_online_system/preview_student_quizzes`}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/notepad.svg" alt="Quiz Details" width={32} height={32} />
+            Quiz Details
+          </div>
+        </Title>
 
         <div className="details-container" style={{
           background: 'white',

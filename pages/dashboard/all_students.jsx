@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import { AVAILABLE_CENTERS } from "../../constants/centers";
 import Title from "../../components/Title";
 import GradeSelect from "../../components/GradeSelect";
@@ -238,7 +239,12 @@ export default function AllStudents() {
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-          <Title>All Students</Title>
+          <Title>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/users.svg" alt="All Students" width={32} height={32} />
+              All Students
+            </div>
+          </Title>
           <LoadingSkeleton type="table" rows={8} columns={4} />
         </div>
       </div>
@@ -251,7 +257,12 @@ export default function AllStudents() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div ref={containerRef} style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-        <Title>All Students</Title>
+        <Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/users.svg" alt="All Students" width={32} height={32} />
+            All Students
+          </div>
+        </Title>
         {/* Search Bar */}
         <div style={{ marginBottom: 20 }}>
           <InputWithButton

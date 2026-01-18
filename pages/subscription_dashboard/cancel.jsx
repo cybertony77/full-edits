@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import Title from '../../components/Title';
 import SubscriptionCard from '../../components/SubscriptionCard';
 import { useSubscription, useCancelSubscription } from '../../lib/api/subscription';
@@ -52,8 +53,11 @@ export default function CancelSubscription() {
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <div style={{ maxWidth: 800, margin: '40px auto', padding: '12px' }}>
-        <Title backText="Back to Subscription Dashboard" href="/subscription_dashboard">
-          Cancel Subscription
+        <Title backText="Back" href="/subscription_dashboard">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/cross-circle.svg" alt="Cancel" width={32} height={32} />
+            Cancel Subscription
+          </div>
         </Title>
 
         <SubscriptionCard />

@@ -410,7 +410,12 @@ export default function EditMyProfile() {
             100% { transform: rotate(360deg); }
           }
         `}</style>
-                 <Title backText={"Back"} href={null}>Edit My Profile</Title>
+                 <Title backText={"Back"} href={null}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <Image src="/user-edit2.svg" alt="Edit Profile" width={32} height={32} />
+                     Edit My Profile
+                   </div>
+                 </Title>
         <div className="form-container">
           {/* Show changes indicator */}
           {hasChanges() ? (

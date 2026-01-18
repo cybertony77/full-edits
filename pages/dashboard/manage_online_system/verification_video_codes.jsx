@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import Title from "../../../components/Title";
 import { Table, ScrollArea } from '@mantine/core';
 import { IconChevronLeft, IconChevronRight, IconSearch, IconArrowRight } from '@tabler/icons-react';
@@ -370,7 +371,12 @@ export default function VerificationVideoCodes() {
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-          <Title href="/dashboard/manage_online_system" backText="Back">Verification Video Codes</Title>
+          <Title href="/dashboard/manage_online_system" backText="Back">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/lock-cog.svg" alt="VVC" width={32} height={32} />
+              Verification Video Codes
+            </div>
+          </Title>
           <LoadingSkeleton type="table" rows={8} columns={4} />
         </div>
       </div>
@@ -383,7 +389,12 @@ export default function VerificationVideoCodes() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div ref={containerRef} className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-          <Title href="/dashboard/manage_online_system" backText="Back">Verification Video Codes</Title>
+          <Title href="/dashboard/manage_online_system" backText="Back">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/lock-cog.svg" alt="VVC" width={32} height={32} />
+              Verification Video Codes
+            </div>
+          </Title>
 
         {/* Search Bar */}
         <div className="search-bar-container" style={{ marginBottom: 20 }}>
@@ -467,18 +478,17 @@ export default function VerificationVideoCodes() {
                   fontWeight: '600',
                   whiteSpace: 'nowrap',
                   transition: 'all 0.2s ease',
-                  boxShadow: '0 2px 8px rgba(31, 168, 220, 0.2)'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#0d5a7a';
-                  e.target.style.transform = 'translateY(-1px)';
+                  boxShadow: '0 2px 8px rgba(31, 168, 220, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.backgroundColor = '#1FA8DC';
-                  e.target.style.transform = 'translateY(0)';
                 }}
               >
-                ➕ Add VVC
+                <Image src="/plus.svg" alt="Add" width={23} height={23} style={{ marginRight: '6px', display: 'inline-block' }} />
+                Add VVC
               </button>
             </div>
           </div>
@@ -627,22 +637,20 @@ export default function VerificationVideoCodes() {
                             fontWeight: '600',
                             transition: 'all 0.2s ease',
                             opacity: updateVVCMutation.isLoading ? 0.6 : 1,
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!updateVVCMutation.isLoading) {
-                              e.target.style.backgroundColor = '#0d5a7a';
-                              e.target.style.transform = 'translateY(-1px)';
-                            }
+                            whiteSpace: 'nowrap',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
                           }}
                           onMouseLeave={(e) => {
                             if (!updateVVCMutation.isLoading) {
                               e.target.style.backgroundColor = '#1FA8DC';
-                              e.target.style.transform = 'translateY(0)';
                             }
                           }}
                         >
-                          ✏️ Edit
+                          <Image src="/edit.svg" alt="Edit" width={18} height={18} style={{ display: 'inline-block' }} />
+                          Edit
                         </button>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'center' }}>
@@ -661,22 +669,15 @@ export default function VerificationVideoCodes() {
                             fontWeight: '600',
                             transition: 'all 0.2s ease',
                             opacity: deleteVVCMutation.isLoading ? 0.6 : 1,
-                            whiteSpace: 'nowrap'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!deleteVVCMutation.isLoading) {
-                              e.target.style.backgroundColor = '#c82333';
-                              e.target.style.transform = 'translateY(-1px)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!deleteVVCMutation.isLoading) {
-                              e.target.style.backgroundColor = '#dc3545';
-                              e.target.style.transform = 'translateY(0)';
-                            }
+                            whiteSpace: 'nowrap',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
                           }}
                         >
-                          🗑️ Delete
+                          <Image src="/trash2.svg" alt="Delete" width={18} height={18} style={{ display: 'inline-block' }} />
+                          Delete
                         </button>
                       </Table.Td>
                     </Table.Tr>

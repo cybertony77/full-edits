@@ -483,7 +483,12 @@ export default function PreviewStudentHomeworks() {
           }
         `}</style>
 
-        <Title backText="Back" href="/dashboard/manage_online_system">Preview Student Homeworks</Title>
+        <Title backText="Back" href="/dashboard/manage_online_system">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/books.svg" alt="Preview Homeworks" width={32} height={32} />
+            Preview Student Homeworks
+          </div>
+        </Title>
 
         <div className="form-container">
           <form onSubmit={handleIdSubmit} className="fetch-form">
@@ -737,7 +742,7 @@ export default function PreviewStudentHomeworks() {
                                 }
                               }}
                             >
-                              <Image src="/reset.svg" alt="Reset" width={18} height={18} />
+                              <Image src="/refresh.svg" alt="Reset" width={18} height={18} />
                               {resettingId === hwResult.homework_id ? 'Resetting...' : 'Reset'}
                             </button>
                           </div>

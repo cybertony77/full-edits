@@ -261,7 +261,8 @@ export default function UserMenu() {
                 <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 8 }}>
                   {studentData.name || 'Student'}
                 </div>
-                <div style={{ color: '#495057', fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+                <div style={{ color: '#495057', fontSize: 15, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Image src="/user-circle3.svg" alt="User" width={18} height={18} />
                   ID: {studentData.id}
                 </div>
                 {studentData.grade && (
@@ -273,7 +274,8 @@ export default function UserMenu() {
             ) : (
               <>
                 <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 2 }}>{userData.name || userData.id}</div>
-                <div style={{ color: '#495057', fontSize: 15, fontWeight: 600 }}>
+                <div style={{ color: '#495057', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Image src="/user-circle3.svg" alt="User" width={18} height={18} />
                   {userData.id ? `Username: ${userData.id}` : 'No Username'}
                 </div>
               </>
@@ -293,6 +295,7 @@ export default function UserMenu() {
                   color: '#dc3545',
                   lineHeight: 1.4
                 }}>
+                  <Image src="/cross-mark.svg" alt="Clock" width={20} height={20} style={{ marginRight: '5px' , transform: "translateY(5px)" }} />
                   Subscription Expired
                 </div>
               ) : subscription.date_of_expiration && timeRemaining !== null ? (
@@ -302,7 +305,9 @@ export default function UserMenu() {
                   color: '#495057',
                   lineHeight: 1.4
                 }}>
-                  <div style={{ marginBottom: 4, color: '#313437', fontSize: 15 }}>Subscription time remaining:</div>
+                  <div style={{ marginBottom: 4, color: '#313437', fontSize: 15 }}>
+                    <Image src="/clock.svg" alt="Clock" width={18} height={18} style={{ marginRight: '5px' , transform: "translateY(3px)" }} />
+                    Subscription time remaining:</div>
                   <div style={{ 
                     fontFamily: 'Courier New, monospace',
                     letterSpacing: 0.5,
@@ -322,38 +327,65 @@ export default function UserMenu() {
             </div>
           )}
           <button style={menuBtnStyle} onClick={handleLogout}>
-            <i className="fa fa-sign-out" aria-hidden="true" style={{ marginRight: '8px', color: '#dc3545' }}></i>
+            <Image src="/logout.svg" alt="Logout" width={20} height={20} style={{ marginRight: '8px', filter: 'brightness(0) saturate(100%) invert(27%) sepia(95%) saturate(6871%) hue-rotate(349deg) brightness(93%) contrast(86%)' }} />
             Logout
           </button>
           {userData.role === 'student' && (
             <>
-              <button style={menuBtnStyle} onClick={handleChangePassword}>Change My Password</button>
-              <button style={menuBtnStyle} onClick={handleMyQRCode}>My Qr Code</button>
+              <button style={menuBtnStyle} onClick={handleChangePassword}>
+                <Image src="/key2.svg" alt="Password" width={20} height={20} style={{ marginRight: '8px' }} />
+                Change My Password
+              </button>
+              <button style={menuBtnStyle} onClick={handleMyQRCode}>
+                <Image src="/qrcode3.svg" alt="QR Code" width={20} height={20} style={{ marginRight: '8px' }} />
+                My Qr Code
+              </button>
             </>
           )}
           {userData.role !== 'student' && (
             <>
-              <button style={menuBtnStyle} onClick={handleEditProfile}>Edit My Profile</button>
+              <button style={menuBtnStyle} onClick={handleEditProfile}>
+                <Image src="/user-edit2.svg" alt="Edit Profile" width={20} height={20} style={{ marginRight: '8px' }} />
+                Edit My Profile
+              </button>
               <button style={menuBtnStyle} onClick={() => {
                 setOpen(false);
                 router.push('/dashboard/public_link_generator');
-              }}>Public Link Generator</button>
+              }}>
+                <Image src="/link.svg" alt="Link" width={20} height={20} style={{ marginRight: '8px' }} />
+                Public Link Generator
+              </button>
               {(userData.role === 'admin' || userData.role === 'developer') && (
-                <button style={menuBtnStyle} onClick={handleManageAssistants}>Manage Assistants</button>
+                <button style={menuBtnStyle} onClick={handleManageAssistants}>
+                  <Image src="/settings.svg" alt="Settings" width={18} height={18} style={{ marginRight: '8px' }} />
+                  Manage Assistants
+                </button>
               )}
               {(userData.role === 'admin' || userData.role === 'developer' || userData.role === 'assistant') && (
                 <button style={menuBtnStyle} onClick={() => {
                   setOpen(false);
                   router.push('/dashboard/manage_online_system');
-                }}>Manage Online System</button>
+                }}>
+                  <Image src="/settings2.svg" alt="Settings" width={20} height={20} style={{ marginRight: '8px' }} />
+                  Manage Online System
+                </button>
               )}
               {userData.role === 'developer' && (
-                <button style={menuBtnStyle} onClick={handleSubscriptionDashboard}>Subscription Dashboard</button>
+                <button style={menuBtnStyle} onClick={handleSubscriptionDashboard}>
+                  <Image src="/dollar.svg" alt="Dollar" width={20} height={20} style={{ marginRight: '8px' }} />
+                  Subscription Dashboard
+                </button>
               )}
             </>
           )}
-          <button style={menuBtnStyle} onClick={handleContactDeveloper}>Contact Developer</button>
-          <button style={menuBtnStyle} onClick={handleInstallApp}>Install App</button>
+          <button style={menuBtnStyle} onClick={handleContactDeveloper}>
+            <Image src="/message2.svg" alt="Message" width={20} height={20} style={{ marginRight: '8px' }} />
+            Contact Developer
+          </button>
+          <button style={menuBtnStyle} onClick={handleInstallApp}>
+            <Image src="/download.svg" alt="Download" width={20} height={20} style={{ marginRight: '8px' }} />
+            Install App
+          </button>
         </div>
       )}
       <QRCodeModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} />
@@ -376,4 +408,6 @@ const menuBtnStyle = {
   transition: 'background 0.15s',
   marginBottom: 2,
   outline: 'none',
+  display: 'flex',
+  alignItems: 'center',
 }; 

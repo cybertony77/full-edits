@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Image from 'next/image';
 import { QRCode } from "react-qrcode-logo";
 import JSZip from "jszip";
 import { useRouter } from "next/router";
@@ -499,7 +500,12 @@ export default function QRGenerator() {
           }
         }
       `}</style>
-             <Title>QR Code Generator</Title>
+             <Title>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                 <Image src="/qrcode.svg" alt="QR Code" width={32} height={32} />
+                 QR Code Generator
+               </div>
+             </Title>
       <button className="qr-btn" onClick={() => setMode("single")}>Single QR Code Generator</button>
       <button className="qr-btn" onClick={() => setMode("many")}>Many QR Codes Generator</button>
       {mode === "single" && (
@@ -546,8 +552,9 @@ export default function QRGenerator() {
                   />
                   <div className="qr-id-text">{`ID No. ${singleId}`}</div>
                 </div>
-                <button className="download-btn" onClick={downloadSingleQR}>
-                  📥 Download QR
+                <button className="download-btn" onClick={downloadSingleQR} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Image src="/download.svg" alt="Download" width={20} height={20} />
+                  Download QR
                 </button>
               </div>
             </div>
@@ -583,8 +590,13 @@ export default function QRGenerator() {
               }}
             />
           </div>
-          <button className="qr-btn" onClick={e => { e.preventDefault(); generateManyQRCodes(); }} disabled={manyGenerating}>
-            {manyGenerating ? "Generating..." : "Generate & Download ZIP"}
+          <button className="qr-btn" onClick={e => { e.preventDefault(); generateManyQRCodes(); }} disabled={manyGenerating} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            {manyGenerating ? "Generating..." : (
+              <>
+                <Image src="/zip-file.svg" alt="ZIP" width={20} height={20} />
+                Generate & Download ZIP
+              </>
+            )}
           </button>
           {zipUrl && (
             <div className="qr-center-wrapper">
@@ -593,8 +605,10 @@ export default function QRGenerator() {
                   href={zipUrl} 
                   download={`QrCodes_From_${manyFrom}_To_${manyTo}.zip`} 
                   className="download-btn"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  📦 Download ZIP
+                  <Image src="/zip-file.svg" alt="Download ZIP" width={20} height={20} />
+                  Download ZIP
                 </a>
               </div>
             </div>

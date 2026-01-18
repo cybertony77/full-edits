@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import Title from '../../../components/Title';
 import { useStudents, useStudent } from '../../../lib/api/students';
 import apiClient from '../../../lib/axios';
@@ -426,7 +427,12 @@ export default function DeleteStudentAccount() {
             }
           }
         `}</style>
-        <Title backText="Back" href={"/dashboard/manage_online_system"}>Delete Student Account</Title>
+        <Title backText="Back" href={"/dashboard/manage_online_system"}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/trash2.svg" alt="Delete Account" width={32} height={32} />
+            Delete Student Account
+          </div>
+        </Title>
         {/* Only show the entire form container if not deleted */}
         {!deleted && (
           <div className="form-container">

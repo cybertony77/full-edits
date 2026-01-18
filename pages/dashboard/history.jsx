@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import { AVAILABLE_CENTERS } from "../../constants/centers";
 import { weeks } from "../../constants/weeks";
 import Title from "../../components/Title";
@@ -307,7 +308,12 @@ export default function History() {
     }}>
       <div ref={containerRef} style={{ maxWidth: 800, margin: "40px auto", padding: "20px 15px 20px 15px" }}>
         <div style={{ marginBottom: 20 }}>
-          <Title>History</Title>
+          <Title>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/history.svg" alt="History" width={32} height={32} />
+              History
+            </div>
+          </Title>
         </div>
         
         {/* Search Bar */}

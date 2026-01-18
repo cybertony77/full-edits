@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import BackToDashboard from "../../components/BackToDashboard";
 import Title from '../../components/Title';
 import { useStudents, useStudent, useDeleteStudent } from '../../lib/api/students';
@@ -384,7 +385,12 @@ export default function DeleteStudent() {
             }
           }
         `}</style>
-        <Title>Delete Student</Title>
+        <Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/trash2.svg" alt="Delete Student" width={32} height={32} />
+            Delete Student
+          </div>
+        </Title>
         {/* Only show the entire form container if not deleted */}
         {!deleted && (
           <div className="form-container">

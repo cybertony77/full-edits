@@ -210,7 +210,12 @@ export default function QuizDetails() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-        <Title backText="Back" href="/student_dashboard/my_quizzes">Quiz Details</Title>
+        <Title backText="Back" href="/student_dashboard/my_quizzes">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/details.svg" alt="Details" width={32} height={32} />
+            Quiz Details
+          </div>
+        </Title>
 
         <div className="details-container" style={{
           background: 'white',

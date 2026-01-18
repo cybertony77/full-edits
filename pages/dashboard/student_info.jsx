@@ -691,7 +691,14 @@ export default function StudentInfo() {
         `}</style>
 
         {/* Only show title if authenticated */}
-        {hasAuthToken && <Title>Student Info</Title>}
+        {hasAuthToken && (
+          <Title>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/user2.svg" alt="Student Info" width={32} height={32} />
+              Student Info
+            </div>
+          </Title>
+        )}
 
         {/* Only show search form if authenticated */}
         {hasAuthToken && (
@@ -1233,6 +1240,8 @@ export default function StudentInfo() {
           {/* Absolutely positioned close button */}
           <button
             onClick={() => setDetailsOpen(false)}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
             style={{
               position: 'absolute',
               top: '16px',
@@ -1248,6 +1257,8 @@ export default function StudentInfo() {
               cursor: 'pointer',
               fontSize: '20px',
               zIndex: 1000,
+              transition: 'transform 0.3s ease',
+              transform: 'scale(1)',
               '@media (max-width: 768px)': {
                 width: '36px',
                 height: '36px',
@@ -1258,7 +1269,7 @@ export default function StudentInfo() {
             }}
             aria-label="Close details"
           >
-            ❌
+            <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
           </button>
           
           <div style={{ 

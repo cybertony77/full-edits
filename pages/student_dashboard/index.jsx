@@ -362,7 +362,10 @@ export default function StudentDashboard() {
                 color: "#ffffff",
                 margin: "0 auto 20px auto",
               }}>
-                <h2 style={{ margin: 0, fontSize: "1.3rem" }}>Welcome, {firstName}!</h2>
+                <h2 style={{ margin: 0, fontSize: "1.3rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  Welcome, {firstName}!
+                  <Image src="/waving-hand.svg" alt="Waving Hand" width={24} height={24} />
+                </h2>
               </div>
 
               {/* Next Session Reminder */}
@@ -385,8 +388,8 @@ export default function StudentDashboard() {
                     marginBottom: "12px"
                   }}>
                     <div style={{
-                      width: "36px",
-                      height: "36px",
+                      width: "35px",
+                      height: "35px",
                       borderRadius: "50%",
                       background: "linear-gradient(135deg, #1FA8DC 0%, #87CEEB 100%)",
                       display: "flex",
@@ -395,7 +398,7 @@ export default function StudentDashboard() {
                       flexShrink: 0,
                       boxShadow: "0 2px 8px rgba(31, 168, 220, 0.3)"
                     }}>
-                      <span style={{ fontSize: "18px" }}>📅</span>
+                      <Image src="/calendar3.svg" alt="Calendar" width={24} height={24} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
@@ -430,7 +433,7 @@ export default function StudentDashboard() {
                     borderTop: "1px solid rgba(0, 0, 0, 0.08)",
                     flexWrap: "wrap"
                   }}>
-                    <span style={{ fontSize: "16px", flexShrink: 0 }}>🏢</span>
+                    <Image src="/center.svg" alt="Center" width={18} height={18} style={{ flexShrink: 0 }} />
                     <span style={{ fontWeight: "500" }}>{nextSession.center}</span>
                     {nextSession.location && nextSession.location.trim() !== '' && (
                       <>
@@ -459,7 +462,7 @@ export default function StudentDashboard() {
                             e.target.style.textDecoration = "none";
                           }}
                         >
-                          <span style={{ fontSize: "14px", flexShrink: 0 }}>📍</span>
+                          <Image src="/maps.svg" alt="Location" width={16} height={16} style={{ flexShrink: 0 }} />
                           <span>Location</span>
                         </a>
                       </>
@@ -488,7 +491,8 @@ export default function StudentDashboard() {
                 className="dashboard-btn"
                 onClick={() => router.push("/student_dashboard/my_info")}
               >
-                📋 My Information
+                <Image src="/user-circle3.svg" alt="User" width={20} height={20} />
+                My Information
               </button>
 
               <button
@@ -503,27 +507,31 @@ export default function StudentDashboard() {
                 className="dashboard-btn"
                 onClick={() => router.push("/student_dashboard/my_homeworks")}
               >
-                📚 My Homeworks
+                <Image src="/books.svg" alt="Books" width={20} height={20} />
+                My Homeworks
               </button>
 
               <button
                 className="dashboard-btn"
                 onClick={() => router.push("/student_dashboard/my_quizzes")}
               >
-                📝 My Quizzes
+                <Image src="/notepad.svg" alt="Notepad" width={20} height={20} />
+                My Quizzes
               </button>
 
               <button
                 className="dashboard-btn"
                 onClick={() => router.push("/student_dashboard/centers-schedule")}
               >
-                🏢 Centers Schedule
+                <Image src="/center.svg" alt="Centers" width={20} height={20} />
+                Centers Schedule
               </button>
               <button
                 className="dashboard-btn"
                 onClick={() => router.push("/contact_assistants")}
               >
-                📞 Contact Assistants
+                <Image src="/message.svg" alt="Phone" width={20} height={20} />
+                Contact Assistants
               </button>
             </>
           )}

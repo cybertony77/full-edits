@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import Title from '../../components/Title';
 import DurationSelect from '../../components/DurationSelect';
 import { useSubscription, useCreateSubscription } from '../../lib/api/subscription';
@@ -79,7 +80,7 @@ export default function MinutelySubscription() {
       });
 
       if (result.success) {
-        setSuccess(`✅ Successfully subscribed ${duration} minute${duration > 1 ? 's' : ''}`);
+        setSuccess(`Successfully subscribed ${duration} minute${duration > 1 ? 's' : ''}`);
         setDuration(1);
         setCost('');
         setNote('');
@@ -88,7 +89,7 @@ export default function MinutelySubscription() {
       if (err.response?.data?.error === 'ACTIVE_SUBSCRIPTION_EXISTS') {
         setShowPopup(true);
       } else {
-        setError(`❌ ${err.response?.data?.error || 'Failed to create subscription'}`);
+        setError(err.response?.data?.error || 'Failed to create subscription');
       }
     }
   };
@@ -103,8 +104,11 @@ export default function MinutelySubscription() {
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <div className="page-container">
-        <Title backText="Back to Subscription Dashboard" href="/subscription_dashboard">
-          Minutely Subscription
+        <Title backText="Back" href="/subscription_dashboard">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/timer.svg" alt="Minutely" width={32} height={32} />
+            Minutely Subscription
+          </div>
         </Title>
 
         <div className="subscription-form-container">
@@ -146,11 +150,11 @@ export default function MinutelySubscription() {
             </div>
 
             {error && (
-              <div className="error-message">{error}</div>
+              <div className="error-message">❌ {error}</div>
             )}
 
             {success && (
-              <div className="success-message">{success}</div>
+              <div className="success-message">✅ {success}</div>
             )}
 
             <button type="submit" className="submit-btn" disabled={createSubscription.isPending}>

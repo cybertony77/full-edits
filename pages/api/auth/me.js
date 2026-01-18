@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
+import { sendPasswordChangeEmail } from '../lib/emailUtils';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -113,10 +114,29 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No valid fields to update' });
       }
       
+      // Check if password was changed
+      const passwordChanged = update.password !== undefined;
+      
       await db.collection('users').updateOne(
         { id: decoded.assistant_id },
         { $set: update }
       );
+      
+      // Send password change email notification if password was changed
+      if (passwordChanged) {
+        const assistant = await db.collection('users').findOne({ id: decoded.assistant_id });
+        if (assistant && assistant.email) {
+          const userName = assistant.name || 'User';
+          const userRole = assistant.role || 'assistant';
+          try {
+            await sendPasswordChangeEmail(assistant.email, userName, userRole);
+          } catch (emailError) {
+            console.error('Failed to send password change email:', emailError);
+            // Don't fail the request if email fails
+          }
+        }
+      }
+      
       res.json({ success: true });
     } else {
       res.status(405).json({ error: 'Method not allowed' });

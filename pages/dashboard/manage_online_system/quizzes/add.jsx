@@ -440,7 +440,12 @@ export default function AddQuiz() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div style={{ maxWidth: 800, margin: "40px auto", padding: "20px 5px 20px 5px" }}>
-        <Title backText="Back" href="/dashboard/manage_online_system/quizzes">Add Quiz</Title>
+        <Title backText="Back" href="/dashboard/manage_online_system/quizzes">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/plus.svg" alt="Add" width={32} height={32} />
+            Add Quiz
+          </div>
+        </Title>
 
         <div className="form-container" style={{
           background: 'white',
@@ -605,10 +610,14 @@ export default function AddQuiz() {
                         borderRadius: '6px',
                         cursor: 'pointer',
                         fontSize: '0.9rem',
-                        fontWeight: '600'
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
                       }}
                     >
-                      🗑️ Remove Question
+                      <Image src="/trash2.svg" alt="Remove" width={18} height={18} style={{ display: 'inline-block' }} />
+                      Remove Question
                     </button>
                   )}
                 </div>
@@ -867,7 +876,8 @@ export default function AddQuiz() {
                                   gap: '6px'
                                 }}
                               >
-                                🗑️ Remove
+                                <Image src="/trash2.svg" alt="Remove" width={18} height={18} style={{ display: 'inline-block' }} />
+                                Remove
                               </button>
                             )}
                             {showAddButton && (
@@ -888,7 +898,8 @@ export default function AddQuiz() {
                                   gap: '6px'
                                 }}
                               >
-                                ➕ Add Option
+                                <Image src="/plus.svg" alt="Add" width={18} height={18} style={{ display: 'inline-block' }} />
+                                Add Option
                               </button>
                             )}
                           </div>
@@ -968,10 +979,15 @@ export default function AddQuiz() {
                   borderRadius: '8px',
                   cursor: 'pointer',
                   fontSize: '1rem',
-                  fontWeight: '600'
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
                 }}
               >
-                ➕ Add Question
+                <Image src="/plus.svg" alt="Add" width={20} height={20} style={{ display: 'inline-block' }} />
+                Add Question
               </button>
             </div>
 

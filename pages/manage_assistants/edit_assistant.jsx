@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import Title from "../../components/Title";
 import RoleSelect from "../../components/RoleSelect";
 import AccountStateSelect from "../../components/AccountStateSelect";
@@ -496,7 +497,31 @@ export default function EditAssistant() {
             box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
           }
         `}</style>
-                 <Title backText="Back to Manage Assistants" href="/manage_assistants" style={{ '--button-width': '180px' }}>Edit Assistant</Title>
+                 <Title 
+                   backText="Back" 
+                   href="/manage_assistants" 
+                   backButtonStyle={{
+                     background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
+                     color: 'white',
+                     border: 'none',
+                     borderRadius: 8,
+                     padding: '8px 16px',
+                     fontWeight: 600,
+                     cursor: 'pointer',
+                     transition: '0.3s',
+                     boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
+                     fontSize: 15,
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 8,
+                     marginLeft: 25
+                   }}
+                 >
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <Image src="/user-edit2.svg" alt="Edit Assistant" width={32} height={32} />
+                     Edit Assistant
+                   </div>
+                 </Title>
         
           <div className="form-container">
             

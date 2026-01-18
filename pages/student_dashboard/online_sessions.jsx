@@ -6,6 +6,139 @@ import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../lib/axios';
 import { useProfile } from '../../lib/api/auth';
 import NeedHelp from '../../components/NeedHelp';
+import { TextInput, ActionIcon, useMantineTheme } from '@mantine/core';
+import { IconSearch, IconArrowRight } from '@tabler/icons-react';
+
+// Input with Button Component (matching manage online system style)
+function InputWithButton(props) {
+  const theme = useMantineTheme();
+  return (
+    <TextInput
+      radius="xl"
+      size="md"
+      placeholder="Search by lesson name..."
+      rightSectionWidth={42}
+      leftSection={<IconSearch size={18} stroke={1.5} />}
+      rightSection={
+        <ActionIcon size={32} radius="xl" color={theme.primaryColor} variant="filled" onClick={props.onButtonClick}>
+          <IconArrowRight size={18} stroke={1.5} />
+        </ActionIcon>
+      }
+      {...props}
+    />
+  );
+}
+
+// Custom Week Select for Student Dashboard (only shows available weeks)
+function StudentWeekSelect({ availableWeeks = [], selectedWeek, onWeekChange, isOpen, onToggle, onClose, placeholder = 'Select Week' }) {
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  const handleWeekSelect = (week) => {
+    onWeekChange(week);
+    onClose();
+  };
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+      <div
+        style={{
+          padding: '14px 16px',
+          border: isOpen ? '2px solid #1FA8DC' : '2px solid #e9ecef',
+          borderRadius: '10px',
+          backgroundColor: '#ffffff',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '1rem',
+          color: selectedWeek && selectedWeek !== 'n/a' ? '#000000' : '#adb5bd',
+          transition: 'all 0.3s ease',
+          boxShadow: isOpen ? '0 0 0 3px rgba(31, 168, 220, 0.1)' : 'none'
+        }}
+        onClick={onToggle}
+      >
+        <span>{selectedWeek && selectedWeek !== 'n/a' ? selectedWeek : placeholder}</span>
+        <Image
+          src={isOpen ? "/chevron-down.svg" : "/chevron-right.svg"}
+          alt={isOpen ? "Close" : "Open"}
+          width={20}
+          height={20}
+          style={{
+            transition: 'transform 0.2s ease'
+          }}
+        />
+
+      </div>
+      
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          backgroundColor: '#ffffff',
+          border: '2px solid #e9ecef',
+          borderRadius: '10px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          zIndex: 1000,
+          maxHeight: '200px',
+          overflowY: 'auto',
+          marginTop: '4px'
+        }}>
+          {/* Clear selection option */}
+          <div
+            style={{
+              padding: '12px 16px',
+              cursor: 'pointer',
+              borderBottom: '1px solid #f8f9fa',
+              transition: 'background-color 0.2s ease',
+              color: '#dc3545',
+              fontWeight: '500'
+            }}
+            onClick={() => handleWeekSelect('')}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#fff5f5'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = '#ffffff'}
+          >
+            ✕ Clear selection
+          </div>
+          {availableWeeks.map((week) => (
+            <div
+              key={week}
+              style={{
+                padding: '12px 16px',
+                cursor: 'pointer',
+                borderBottom: '1px solid #f8f9fa',
+                transition: 'background-color 0.2s ease',
+                color: '#000000'
+              }}
+              onClick={() => handleWeekSelect(week)}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#ffffff'}
+            >
+              {week}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Build embed URL
 function buildEmbedUrl(videoId) {
@@ -34,11 +167,11 @@ function VdoCipherPlayer({ videoId }) {
         console.error('Error fetching VdoCipher OTP:', err);
         // Handle specific error cases
         if (err.response?.status === 404 || err.response?.data?.video_not_found) {
-          setError('❌ Video not found in VdoCipher. The video may have been deleted or the ID is incorrect.');
+          setError('Video not found in VdoCipher. The video may have been deleted or the ID is incorrect.');
         } else if (err.response?.data?.error) {
           setError(err.response.data.error);
         } else {
-          setError('❌ Failed to load VdoCipher video. Please try again later.');
+          setError('Failed to load VdoCipher video. Please try again later.');
         }
       } finally {
         setLoading(false);
@@ -144,6 +277,83 @@ export default function OnlineSessions() {
 
   const sessions = sessionsData?.sessions || [];
 
+  // Search and filter states
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterWeek, setFilterWeek] = useState('');
+  const [filterWeekDropdownOpen, setFilterWeekDropdownOpen] = useState(false);
+
+  // Extract week number from week string (e.g., "week 01" -> 1)
+  const extractWeekNumber = (weekString) => {
+    if (!weekString) return null;
+    const match = weekString.match(/week\s*(\d+)/i);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  // Convert week number to week string (e.g., 1 -> "week 01")
+  const weekNumberToString = (weekNumber) => {
+    if (weekNumber === null || weekNumber === undefined) return '';
+    return `week ${String(weekNumber).padStart(2, '0')}`;
+  };
+
+  // Get available weeks from sessions (only weeks that exist in the data)
+  const getAvailableWeeks = () => {
+    const weekSet = new Set();
+    sessions.forEach(session => {
+      if (session.week !== undefined && session.week !== null) {
+        weekSet.add(weekNumberToString(session.week));
+      }
+    });
+    return Array.from(weekSet).sort((a, b) => {
+      const aNum = extractWeekNumber(a);
+      const bNum = extractWeekNumber(b);
+      return (aNum || 0) - (bNum || 0);
+    });
+  };
+
+  const availableWeeks = getAvailableWeeks();
+
+  // Filter sessions based on search and filters
+  const filteredSessions = sessions.filter(session => {
+    // Search filter (by lesson name - case-insensitive)
+    if (searchTerm.trim()) {
+      const lessonName = session.name || '';
+      if (!lessonName.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+    }
+
+    // Week filter
+    if (filterWeek) {
+      const weekNumber = extractWeekNumber(filterWeek);
+      if (session.week !== weekNumber) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Automatically reset search when search input is cleared
+  useEffect(() => {
+    if (searchInput.trim() === "" && searchTerm !== "") {
+      setSearchTerm("");
+    }
+  }, [searchInput, searchTerm]);
+
+  // Handle search
+  const handleSearch = () => {
+    const trimmedSearch = searchInput.trim();
+    setSearchTerm(trimmedSearch);
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
+
   // Fetch student's online_sessions
   const { data: studentSessionsData } = useQuery({
     queryKey: ['student-online-sessions', profile?.id],
@@ -177,13 +387,13 @@ export default function OnlineSessions() {
   }, [studentSessionsData]);
 
   // Toggle session expansion (only one can be open at a time)
-  const toggleSession = (index) => {
-    if (expandedSessions.has(index)) {
+  const toggleSession = (sessionId) => {
+    if (expandedSessions.has(sessionId)) {
       // If clicking on an already expanded session, close it
       setExpandedSessions(new Set());
     } else {
       // If opening a new session, close all others and open only this one
-      setExpandedSessions(new Set([index]));
+      setExpandedSessions(new Set([sessionId]));
     }
   };
 
@@ -295,7 +505,7 @@ export default function OnlineSessions() {
     
     const vvcCode = vvc.join('');
     if (vvcCode.length !== 9) {
-      setVvcError('❌ Please enter the complete verification code');
+      setVvcError('Please enter the complete verification code');
       return;
     }
 
@@ -354,10 +564,10 @@ export default function OnlineSessions() {
           }
         }
       } else {
-        setVvcError(response.data.error || '❌ Sorry, this code is incorrect');
+        setVvcError(response.data.error || 'Sorry, this code is incorrect');
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.error || '❌ Sorry, this code is incorrect';
+      const errorMsg = err.response?.data?.error || 'Sorry, this code is incorrect';
       setVvcError(errorMsg);
     } finally {
       setIsCheckingVvc(false);
@@ -473,6 +683,54 @@ export default function OnlineSessions() {
           </div>
         </Title>
 
+        {/* Search Bar */}
+        <div className="search-bar-container" style={{ marginBottom: 20, width: '100%' }}>
+          <InputWithButton
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={handleSearchKeyPress}
+            onButtonClick={handleSearch}
+          />
+        </div>
+
+        {/* Filters */}
+        {sessions.length > 0 && (
+          <div className="filters-container" style={{
+            background: 'white',
+            borderRadius: 16,
+            padding: '24px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+            marginBottom: 24,
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
+            <div className="filter-row" style={{
+              display: 'flex',
+              gap: 12,
+              flexWrap: 'wrap'
+            }}>
+              <div className="filter-group" style={{ flex: 1, minWidth: 180 }}>
+                <label className="filter-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#495057', fontSize: '0.95rem' }}>
+                  Filter by Week
+                </label>
+                <StudentWeekSelect
+                  availableWeeks={availableWeeks}
+                  selectedWeek={filterWeek}
+                  onWeekChange={(week) => {
+                    setFilterWeek(week);
+                  }}
+                  isOpen={filterWeekDropdownOpen}
+                  onToggle={() => {
+                    setFilterWeekDropdownOpen(!filterWeekDropdownOpen);
+                  }}
+                  onClose={() => setFilterWeekDropdownOpen(false)}
+                  placeholder="Select Week"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* White Background Container */}
         <div className="sessions-container" style={{
           background: 'white',
@@ -484,13 +742,18 @@ export default function OnlineSessions() {
           {/* Sessions List */}
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d' }}>Loading sessions...</div>
-          ) : sessions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d' }}>No sessions available.</div>
+          ) : filteredSessions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d' }}>
+              {sessions.length === 0 ? 'No sessions available.' : 'No sessions match your filters.'}
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {sessions.map((session, index) => (
+              {filteredSessions.map((session, index) => {
+                const sessionId = session._id?.toString() || `${session.name}-${session.week}-${index}`;
+                const isExpanded = expandedSessions.has(sessionId);
+                return (
                 <div
-                  key={index}
+                  key={sessionId}
                   style={{
                     backgroundColor: '#f8f9fa',
                     borderRadius: '8px',
@@ -510,7 +773,7 @@ export default function OnlineSessions() {
                 >
                   {/* Header */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); toggleSession(index); }}>
+                    <div style={{ flex: 1 }} onClick={(e) => { e.stopPropagation(); toggleSession(sessionId); }}>
                       <div style={{ fontWeight: '600', fontSize: '1.1rem', color: '#333', marginBottom: '4px' }}>
                         {[session.week !== undefined && session.week !== null ? `Week ${session.week}` : null, session.name].filter(Boolean).join(' • ')}
                       </div>
@@ -524,7 +787,7 @@ export default function OnlineSessions() {
                       </div>
                     </div>
                     <div 
-                      onClick={(e) => { e.stopPropagation(); toggleSession(index); }}
+                      onClick={(e) => { e.stopPropagation(); toggleSession(sessionId); }}
                       style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
@@ -536,37 +799,16 @@ export default function OnlineSessions() {
                         marginLeft: '8px'
                       }}
                     >
-                      {expandedSessions.has(index) ? (
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          viewBox="0 0 640 640"
-                          style={{ 
-                            width: '20px', 
-                            height: '20px',
-                            transform: 'rotate(90deg)'
-                          }}
-                          fill="currentColor"
-                        >
-                          <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z"/>
-                        </svg>
+                      {isExpanded ? (
+                        <Image src="/chevron-down.svg" alt="Collapse" width={20} height={20} />
                       ) : (
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          viewBox="0 0 640 640"
-                          style={{ 
-                            width: '20px', 
-                            height: '20px'
-                          }}
-                          fill="currentColor"
-                        >
-                          <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z"/>
-                        </svg>
+                        <Image src="/chevron-right.svg" alt="Expand" width={20} height={20} />
                       )}
                     </div>
                   </div>
 
                   {/* Expanded Content */}
-                  {expandedSessions.has(index) && (
+                  {isExpanded && (
                     <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #eee' }}>
                       {/* Get all video IDs from session */}
                       {(() => {
@@ -621,6 +863,7 @@ export default function OnlineSessions() {
                                     width={20} 
                                     height={20} 
                                   />
+                                  <Image src="/play.svg" alt="Video" width={20} height={20} style={{ display: 'inline-block' }} />
                                   Video {video.index}
                                 </div>
                               </div>
@@ -631,7 +874,8 @@ export default function OnlineSessions() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -728,7 +972,7 @@ export default function OnlineSessions() {
                   </div>
                   {vvcError && (
                     <div style={{ color: '#dc3545', fontSize: '0.875rem', textAlign: 'center', marginTop: '8px' }}>
-                      {vvcError}
+                      ❌ {vvcError}
                     </div>
                   )}
                 </div>
@@ -845,12 +1089,14 @@ export default function OnlineSessions() {
                 }}
                 onMouseEnter={(e) => {
                   e.target.style.backgroundColor = '#c82333';
+                  e.target.style.transform = 'scale(1.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.backgroundColor = '#dc3545';
+                  e.target.style.transform = 'scale(1)';
                 }}
               >
-                ✕
+                <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
               </button>
 
               {/* Video Title */}

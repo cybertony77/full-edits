@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Image from 'next/image';
 import CenterSelect from "../../components/CenterSelect";
 import BackToDashboard from "../../components/BackToDashboard";
 import GradeSelect from '../../components/GradeSelect';
@@ -569,7 +570,12 @@ export default function EditStudent() {
         }
       `}</style>
 
-      <Title>Edit Student</Title>
+      <Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Image src="/user-edit2.svg" alt="Edit Student" width={32} height={32} />
+          Edit Student
+        </div>
+      </Title>
 
       <div className="form-container">
         

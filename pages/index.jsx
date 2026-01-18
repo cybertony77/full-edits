@@ -1187,8 +1187,8 @@ export default function Login() {
             <h2 className="otp-title" style={{ fontSize: '1.5rem', fontWeight: '700', color: '#2c3e50', marginBottom: '8px' }}>
               Enter OTP Code
             </h2>
-            <p className="otp-subtitle" style={{ color: '#6c757d', fontSize: '0.95rem' }}>
-              We've sent an 8-digit code to your email
+            <p className="otp-subtitle" style={{ color: '#6c757d', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              We've sent an 8-digit code to your <Image src="/mail.svg" alt="Email" width={20} height={20} /> email
             </p>
           </div>
 

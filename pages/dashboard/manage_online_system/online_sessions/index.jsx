@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Image from 'next/image';
-import Title from '../../../components/Title';
-import AttendanceWeekSelect from '../../../components/AttendanceWeekSelect';
-import GradeSelect from '../../../components/GradeSelect';
-import OnlineSessionPaymentStateSelect from '../../../components/OnlineSessionPaymentStateSelect';
+import Title from '../../../../components/Title';
+import AttendanceWeekSelect from '../../../../components/AttendanceWeekSelect';
+import GradeSelect from '../../../../components/GradeSelect';
+import OnlineSessionPaymentStateSelect from '../../../../components/OnlineSessionPaymentStateSelect';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../../../lib/axios';
+import apiClient from '../../../../lib/axios';
 import { TextInput, ActionIcon, useMantineTheme } from '@mantine/core';
 import { IconSearch, IconArrowRight } from '@tabler/icons-react';
 
@@ -580,21 +580,15 @@ export default function OnlineSessions() {
             fontSize: '1rem',
             fontWeight: '600',
             cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = '#0d5a7a';
-            e.target.style.transform = 'translateY(-2px)';
-            e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = '#1FA8DC';
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            transition: 'all 0.2s ease',
+            boxShadow: '0 2px 8px rgba(31, 168, 220, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
-          ➕ Add Video
+          <Image src="/plus.svg" alt="Add" width={23} height={23} style={{ marginRight: '6px', display: 'inline-block' }} />
+          Add Video
         </button>
       </div>
 
@@ -674,7 +668,8 @@ export default function OnlineSessions() {
                     }}
                     title="Edit session"
                   >
-                    ✏️ Edit
+                    <Image src="/edit.svg" alt="Edit" width={18} height={18} style={{ display: 'inline-block' }} />
+                    Edit
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); openDeleteConfirm(session); }}
@@ -692,7 +687,8 @@ export default function OnlineSessions() {
                     }}
                     title="Delete session"
                   >
-                    🗑️ Delete
+                    <Image src="/trash2.svg" alt="Delete" width={18} height={18} style={{ display: 'inline-block' }} />
+                    Delete
                     </button>
                     <div 
                       style={{ 
@@ -707,30 +703,9 @@ export default function OnlineSessions() {
                       }}
                     >
                     {expandedSessions.has(index) ? (
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 640 640"
-                        style={{ 
-                          width: '20px', 
-                          height: '20px',
-                          transform: 'rotate(90deg)'
-                        }}
-                        fill="currentColor"
-                      >
-                        <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z"/>
-                      </svg>
+                      <Image src="/chevron-down.svg" alt="Collapse" width={20} height={20} />
                     ) : (
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 640 640"
-                        style={{ 
-                          width: '20px', 
-                          height: '20px'
-                        }}
-                        fill="currentColor"
-                      >
-                        <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z"/>
-                      </svg>
+                      <Image src="/chevron-right.svg" alt="Expand" width={20} height={20} />
                     )}
                   </div>
                 </div>
@@ -766,16 +741,15 @@ export default function OnlineSessions() {
                                   borderRadius: '6px',
                                   textAlign: 'center',
                                   fontWeight: '500',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.target.style.backgroundColor = '#0d5a7a';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.target.style.backgroundColor = '#1FA8DC';
-                                }}
-                              >
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                               <Image src="/play.svg" alt="Video" width={20} height={20} style={{ display: 'inline-block' }} />
                                Video {video.index}
                               </div>
                             </div>
@@ -807,29 +781,9 @@ export default function OnlineSessions() {
                     }}
                   >
                     {expandedSessions.has(index) ? (
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 448 512"
-                        style={{ 
-                          width: '20px', 
-                          height: '20px'
-                        }}
-                        fill="currentColor"
-                      >
-                        <path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/>
-                      </svg>
+                      <Image src="/chevron-down.svg" alt="Collapse" width={20} height={20} />
                     ) : (
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 320 512"
-                        style={{ 
-                          width: '20px', 
-                          height: '20px'
-                        }}
-                        fill="currentColor"
-                      >
-                        <path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/>
-                      </svg>
+                      <Image src="/chevron-right.svg" alt="Expand" width={20} height={20} />
                     )}
                   </div>
                 </div>
@@ -856,7 +810,8 @@ export default function OnlineSessions() {
                     }}
                     title="Edit session"
                   >
-                    ✏️ Edit
+                    <Image src="/edit.svg" alt="Edit" width={18} height={18} style={{ display: 'inline-block' }} />
+                    Edit
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); openDeleteConfirm(session); }}
@@ -875,7 +830,8 @@ export default function OnlineSessions() {
                     }}
                     title="Delete session"
                   >
-                    🗑️ Delete
+                    <Image src="/trash2.svg" alt="Delete" width={18} height={18} style={{ display: 'inline-block' }} />
+                    Delete
                   </button>
                 </div>
                 {/* Video Buttons - Collapsible on mobile */}
@@ -908,15 +864,14 @@ export default function OnlineSessions() {
                                 fontWeight: '500',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
-                                fontSize: '1rem'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.backgroundColor = '#0d5a7a';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = '#1FA8DC';
+                                fontSize: '1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px'
                               }}
                             >
+                              <Image src="/play.svg" alt="Video" width={20} height={20} style={{ display: 'inline-block' }} />
                               Video {video.index}
                             </div>
                           </div>
@@ -1003,7 +958,7 @@ export default function OnlineSessions() {
                 top: '10px',
                 right: '10px',
                 zIndex: 10,
-                backgroundColor: '#dc3545',
+                
                 color: 'white',
                 border: 'none',
                 borderRadius: '50%',
@@ -1019,13 +974,15 @@ export default function OnlineSessions() {
                 fontWeight: 'bold'
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#c82333';
+                
+                e.target.style.transform = 'scale(1.1)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#dc3545';
+        
+                e.target.style.transform = 'scale(1)';
               }}
             >
-              ✕
+              <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
             </button>
 
             {/* Video Title */}

@@ -210,7 +210,12 @@ export default function HomeworkDetails() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-        <Title backText="Back" href="/student_dashboard/my_homeworks">Homework Details</Title>
+        <Title backText="Back" href="/student_dashboard/my_homeworks">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/details.svg" alt="Details" width={32} height={32} />
+            Homework Details
+          </div>
+        </Title>
 
         <div className="details-container" style={{
           background: 'white',

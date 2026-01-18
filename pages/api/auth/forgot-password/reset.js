@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { sendPasswordChangeEmail } from '../../lib/emailUtils';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -112,6 +113,18 @@ export default async function handler(req, res) {
         }
       }
     );
+
+    // Send password change email notification
+    if (user.email) {
+      const userName = user.name || 'User';
+      const userRole = user.role || 'student';
+      try {
+        await sendPasswordChangeEmail(user.email, userName, userRole);
+      } catch (emailError) {
+        console.error('Failed to send password change email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     res.json({ success: true, message: 'Password reset successfully' });
   } catch (error) {

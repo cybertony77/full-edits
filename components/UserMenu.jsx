@@ -141,6 +141,9 @@ export default function UserMenu() {
     router.push('/subscription_dashboard');
   };
 
+  const handlePublicLinkGenerator = () => {
+    router.push('/dashboard/public_link_generator');
+  };
 
   const handleInstallApp = () => {
     setOpen(false); // Close the menu
@@ -261,6 +264,10 @@ export default function UserMenu() {
           <button style={menuBtnStyle} onClick={handleEditProfile}>
             <Image src="/user-edit2.svg" alt="Edit Profile" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
             Edit My Profile
+          </button>
+          <button style={menuBtnStyle} onClick={handlePublicLinkGenerator}>
+            <Image src="/link.svg" alt="Link" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
+            Public Link Generator
           </button>
           {(userData.role === 'admin' || userData.role === 'developer') && (
             <button style={menuBtnStyle} onClick={handleManageAssistants}>

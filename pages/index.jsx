@@ -98,11 +98,11 @@ export default function Login() {
     setUsernameError("");
     setPasswordError("");
     
-    // Trim whitespaces from username before sending
-    const trimmedUsername = assistant_id.trim();
+    // Trim whitespaces from username before sending to API
+    const trimmedAssistantId = assistant_id.trim();
     
     loginMutation.mutate(
-      { assistant_id: trimmedUsername, password },
+      { assistant_id: trimmedAssistantId, password },
       {
         onSuccess: (data) => {
           // Check if there's a redirect path saved in cookies
@@ -132,9 +132,11 @@ export default function Login() {
           } else if (err.response?.data?.error === 'wrong_password') {
             setPasswordError("Wrong password");
           } else if (err.response?.data?.error === 'account_deactivated') {
-            setMessage("Access unavailable: This account is deactivated. Please contact Mr. George Magdy (admin) or Tony Joseph (developer).");
+            setMessage("Access unavailable: This account is deactivated. Please contact Mr. Ahmed Badr (admin) or Tony Joseph (developer).");
           } else if (err.response?.data?.error === 'subscription_inactive' || err.response?.data?.error === 'subscription_expired') {
-            setMessage(err.response?.data?.message || "Access unavailable: Subscription expired. Please contact Tony Joseph (developer) to renew.");
+            // Handle subscription errors with clickable developer link
+            const errorMessage = err.response?.data?.message || 'Access unavailable: Subscription expired. Please contact Tony Joseph (developer) to renew.';
+            setMessage(errorMessage);
           } else {
             setMessage("Wrong username and password");
           }
@@ -333,7 +335,7 @@ export default function Login() {
 
         <div className="login-container">
           <div className="logo-section">
-            <Image src="/logo.png" alt="Logo" width={90} height={90} className="logo-icon" priority />
+            <Image src="/logo.png" alt="Logo" width={120} height={120} className="logo-icon" priority />
             <h1 className="title">Assistant Login</h1>
             <p className="subtitle">Welcome back! Please sign in to continue</p>
           </div>
@@ -343,17 +345,7 @@ export default function Login() {
               <FloatingLabelInput
                 label="Username"
                 value={assistant_id}
-                onChange={e => {
-                  // Remove spaces from username input
-                  const value = e.target.value.replace(/\s/g, '');
-                  setAssistantId(value);
-                }}
-                onKeyDown={(e) => {
-                  // Prevent space key from being entered
-                  if (e.key === ' ') {
-                    e.preventDefault();
-                  }
-                }}
+                onChange={e => setAssistantId(e.target.value)}
                 error={usernameError || undefined}
                 autoComplete="username"
                 type="text"
@@ -431,7 +423,7 @@ export default function Login() {
                 <span style={{ fontSize: 20, flexShrink: 0 }}>❗</span> 
                 {forgotMsg ? (
                   <span>
-                    Contact Mr. George Magdy (admin) or Tony Joseph (
+                    Contact Mr. Ahmed Badr (admin) or Tony Joseph (
                       <a
                         href="/contact_developer"
                         style={{ 
@@ -449,15 +441,13 @@ export default function Login() {
                       </a>
                       )
                     </span>
-                  ) : message && message.includes('developer') ? (
+                  ) : message && message.includes('(developer)') ? (
                     <span>
                       {message.split('(developer)').map((part, index, array) => {
-                        if (index === array.length - 1) {
-                          return part;
-                        }
+                        if (index === array.length - 1) return part;
                         return (
                           <span key={index}>
-                            {part}(
+                            {part}
                             <a
                               href="/contact_developer"
                               style={{ 
@@ -471,13 +461,32 @@ export default function Login() {
                                 router.push('/contact_developer');
                               }}
                             >
-                              developer
+                              (developer)
                             </a>
-                            )
                           </span>
                         );
                       })}
                     </span>
+                  ) : message && message.includes('developer') && !message.includes('(developer)') ? (
+                    <span>
+                      Sorry, this account is deactivated. Please contact Mr. Ahmed Badr (admin) or Tony Joseph (
+                        <a
+                          href="/contact_developer"
+                          style={{ 
+                            color: 'white', 
+                            textDecoration: 'underline', 
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            router.push('/contact_developer');
+                          }}
+                        >
+                          developer
+                        </a>
+                        ).
+                      </span>
                   ) : (
                     message
                   )}

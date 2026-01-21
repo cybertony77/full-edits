@@ -24,9 +24,9 @@ export default function Header() {
         <span onClick={() => router.push('/dashboard')} style={{ cursor: 'pointer', display: 'inline-block' }}>
           <img
             src="/logo.png"
-            alt="TopPhysics Logo"
-            width={48}
-            height={48}
+            alt="Mr. Ahmed Badr Logo"
+            width={50}
+            height={50}
             style={{ 
               borderRadius: '50%', 
               background: 'white', 
@@ -65,7 +65,7 @@ export default function Header() {
           letterSpacing: 1.2,
           textShadow: '0 2px 8px rgba(31,168,220,0.10)'
         }}>
-          Mr. George Magdy Attendance System
+          Mr. Ahmed Badr Attendance System
         </span>
       </div>
       <UserMenu />
@@ -84,10 +84,6 @@ export default function Header() {
           span {
             font-size: 17px !important;
             letter-spacing: 0.5px !important;
-          }
-          img {
-            width: 45px !important;
-            height: 45px !important;
           }
         }
       `}</style>

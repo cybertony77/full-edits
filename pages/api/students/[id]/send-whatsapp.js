@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import { lessons } from '../../../../constants/lessons.js';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -153,20 +154,76 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No parent number available' });
     }
 
-    // Get the week to use (from request body or find current attended week)
-    const requestedWeek = req.body.week;
-    let currentWeek;
+    // Get the lesson to use (from request body or find current attended lesson)
+    const requestedLesson = req.body.lesson;
+    let currentLesson;
     
-    if (requestedWeek && student.weeks) {
-      // Use the requested week
-      const weekIndex = requestedWeek - 1;
-      currentWeek = student.weeks[weekIndex] || 
-        { week: requestedWeek, attended: false, lastAttendance: null, lastAttendanceCenter: null, hwDone: false, quizDegree: null, message_state: false };
+    // Ensure lessons object exists and is in object format
+    if (!student.lessons || Array.isArray(student.lessons)) {
+      console.log(`🔄 Converting lessons from array to object format for student ${studentId}`);
+      student.lessons = {};
+      await db.collection('students').updateOne(
+        { id: studentId },
+        { $set: { lessons: {} } }
+      );
+    }
+    
+    if (requestedLesson) {
+      // Use the requested lesson - create it if it doesn't exist
+      if (!student.lessons[requestedLesson]) {
+        console.log(`🧩 Creating missing lesson "${requestedLesson}" for student ${studentId}`);
+        const newLesson = {
+          lesson: requestedLesson,
+          attended: false,
+          lastAttendance: null,
+          lastAttendanceCenter: null,
+          hwDone: false,
+          quizDegree: null,
+          comment: null,
+          message_state: false,
+          homework_degree: null
+        };
+        
+        await db.collection('students').updateOne(
+          { id: studentId },
+          { $set: { [`lessons.${requestedLesson}`]: newLesson } }
+        );
+        
+        // Update in-memory reference
+        student.lessons[requestedLesson] = newLesson;
+        console.log(`✅ Created lesson "${requestedLesson}" for student ${studentId}`);
+      }
+      currentLesson = student.lessons[requestedLesson];
+      console.log(`📚 Using lesson "${currentLesson.lesson}" for student ${studentId}`);
     } else {
-      // Find the current week (last attended week or week 1 if none)
-      currentWeek = student.weeks ? 
-        student.weeks.find(w => w.attended) || student.weeks[0] : 
-        { week: 1, attended: false, lastAttendance: null, lastAttendanceCenter: null, hwDone: false, quizDegree: null, message_state: false };
+      // Find the current lesson (last attended lesson or first lesson if none)
+      if (student.lessons && typeof student.lessons === 'object') {
+        const attendedLessons = Object.values(student.lessons).filter(l => l.attended);
+        currentLesson = attendedLessons.length > 0 ? attendedLessons[attendedLessons.length - 1] : Object.values(student.lessons)[0];
+      }
+      if (!currentLesson) {
+        // Create default lesson if none exists
+        const defaultLesson = lessons[0];
+        const newLesson = {
+          lesson: defaultLesson,
+          attended: false,
+          lastAttendance: null,
+          lastAttendanceCenter: null,
+          hwDone: false,
+          quizDegree: null,
+          comment: null,
+          message_state: false,
+          homework_degree: null
+        };
+        
+        await db.collection('students').updateOne(
+          { id: studentId },
+          { $set: { [`lessons.${defaultLesson}`]: newLesson } }
+        );
+        
+        student.lessons[defaultLesson] = newLesson;
+        currentLesson = newLesson;
+      }
     }
 
     // Create the message
@@ -176,13 +233,13 @@ export default async function handler(req, res) {
   • Age: ${student.age || 'N/A'}
   • Grade: ${student.grade || 'N/A'}
   • School: ${student.school || 'N/A'}
-  • Attended: ${currentWeek.attended ? `${currentWeek.lastAttendance}` : 'No'}`;
+  • Attended: ${currentLesson.attended ? `${currentLesson.lastAttendance}` : 'No'}`;
 
     // Only show attendance-related info if student attended
-    if (currentWeek.attended) {
+    if (currentLesson.attended) {
       message += `
-  • Homework: ${currentWeek.hwDone ? 'Done' : 'Not Done'}
-  • Quiz Degree: ${currentWeek.quizDegree || '0/0'}`;
+  • Homework: ${currentLesson.hwDone ? 'Done' : 'Not Done'}
+  • Quiz Degree: ${currentLesson.quizDegree || '0/0'}`;
     }
 
     message += `
@@ -193,21 +250,25 @@ Thanks for choosing us 😊❤`;
     const result = await sendWhatsAppMessage(parentNumber, message);
 
     if (result.success) {
-      // Update message state in the current week
-      if (student.weeks && currentWeek) {
-        const weekIndex = currentWeek.week - 1;
-        await db.collection('students').updateOne(
+      // Update message state in the current lesson
+      if (currentLesson) {
+        console.log(`🔄 Updating message_state for student ${studentId}, lesson "${currentLesson.lesson}"`);
+        const updateResult = await db.collection('students').updateOne(
           { id: studentId },
-          { $set: { [`weeks.${weekIndex}.message_state`]: true } }
+          { $set: { [`lessons.${currentLesson.lesson}.message_state`]: true } }
         );
+        console.log(`✅ Update result:`, updateResult);
+        console.log(`✅ Updated message_state to true for student ${studentId}, lesson "${currentLesson.lesson}"`);
+      } else {
+        console.log(`❌ No currentLesson found for student ${studentId}`);
       }
 
       // Update history if student is attended
-      if (currentWeek.attended) {
+      if (currentLesson.attended) {
         await db.collection('history').updateOne(
           { 
             studentId: studentId,
-            week: currentWeek.week
+            lesson: currentLesson.lesson
           },
           { $set: { message_state: true } }
         );

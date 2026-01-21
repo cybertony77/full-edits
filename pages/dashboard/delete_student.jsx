@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import BackToDashboard from "../../components/BackToDashboard";
 import Title from '../../components/Title';
 import { useStudents, useStudent, useDeleteStudent } from '../../lib/api/students';
-import Image from "next/image";
+import Image from 'next/image';
 
 export default function DeleteStudent() {
   const router = useRouter();
@@ -53,35 +53,58 @@ export default function DeleteStudent() {
     const searchTerm = studentId.trim();
     setLastCheckedId(searchTerm);
     
-    // Check if it's a numeric ID
-    if (/^\d+$/.test(searchTerm)) {
-      // It's a numeric ID, search directly
-      setSearchId(searchTerm);
-    } else {
-      // It's a name, search through all students (case-insensitive, includes)
+    const isAllDigits = /^\d+$/.test(searchTerm);
+    const isFullPhone = /^\d{11}$/.test(searchTerm);
+    if (isFullPhone) { 
       if (allStudents) {
-        const matchingStudents = allStudents.filter(student => 
-          student.name.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchingStudents = allStudents.filter(s =>
+          s.phone === searchTerm || s.parentsPhone1 === searchTerm || s.parentsPhone === searchTerm
         );
-        
         if (matchingStudents.length === 1) {
-          // Single match, use it directly
-          const foundStudent = matchingStudents[0];
-          setSearchId(foundStudent.id.toString());
-          setLastCheckedId(foundStudent.id.toString()); // Update with actual ID for consistency
-          setStudentId(foundStudent.id.toString());
-        } else if (matchingStudents.length > 1) {
-          // Multiple matches, show selection
-          setSearchResults(matchingStudents);
-          setShowSearchResults(true);
-          setError(`Found ${matchingStudents.length} students. Please select one.`);
+          setSearchId(matchingStudents[0].id.toString());
+          setStudentId(matchingStudents[0].id.toString()); // Auto-replace with ID
         } else {
-          setError(`No student found with name starting with "${searchTerm}"`);
-          setSearchId("");
+          setSearchId(searchTerm);
         }
       } else {
-        setError("Student data not loaded. Please try again.");
+        setSearchId(searchTerm);
       }
+      setLastCheckedId(searchTerm); 
+      return; 
+    }
+    if (isAllDigits) {
+      if (allStudents) {
+        const byId = allStudents.find(s => String(s.id) === searchTerm);
+        if (byId) { setSearchId(String(byId.id)); setLastCheckedId(String(byId.id)); setStudentId(String(byId.id)); return; }
+        const matches = allStudents.filter(s => {
+          const sp = String(s.phone||'').replace(/[^0-9]/g,'');
+          const pp = String(s.parents_phone||s.parentsPhone||'').replace(/[^0-9]/g,'');
+          return sp.startsWith(searchTerm) || pp.startsWith(searchTerm);
+        });
+        if (matches.length === 1) { const f = matches[0]; setSearchId(String(f.id)); setLastCheckedId(String(f.id)); setStudentId(String(f.id)); return; }
+        if (matches.length > 1) { setSearchResults(matches); setShowSearchResults(true); setError(`Found ${matches.length} students. Please select one.`); return; }
+      }
+      setSearchId(searchTerm); setLastCheckedId(searchTerm); return;
+    }
+    if (allStudents) {
+      const matchingStudents = allStudents.filter(student => 
+        student.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      if (matchingStudents.length === 1) {
+        const foundStudent = matchingStudents[0];
+        setSearchId(foundStudent.id.toString());
+        setLastCheckedId(foundStudent.id.toString());
+        setStudentId(foundStudent.id.toString());
+      } else if (matchingStudents.length > 1) {
+        setSearchResults(matchingStudents);
+        setShowSearchResults(true);
+        setError(`Found ${matchingStudents.length} students. Please select one.`);
+      } else {
+        setError(`No student found matching "${searchTerm}"`);
+        setSearchId("");
+      }
+    } else {
+      setError("Student data not loaded. Please try again.");
     }
   };
 
@@ -364,7 +387,7 @@ export default function DeleteStudent() {
             }
           }
         `}</style>
-        <Title backText={"Back to Dashboard"} href="/dashboard">
+        <Title>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/trash2.svg" alt="Delete Student" width={32} height={32} />
             Delete Student
@@ -389,7 +412,7 @@ export default function DeleteStudent() {
                     setShowSearchResults(false);
                   }
                 }}
-                placeholder="Enter student ID or Name"
+                placeholder="Enter Student ID, Name, Phone Number"
                 disabled={studentLoading || deleteStudentMutation.isPending}
                 required
               />
@@ -446,7 +469,10 @@ export default function DeleteStudent() {
                     <div style={{ fontWeight: "600", color: "#dc3545" }}>
                       {student.name} (ID: {student.id})
                     </div>
-                    <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
+                    <div style={{ fontSize: "0.9rem", color: "#495057", marginTop: 4 }}>
+                      <span style={{ fontFamily: 'monospace' }}>{student.phone || 'N/A'}</span>
+                    </div>
+                    <div style={{ fontSize: "0.9rem", color: "#6c757d", marginTop: 2 }}>
                       {student.grade} • {student.main_center}
                     </div>
                   </button>
@@ -461,14 +487,16 @@ export default function DeleteStudent() {
             {student && (
               <div className="student-info">
                 <h3>Student Found:</h3>
-                <p><strong>Name:</strong> {student.name}</p>
-                {student.age && <p><strong>Age:</strong> {student.age}</p>}
-                <p><strong>Grade:</strong> {student.grade}</p>
+                <p><strong>Student name:</strong> {student.name}</p>
+                <p><strong>Course:</strong> {student.grade}</p>
+                <p><strong>Course Type:</strong> {student.courseType || 'N/A'}</p>
                 <p><strong>School:</strong> {student.school}</p>
-                <p><strong>Phone:</strong> {student.phone}</p>
-                <p><strong>Parent's Phone:</strong> {student.parents_phone || student.parentsPhone}</p>
-                <p><strong>Main Center:</strong> {student.main_center}</p>
-                <p><strong>Main Comment:</strong> {student.main_comment ||"No Comment"}</p>
+                <p><strong>Student phone:</strong> {student.phone}</p>
+                <p><strong>Parent's phone 1:</strong> {student.parents_phone || student.parentsPhone || 'N/A'}</p>
+                <p><strong>Parent's phone 2:</strong> {student.parentsPhone2 || 'N/A'}</p>
+                <p><strong>Address:</strong> {student.address || 'N/A'}</p>
+                <p><strong>Main center:</strong> {student.main_center}</p>
+                <p><strong>Hidden comment:</strong> {student.main_comment || "No Comment"}</p>
                 
                 <div style={{ marginTop: "20px" }}>
                   <p style={{ color: "#dc3545", fontWeight: "bold", marginBottom: "16px" }}>
@@ -513,7 +541,7 @@ export default function DeleteStudent() {
         )}
         {deleted && (
           <div className="success-message" style={{ textAlign: "center", padding: "40px 20px" }}>
-            <div style={{ fontSize: "4rem" }}><Image src="/success-mark3.svg" alt="Success" width={80} height={80} /></div>
+            <div style={{ fontSize: "4rem" }}><Image src="/success-mark3.svg" alt="Delete" width={80} height={80} /></div>
             <h2 style={{ color: "#28a745", marginBottom: "16px" }}>Student Deleted Successfully!</h2>
             <p style={{ color: "#6c757d", marginBottom: "24px" }}>
               Student ID <strong>{studentId}</strong> has been permanently deleted from the database.

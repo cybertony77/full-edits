@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Title from "../../components/Title";
 import RoleSelect from "../../components/RoleSelect";
 import AccountStateSelect from "../../components/AccountStateSelect";
-import { useCreateAssistant, useCheckUsername } from '../../lib/api/assistants';  
+import { useCreateAssistant, useCheckUsername } from '../../lib/api/assistants';
 import Image from "next/image";
 
 export default function AddAssistant() {
@@ -45,10 +45,12 @@ export default function AddAssistant() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // For id (username) field only, remove all spaces
+    
+    // For username field, prevent spaces and show validation
     if (name === 'id') {
-      const trimmedValue = value.replace(/\s/g, ''); // Remove all spaces
-      setForm({ ...form, [name]: trimmedValue });
+      // Remove any spaces from username
+      const cleanValue = value.replace(/\s/g, '');
+      setForm({ ...form, [name]: cleanValue });
     } else {
       setForm({ ...form, [name]: value });
     }
@@ -59,31 +61,29 @@ export default function AddAssistant() {
     setError("");
     setSuccess(false);
     
+    // Validate username - no spaces allowed
+    if (form.id.includes(' ')) {
+      setError("Username cannot contain spaces. Use underscores (_) instead.");
+      return;
+    }
+    
     // Check if username already exists
     if (usernameCheck.data && usernameCheck.data.exists) {
       setError("Assistant username already exists. Please choose a different ID.");
       return;
     }
     
-    // Validate phone number
+    // Validate phone number (check for "+" at start, no length restriction)
     const assistantPhone = form.phone;
     
-    // Check if phone number is exactly 11 digits
-    if (assistantPhone.length !== 11) {
-      setError("Assistant phone number must be exactly 11 digits");
+    // Check if phone number starts with "+" (not allowed)
+    if (assistantPhone.startsWith('+')) {
+      setError("Assistant phone number cannot start with '+'");
       return;
     }
     
-    // Trim whitespaces from username before sending
-    const trimmedForm = {
-      ...form,
-      id: form.id.trim(),
-      phone: assistantPhone.trim(),
-      password: form.password.trim()
-    };
-    
     // Convert phone to string before sending - preserve leading zeros exactly
-    const payload = { ...trimmedForm, phone: assistantPhone };
+    const payload = { ...form, phone: assistantPhone };
     
     createAssistantMutation.mutate(payload, {
       onSuccess: (data) => {
@@ -235,6 +235,22 @@ export default function AddAssistant() {
                  <Title 
                    backText="Back" 
                    href="/manage_assistants" 
+                   backButtonStyle={{
+                     background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
+                     color: 'white',
+                     border: 'none',
+                     borderRadius: 8,
+                     padding: '8px 16px',
+                     fontWeight: 600,
+                     cursor: 'pointer',
+                     transition: '0.3s',
+                     boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
+                     fontSize: 15,
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 8,
+                     marginLeft: 25
+                   }}
                  >
                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                      <Image src="/user-plus2.svg" alt="Add Assistant" width={32} height={32} />
@@ -248,15 +264,9 @@ export default function AddAssistant() {
               <input
                 className={`form-input ${!usernameCheck.isLoading && usernameCheck.data && usernameCheck.data.exists ? 'error-border' : ''}`}
                 name="id"
-                placeholder="Enter assistant username"
+                placeholder="Enter assistant username (no spaces)"
                 value={form.id}
                 onChange={handleChange}
-                onKeyDown={(e) => {
-                  // Prevent space key from being entered
-                  if (e.key === ' ') {
-                    e.preventDefault();
-                  }
-                }}
                 required
               />
               {/* Username availability feedback */}
@@ -298,20 +308,22 @@ export default function AddAssistant() {
                 className="form-input"
                 name="phone"
                 type="tel"
-                pattern="[0-9]*"
-                inputMode="numeric"
-                placeholder="Enter assistant's phone number (11 digits)"
+                inputMode="tel"
+                placeholder="Enter assistant's phone number"
                 value={form.phone}
-                maxLength={11}
                 onChange={(e) => {
-                  // Only allow numbers and limit to 11 digits
-                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                  // Remove "+" if at start, only allow numbers
+                  let value = e.target.value;
+                  if (value.startsWith('+')) {
+                    value = value.substring(1);
+                  }
+                  value = value.replace(/[^0-9]/g, '');
                   setForm({ ...form, phone: value });
                 }}
                 required
               />
               <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-                Must be exactly 11 digits (e.g., 12345678901)
+                If the number is not Egyptian, include the country code, <strong>but do not add the "+".</strong>
               </small>
             </div>
             <div className="form-group">

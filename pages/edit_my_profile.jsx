@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Title from "../components/Title";
 import { useProfile, useUpdateProfile } from '../lib/api/auth';
-import Image from 'next/image';
+import Image from "next/image";
 
 export default function EditMyProfile() {
   const [form, setForm] = useState({ name: "", id: "", phone: "", password: "" });
@@ -254,7 +254,7 @@ export default function EditMyProfile() {
               ✏️ Changes detected - Only modified fields will be sent to server
             </div>
           ) : (
-            <div className="no-changes">
+            <div className="no-changes"> 
               ℹ️ No changes detected - Modify at least one field to enable save
             </div>
           )}

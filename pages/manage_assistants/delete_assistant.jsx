@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Title from "../../components/Title";
 import ContactDeveloper from "../../components/ContactDeveloper";
 import { useAssistant, useAssistants, useDeleteAssistant } from '../../lib/api/assistants';
-import Image from "next/image";
+import Image from 'next/image';
 
 export default function DeleteAssistant() {
   const router = useRouter();
@@ -152,12 +152,31 @@ export default function DeleteAssistant() {
   return (
     <div style={{ padding: "20px 5px 20px 5px" }}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
-        <Title backText="Back" href="/manage_assistants">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Image src="/trash2.svg" alt="Delete Assistant" width={32} height={32} />
-            Delete Assistant
-          </div>
-        </Title>
+      <Title 
+        backText="Back" 
+        href="/manage_assistants" 
+        backButtonStyle={{
+          background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
+          color: 'white',
+          border: 'none',
+          borderRadius: 8,
+          padding: '8px 16px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          transition: '0.3s',
+          boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
+          fontSize: 15,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginLeft: 25
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Image src="/trash2.svg" alt="Delete Assistant" width={32} height={32} />
+          Delete Assistant
+        </div>
+      </Title>
         <style jsx>{`
           .delete-btn {
             background: linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%);

@@ -68,12 +68,12 @@ export default async function handler(req, res) {
     const user = await authMiddleware(req);
     console.log('✅ User authenticated:', user.assistant_id || user.id);
     
-    // Create reset weeks array (optimized structure)
-    console.log('📋 Creating reset weeks template...');
-    const resetWeeks = [];
+    // Create reset lessons array (optimized structure)
+    console.log('📋 Creating reset lessons template...');
+    const resetLessons = [];
     for (let i = 1; i <= 20; i++) {
-      resetWeeks.push({
-        week: i,
+      resetLessons.push({
+        lesson: i,
         attended: false,
         lastAttendance: null,
         lastAttendanceCenter: null,
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     // This is more efficient than individual updates
     const result = await db.collection('students').updateMany(
       {}, // Match all documents
-      { $set: { weeks: resetWeeks } },
+      { $set: { lessons: resetLessons } },
       { 
         // Add options for better performance
         writeConcern: { w: 1, j: false }, // Don't wait for journaling for better performance

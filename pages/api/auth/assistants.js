@@ -32,16 +32,16 @@ function loadEnvConfig() {
 }
 
 const envConfig = loadEnvConfig();
-const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'topphysics_secret';
-const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
-const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'topphysics';
+const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'mr_ahmad_badr_secret';
+const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/mr-ahmad-badr';
+const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'mr-ahmad-badr';
 
 console.log('🔗 Using Mongo URI:', MONGO_URI);
 
-async function requireAdmin(req) {
+async function requireAdminOrDeveloper(req) {
   const user = await authMiddleware(req);
   if (user.role !== 'admin' && user.role !== 'developer') {
-    throw new Error('Forbidden: Admins or Developers only');
+    throw new Error('Forbidden: Admin or Developer access required');
   }
   return user;
 }
@@ -52,8 +52,8 @@ export default async function handler(req, res) {
     client = await MongoClient.connect(MONGO_URI);
     const db = client.db(DB_NAME);
     
-    // Verify admin access
-    const admin = await requireAdmin(req);
+    // Verify admin or developer access
+    const admin = await requireAdminOrDeveloper(req);
     
     if (req.method === 'GET') {
       // Check if pagination parameters are provided
@@ -114,10 +114,14 @@ export default async function handler(req, res) {
         console.log(`✅ Retrieved ${assistants.length} assistants for page ${currentPage}`);
         
         // Map assistants with default account_state (password already excluded via projection)
-        const mappedAssistants = assistants.map(assistant => ({
-          ...assistant,
-          account_state: assistant.account_state || "Activated" // Default to Activated
-        }));
+        // Explicitly remove password field as a safety measure
+        const mappedAssistants = assistants.map(assistant => {
+          const { password, ...assistantWithoutPassword } = assistant;
+          return {
+            ...assistantWithoutPassword,
+            account_state: assistant.account_state || "Activated" // Default to Activated
+          };
+        });
         
         res.json({
           data: mappedAssistants,
@@ -142,11 +146,15 @@ export default async function handler(req, res) {
         const assistants = await db.collection('assistants')
           .find({}, { projection: { password: 0 } }) // Exclude password field
           .toArray();
-      const mappedAssistants = assistants.map(assistant => ({
-        ...assistant,
-        account_state: assistant.account_state || "Activated" // Default to Activated
-      }));
-      res.json(mappedAssistants);
+        // Explicitly remove password field as a safety measure
+        const mappedAssistants = assistants.map(assistant => {
+          const { password, ...assistantWithoutPassword } = assistant;
+          return {
+            ...assistantWithoutPassword,
+            account_state: assistant.account_state || "Activated" // Default to Activated
+          };
+        });
+        res.json(mappedAssistants);
       }
     } else if (req.method === 'POST') {
       // Create new assistant
@@ -165,12 +173,14 @@ export default async function handler(req, res) {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
+    console.error('❌ Error in assistants API:', error);
     if (error.message === 'Unauthorized') {
       res.status(401).json({ error: 'Unauthorized' });
-    } else if (error.message === 'Forbidden: Admins only') {
-      res.status(403).json({ error: 'Forbidden: Admins only' });
+    } else if (error.message === 'Forbidden: Admin or Developer access required') {
+      res.status(403).json({ error: 'Forbidden: Admin or Developer access required' });
     } else {
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('❌ Internal server error details:', error);
+      res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   } finally {
     if (client) await client.close();

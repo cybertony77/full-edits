@@ -710,7 +710,7 @@ export default function ContactDeveloperPage() {
               </h3>
               <div>
                 <a 
-                  href="https://wa.me/201211172756?text=Hello%20Tony,%20I%20need%20help%20in%20Mr.%20George%20Magdy%20Attendance%20System" 
+                  href="https://wa.me/201211172756?text=Hello%20Tony,%20I%20need%20help%20in%20Mr.%20Ahmad%20Badr%20Attendance%20System" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="contact-link"
@@ -764,7 +764,7 @@ export default function ContactDeveloperPage() {
             borderRadius: "16px",
             border: "1px solid rgba(31, 168, 220, 0.1)"
           }}>
-            💡 Feel free to contact me for any technical support, bug reports, feature requests, or urgent issues regarding the Mr. George Magdy Attendance System. I'm here to help ensure the system runs smoothly for all users.
+            💡 Feel free to contact me for any technical support, bug reports, feature requests, or urgent issues regarding the Mr. Ahmad Badr Attendance System. I'm here to help ensure the system runs smoothly for all users.
           </div>
 
           {/* Action Buttons */}
@@ -846,6 +846,8 @@ export default function ContactDeveloperPage() {
                 </button>
               </>
             )}
+
+
           </div>
           </div>
         </div>

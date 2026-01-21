@@ -59,11 +59,11 @@ export default async function handler(req, res) {
     const student = await db.collection('students').findOne({ id: studentId });
     if (!student) return res.status(404).json({ error: 'Student not found' });
     
-    // Create reset weeks array
-    const resetWeeks = [];
+    // Create reset lessons array
+    const resetLessons = [];
     for (let i = 1; i <= 20; i++) {
-      resetWeeks.push({
-        week: i,
+      resetLessons.push({
+        lesson: i,
         attended: false,
         lastAttendance: null,
         lastAttendanceCenter: null,
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
     
     const result = await db.collection('students').updateOne(
       { id: studentId },
-      { $set: { weeks: resetWeeks } }
+      { $set: { lessons: resetLessons } }
     );
     
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });

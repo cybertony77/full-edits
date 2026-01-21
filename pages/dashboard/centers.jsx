@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../lib/axios';
 import Title from '../../components/Title';
-import Image from "next/image";
+import Image from 'next/image';
 
 // API functions
 const centersAPI = {
@@ -203,7 +203,7 @@ export default function Centers() {
     }}>
       <Title style={{ justifyContent: 'space-between', gap: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Image src="/center.svg" alt="Centers Management" width={32} height={32} />
+          <Image src="/center.svg" alt="Centers" width={32} height={32} />
           Centers Management
         </div>
       </Title>
@@ -266,7 +266,8 @@ export default function Centers() {
             onMouseEnter={(e) => e.target.style.backgroundColor = '#218838'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#28a745'}
           >
-            <Image src="/plus.svg" alt="Add Center" width={20} height={20} /> Add Center
+            <Image src="/plus.svg" alt="Add" width={20} height={20} />
+            Add Center
           </button>
         </div>
 
@@ -360,10 +361,11 @@ export default function Centers() {
                       fontSize: '0.9rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '6px'
                     }}
                   >
-                    <Image src="/edit.svg" alt="Rename" width={20} height={20} /> Rename
+                    <Image src="/edit.svg" alt="Edit" width={18} height={18} />
+                    Rename
                   </button>
                   <button
                     onClick={() => handleDeleteCenter(center)}
@@ -378,11 +380,12 @@ export default function Centers() {
                       fontSize: '0.9rem',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '6px',
                       opacity: deleteMutation.isLoading ? 0.6 : 1
                     }}
                   >
-                    <Image src="/trash2.svg" alt="Delete" width={20} height={20} /> Delete
+                    <Image src="/trash2.svg" alt="Delete" width={18} height={18} />
+                    Delete
                   </button>
                 </div>
               </div>

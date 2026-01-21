@@ -32,9 +32,9 @@ function loadEnvConfig() {
 }
 
 const envConfig = loadEnvConfig();
-const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'topphysics_secret';
-const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
-const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'mr-george-magdy';
+const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'mr_ahmad_badr_secret';
+const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/mr-ahmad-badr';
+const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'mr-ahmad-badr';
 
 console.log('🔗 Using Mongo URI:', MONGO_URI);
 

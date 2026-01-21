@@ -32,16 +32,16 @@ function loadEnvConfig() {
 }
 
 const envConfig = loadEnvConfig();
-const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'topphysics_secret';
-const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
-const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'topphysics';
+const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'mr_ahmad_badr_secret';
+const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/mr-ahmad-badr';
+const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'mr-ahmad-badr';
 
 console.log('🔗 Using Mongo URI:', MONGO_URI);
 
-async function requireAdmin(req) {
+async function requireAdminOrDeveloper(req) {
   const user = await authMiddleware(req);
   if (user.role !== 'admin' && user.role !== 'developer') {
-    throw new Error('Forbidden: Admins or Developers only');
+    throw new Error('Forbidden: Admin or Developer access required');
   }
   return user;
 }
@@ -53,16 +53,20 @@ export default async function handler(req, res) {
     client = await MongoClient.connect(MONGO_URI);
     const db = client.db(DB_NAME);
     
-    // Verify admin access
-    const admin = await requireAdmin(req);
+    // Verify admin or developer access
+    const admin = await requireAdminOrDeveloper(req);
     
     if (req.method === 'GET') {
-      // Get assistant by ID (exclude password for security)
-      const assistant = await db.collection('assistants')
-        .findOne({ id }, { projection: { password: 0 } }); // Exclude password field
+      // Get assistant by ID (exclude password field for security)
+      const assistant = await db.collection('assistants').findOne(
+        { id }, 
+        { projection: { password: 0 } } // Exclude password field at database level
+      );
       if (!assistant) return res.status(404).json({ error: 'Assistant not found' });
+      // Explicitly remove password field as a safety measure (even though projection excludes it)
+      const { password, ...assistantWithoutPassword } = assistant;
       res.json({ 
-        ...assistant,
+        ...assistantWithoutPassword,
         account_state: assistant.account_state || "Activated" // Default to Activated
       });
     } else if (req.method === 'PUT') {
@@ -113,12 +117,14 @@ export default async function handler(req, res) {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
+    console.error('❌ Error in assistants [id] API:', error);
     if (error.message === 'Unauthorized') {
       res.status(401).json({ error: 'Unauthorized' });
-    } else if (error.message === 'Forbidden: Admins only') {
-      res.status(403).json({ error: 'Forbidden: Admins only' });
+    } else if (error.message === 'Forbidden: Admin or Developer access required') {
+      res.status(403).json({ error: 'Forbidden: Admin or Developer access required' });
     } else {
-      res.status(500).json({ error: 'Internal server error' });
+      console.error('❌ Internal server error details:', error);
+      res.status(500).json({ error: 'Internal server error', details: error.message });
     }
   } finally {
     if (client) await client.close();

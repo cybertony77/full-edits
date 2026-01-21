@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import Image from 'next/image';
 import BackToDashboard from "../../components/BackToDashboard";
 import CenterSelect from "../../components/CenterSelect";
 import GradeSelect from '../../components/GradeSelect';
 import AccountStateSelect from '../../components/AccountStateSelect';
 import Title from '../../components/Title';
 import { useCreateStudent } from '../../lib/api/students';
-import PhoneInput from 'react-phone-input-2';
-import 'react-phone-input-2/lib/style.css';
-import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../../lib/phoneUtils';
+import Image from "next/image";
 
 
 export default function AddStudent() {
@@ -137,7 +134,6 @@ export default function AddStudent() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -155,17 +151,17 @@ export default function AddStudent() {
     }
     
     // Validate phone numbers
-    const studentPhone = formatPhoneForDB(form.phone);
-    const parentPhone = formatPhoneForDB(form.parentsPhone);
+    const studentPhone = form.phone;
+    const parentPhone = form.parentsPhone;
     
-    // Check if phone numbers are valid (not just country code)
-    if (!studentPhone || studentPhone.length <= 2) {
-      setError("Please enter a valid student phone number");
+    // Check if phone numbers are exactly 11 digits
+    if (studentPhone.length !== 11) {
+      setError("Student phone number must be exactly 11 digits");
       return;
     }
     
-    if (!parentPhone || parentPhone.length <= 2) {
-      setError("Please enter a valid parent phone number");
+    if (parentPhone.length !== 11) {
+      setError("Parent's phone number must be exactly 11 digits");
       return;
     }
     
@@ -175,11 +171,11 @@ export default function AddStudent() {
       return;
     }
     
-    // Map parentsPhone to parents_phone for backend
+    // Map parentsPhone to parents_phone for backend - preserve leading zeros by storing as strings
     const payload = { ...form, parents_phone: parentPhone };
     // Handle age - set to null if empty, otherwise convert to number
     payload.age = form.age && form.age.trim() !== '' ? Number(form.age) : null;
-    payload.phone = studentPhone; // Save with country code
+    payload.phone = studentPhone; // Keep as string to preserve leading zeros exactly
     let gradeClean = payload.grade.toLowerCase().replace(/\./g, '');
     payload.grade = gradeClean;
     // Optional main_comment: send as main_comment field
@@ -350,7 +346,7 @@ export default function AddStudent() {
             box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
           }
         `}</style>
-        <Title>
+        <Title backText={"Back to Dashboard"} href="/dashboard">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/user-plus2.svg" alt="Add Student" width={32} height={32} />
             Add Student
@@ -440,39 +436,49 @@ export default function AddStudent() {
             </div>
             <div className="form-group">
               <label>Phone <span style={{color: 'red'}}>*</span></label>
-              <PhoneInput
-                country="eg"
-                enableSearch
-                value={form.phone || ''}
-                onChange={(value) => {
-                  const validation = validateEgyptPhone(value);
-                  setForm({ ...form, phone: validation.value });
+              <input
+                className="form-input"
+                name="phone"
+                type="tel"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                placeholder="Enter student's phone number (11 digits)"
+                value={form.phone}
+                maxLength={11}
+                onChange={(e) => {
+                  // Only allow numbers and limit to 11 digits
+                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                  handleChange({ target: { name: 'phone', value } });
                 }}
-                onKeyDown={(e) => handleEgyptPhoneKeyDown(e, form.phone)}
-                containerClass="phone-container"
-                inputClass="phone-input"
-                buttonClass="phone-flag-btn"
-                dropdownClass="phone-dropdown"
-                placeholder="Enter Phone Number"
+                required
+                autocomplete="off"
               />
+              <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                Must be exactly 11 digits (e.g., 012345678901)
+              </small>
             </div>
             <div className="form-group">
               <label>Parent's Phone (Whatsapp) <span style={{color: 'red'}}>*</span></label>
-              <PhoneInput
-                country="eg"
-                enableSearch
-                value={form.parentsPhone || ''}
-                onChange={(value) => {
-                  const validation = validateEgyptPhone(value);
-                  setForm({ ...form, parentsPhone: validation.value });
+              <input
+                className="form-input"
+                name="parentsPhone"
+                type="tel"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                placeholder="Enter parent's phone number (11 digits)"
+                value={form.parentsPhone}
+                maxLength={11}
+                onChange={(e) => {
+                  // Only allow numbers and limit to 11 digits
+                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                  handleChange({ target: { name: 'parentsPhone', value } });
                 }}
-                onKeyDown={(e) => handleEgyptPhoneKeyDown(e, form.parentsPhone)}
-                containerClass="phone-container"
-                inputClass="phone-input"
-                buttonClass="phone-flag-btn"
-                dropdownClass="phone-dropdown"
-                placeholder="Enter Parent Number"
+                required
+                autocomplete="off"
               />
+              <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                Must be exactly 11 digits (e.g., 01234567890)
+              </small>
             </div>
             <div className="form-group">
               <label>Main Center <span style={{color: 'red'}}>*</span></label>

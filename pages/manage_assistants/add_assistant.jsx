@@ -1,24 +1,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Image from "next/image";
 import Title from "../../components/Title";
 import RoleSelect from "../../components/RoleSelect";
 import AccountStateSelect from "../../components/AccountStateSelect";
-import AddToContactAssistants from "../../components/AddToContactAssistants";
-import { useCreateAssistant, useCheckUsername } from '../../lib/api/assistants';
-import PhoneInput from 'react-phone-input-2';
-import 'react-phone-input-2/lib/style.css';
-import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../../lib/phoneUtils';
+import { useCreateAssistant, useCheckUsername } from '../../lib/api/assistants';  
+import Image from "next/image";
 
 export default function AddAssistant() {
   const router = useRouter();
-  const [form, setForm] = useState({ id: "", name: "", phone: "", email: "", password: "", role: "assistant", account_state: "Activated", ATCA: "no" });
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [form, setForm] = useState({ id: "", name: "", phone: "", password: "", role: "assistant", account_state: "Activated" });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [newId, setNewId] = useState(""); // Added for success message
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // React Query hooks
   const createAssistantMutation = useCreateAssistant();
@@ -67,70 +61,41 @@ export default function AddAssistant() {
     
     // Check if username already exists
     if (usernameCheck.data && usernameCheck.data.exists) {
-      setError("❌ Assistant username already exists. Please choose a different ID.");
-      return;
-    }
-    
-    // Validate password
-    if (form.password.length < 8) {
-      setError("❌ Password must be at least 8 characters long");
-      return;
-    }
-
-    // Validate password confirmation
-    if (form.password !== confirmPassword) {
-      setError("❌ Passwords do not match");
-      return;
-    }
-    
-    // Validate email - required
-    if (!form.email || form.email.trim() === '') {
-      setError("❌ Email is required");
-      return;
-    }
-    
-    // Basic email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setError("❌ Please enter a valid email address");
+      setError("Assistant username already exists. Please choose a different ID.");
       return;
     }
     
     // Validate phone number
-    const assistantPhone = formatPhoneForDB(form.phone);
+    const assistantPhone = form.phone;
     
-    // Check if it's valid (not just country code)
-    if (!assistantPhone || assistantPhone.length <= 2) {
-      setError("❌ Please enter a valid phone number");
+    // Check if phone number is exactly 11 digits
+    if (assistantPhone.length !== 11) {
+      setError("Assistant phone number must be exactly 11 digits");
       return;
     }
     
-    // Trim whitespaces from all fields before sending
+    // Trim whitespaces from username before sending
     const trimmedForm = {
       ...form,
       id: form.id.trim(),
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: assistantPhone,
+      phone: assistantPhone.trim(),
       password: form.password.trim()
     };
     
-    // Save phone with country code
+    // Convert phone to string before sending - preserve leading zeros exactly
     const payload = { ...trimmedForm, phone: assistantPhone };
     
     createAssistantMutation.mutate(payload, {
       onSuccess: (data) => {
         setSuccess(true);
-        setForm({ id: "", name: "", phone: "", email: "", password: "", role: "assistant", account_state: "Activated", ATCA: "no" });
-        setConfirmPassword("");
+        setForm({ id: "", name: "", phone: "", password: "", role: "assistant", account_state: "Activated" });
         setNewId(data.assistant_id);
       },
       onError: (err) => {
         if (err.response?.status === 409) {
-          setError("❌ Assistant username already exists.");
+          setError("Assistant username already exists.");
         } else {
-          const errorMsg = err.response?.data?.error || "Failed to add assistant.";
-          setError(errorMsg.startsWith("❌") ? errorMsg : `❌ ${errorMsg}`);
+          setError(err.response?.data?.error || "Failed to add assistant.");
         }
       }
     });
@@ -270,22 +235,6 @@ export default function AddAssistant() {
                  <Title 
                    backText="Back" 
                    href="/manage_assistants" 
-                   backButtonStyle={{
-                     background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
-                     color: 'white',
-                     border: 'none',
-                     borderRadius: 8,
-                     padding: '8px 16px',
-                     fontWeight: 600,
-                     cursor: 'pointer',
-                     transition: '0.3s',
-                     boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
-                     fontSize: 15,
-                     display: 'flex',
-                     alignItems: 'center',
-                     gap: 8,
-                     marginLeft: 25
-                   }}
                  >
                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                      <Image src="/user-plus2.svg" alt="Add Assistant" width={32} height={32} />
@@ -345,33 +294,25 @@ export default function AddAssistant() {
             </div>
             <div className="form-group">
               <label>Phone <span style={{color: 'red'}}>*</span></label>
-              <PhoneInput
-                country="eg"
-                enableSearch
-                value={form.phone || ''}
-                onChange={(value) => {
-                  const validation = validateEgyptPhone(value);
-                  setForm({ ...form, phone: validation.value });
-                }}
-                onKeyDown={(e) => handleEgyptPhoneKeyDown(e, form.phone)}
-                containerClass="phone-container"
-                inputClass="phone-input"
-                buttonClass="phone-flag-btn"
-                dropdownClass="phone-dropdown"
-                placeholder="Enter Phone Number"
-              />
-            </div>
-            <div className="form-group">
-              <label>Email <span style={{color: 'red'}}>*</span></label>
               <input
                 className="form-input"
-                name="email"
-                type="email"
-                placeholder="Enter assistant's email"
-                value={form.email}
-                onChange={handleChange}
+                name="phone"
+                type="tel"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                placeholder="Enter assistant's phone number (11 digits)"
+                value={form.phone}
+                maxLength={11}
+                onChange={(e) => {
+                  // Only allow numbers and limit to 11 digits
+                  const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                  setForm({ ...form, phone: value });
+                }}
                 required
               />
+              <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                Must be exactly 11 digits (e.g., 12345678901)
+              </small>
             </div>
             <div className="form-group">
               <label>Password <span style={{color: 'red'}}>*</span></label>
@@ -411,48 +352,6 @@ export default function AddAssistant() {
                     />
                   </button>
               </div>
-              <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-                Must be at least 8 characters long
-              </small>
-            </div>
-            <div className="form-group">
-              <label>Confirm Password <span style={{color: 'red'}}>*</span></label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  className="form-input"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  style={{ paddingRight: '50px' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <img 
-                    src={showConfirmPassword ? "/hide.svg" : "/show.svg"} 
-                    alt={showConfirmPassword ? "Hide password" : "Show password"}
-                      style={{ width: '20px', height: '20px' }}
-                    />
-                  </button>
-              </div>
             </div>
             <div className="form-group">
               <label>Role <span style={{color: 'red'}}>*</span></label>
@@ -467,11 +366,6 @@ export default function AddAssistant() {
               onChange={(value) => setForm({ ...form, account_state: value })}
               required={true}
             />
-            <AddToContactAssistants
-              value={form.ATCA}
-              onChange={(value) => setForm({ ...form, ATCA: value })}
-              required={true}
-            />
             <button 
               type="submit" 
               disabled={createAssistantMutation.isPending || (!usernameCheck.isLoading && usernameCheck.data && usernameCheck.data.exists)} 
@@ -484,7 +378,7 @@ export default function AddAssistant() {
             <div className="success-message">✅ Assistant added successfully!</div>
           )}
           {error && (
-            <div className="error-message">{error}</div>
+            <div className="error-message">❌ {error}</div>
           )}
         </div>
       </div>

@@ -62,11 +62,9 @@ export default async function handler(req, res) {
     
     // Determine which week to update
     const weekNumber = week || 1;
+    const weekIndex = weekNumber - 1; // Convert to array index
     
-    // Find the week in the weeks array
-    const weeks = student.weeks || [];
-    const weekIndex = weeks.findIndex(w => w && w.week === weekNumber);
-    
+    // Update the specific week in the weeks array
     // Handle both boolean and string values for hwDone
     let hwValue;
     if (hwDone === "No Homework") {
@@ -76,44 +74,12 @@ export default async function handler(req, res) {
     } else {
       hwValue = !!hwDone; // Convert to boolean for true/false values
     }
-    
-    if (weekIndex !== -1) {
-      // Update existing week
-      const updateFields = {};
-      updateFields[`weeks.${weekIndex}.hwDone`] = hwValue;
-      
-      // If hwDone is false, "No Homework", or "Not Completed", clear hwDegree
-      if (hwValue === false || hwValue === "No Homework" || hwValue === "Not Completed") {
-        updateFields[`weeks.${weekIndex}.hwDegree`] = null;
-      }
-      
-      const result = await db.collection('students').updateOne(
-        { id: student_id },
-        { $set: updateFields }
-      );
-      
-      if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });
-    } else {
-      // Week doesn't exist, create it
-      const newWeek = {
-        week: weekNumber,
-        attended: false,
-        lastAttendance: null,
-        lastAttendanceCenter: null,
-        hwDone: hwValue,
-        hwDegree: (hwValue === false || hwValue === "No Homework" || hwValue === "Not Completed") ? null : null,
-        quizDegree: null,
-        comment: null,
-        message_state: false
-      };
-      
     const result = await db.collection('students').updateOne(
       { id: student_id },
-        { $push: { weeks: newWeek } }
+      { $set: { [`weeks.${weekIndex}.hwDone`]: hwValue } }
     );
     
     if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });
-    }
     
     res.json({ success: true });
   } catch (error) {

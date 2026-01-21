@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import Image from 'next/image';
 import { AVAILABLE_CENTERS } from '../../constants/centers';
 import GradeSelect from '../../components/GradeSelect';
 import CenterSelect from '../../components/CenterSelect';
@@ -11,6 +10,7 @@ import { Center, Group, Paper, RingProgress, SimpleGrid, Text } from '@mantine/c
 import { useRouter } from 'next/router';
 import { useStudents } from '../../lib/api/students';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import Image from "next/image";
 
 export default function SessionInfo() {
   const containerRef = useRef(null);
@@ -39,9 +39,9 @@ export default function SessionInfo() {
 
   // React Query hook with real-time updates - 5 second polling like history page
   const { data: students = [], isLoading, error, refetch, isRefetching, dataUpdatedAt } = useStudents({}, {
-    // Refetch settings
-    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
-    refetchIntervalInBackground: false, // Don't refetch when tab is not active
+    // Aggressive real-time settings for immediate updates
+    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time updates
+    refetchIntervalInBackground: true, // Continue when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     refetchOnReconnect: true, // Refetch when reconnecting to internet
     staleTime: 0, // Always consider data stale to force refetch
@@ -181,7 +181,7 @@ export default function SessionInfo() {
         lastAttendance: null,
         lastAttendanceCenter: null,
         hwDone: false,
-        hwDegree: null,
+        
         quizDegree: null,
         comment: null,
         message_state: false, // Default to false for non-existent weeks
@@ -196,7 +196,6 @@ export default function SessionInfo() {
       lastAttendance: weekData.lastAttendance,
       lastAttendanceCenter: weekData.lastAttendanceCenter,
       hwDone: weekData.hwDone,
-      hwDegree: weekData.hwDegree || null,
       quizDegree: weekData.quizDegree,
       comment: weekData.comment,
       message_state: weekData.message_state,

@@ -143,11 +143,14 @@ export default async function handler(req, res) {
     const student = await db.collection('students').findOne({ id: studentId });
     if (!student) return res.status(404).json({ error: 'Student not found' });
     
-    // Use phone number as stored in DB (already includes country code)
-    const parentNumber = (student.parents_phone || student.parentsPhone || '').replace(/[^0-9]/g, '');
+    // Format the parent phone number (add '2' if not present)
+    let parentNumber = student.parentsPhone ? student.parentsPhone.replace(/[^0-9]/g, '') : null;
+    if (parentNumber && !parentNumber.startsWith('2')) {
+      parentNumber = '2' + parentNumber;
+    }
     
-    if (!parentNumber || parentNumber.length < 3) {
-      return res.status(400).json({ error: 'No parent number available or invalid format' });
+    if (!parentNumber) {
+      return res.status(400).json({ error: 'No parent number available' });
     }
 
     // Get the week to use (from request body or find current attended week)

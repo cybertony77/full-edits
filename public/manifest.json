@@ -1,7 +1,7 @@
 {
-  "name": "Demo Attendance System",
-  "short_name": "Demo Attendance System",
-  "description": "Attendance management system for learning teachers",
+  "name": "Mr. George Magdy Attendance System",
+  "short_name": "Mr. George Magdy Assistants",
+  "description": "Attendance management system for Mr. George Magdy learning centers",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,9 +9,9 @@
     "standalone",
     "fullscreen"
   ],
-  "background_color": "#00101f",
-  "theme_color": "#00101f",
-  "orientation": "any",
+  "background_color": "#92e5f4",
+  "theme_color": "#92e5f4",
+  "orientation": "portrait-primary",
   "id": "/",
   "categories": [
     "education",

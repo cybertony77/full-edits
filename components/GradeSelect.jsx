@@ -1,28 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function GradeSelect({ selectedGrade, onGradeChange, required = false, isOpen, onToggle, onClose }) {
   // Handle legacy props (value, onChange) for backward compatibility
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
   const actualIsOpen = isOpen !== undefined ? isOpen : internalIsOpen;
   const actualOnToggle = onToggle || (() => setInternalIsOpen(!internalIsOpen));
   const actualOnClose = onClose || (() => setInternalIsOpen(false));
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        actualOnClose();
-      }
-    };
-
-    if (actualIsOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [actualIsOpen, actualOnClose]);
 
   const handleGradeSelect = (grade) => {
     onGradeChange(grade);
@@ -32,7 +15,7 @@ export default function GradeSelect({ selectedGrade, onGradeChange, required = f
   const grades = ["1st Secondary", "2nd Secondary", "3rd Secondary"];
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+    <div style={{ position: 'relative', width: '100%' }}>
       <div
         style={{
           padding: '14px 16px',
@@ -49,6 +32,7 @@ export default function GradeSelect({ selectedGrade, onGradeChange, required = f
           boxShadow: actualIsOpen ? '0 0 0 3px rgba(31, 168, 220, 0.1)' : 'none'
         }}
         onClick={actualOnToggle}
+        onBlur={() => setTimeout(actualOnClose, 200)}
       >
         <span>{selectedGrade || 'Select Grade'}</span>
       </div>

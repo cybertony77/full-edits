@@ -1,31 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useProfile, useProfilePicture } from '../lib/api/auth';
+import { useProfile } from '../lib/api/auth';
 import { useSubscription } from '../lib/api/subscription';
-import { useStudent } from '../lib/api/students';
-import QRCodeModal from './QRCodeModal';
-import InstallApp from './InstallApp';
 import apiClient from '../lib/axios';
 import Image from 'next/image';
+import InstallApp from './InstallApp';
 
 export default function UserMenu() {
   const [open, setOpen] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [showInstallApp, setShowInstallApp] = useState(false);
   const menuRef = useRef(null);
   const router = useRouter();
-  
+  const [showInstallApp, setShowInstallApp] = useState(false);
   // Use React Query to get user profile data
   const { data: user, isLoading, error } = useProfile();
   const { data: subscription } = useSubscription();
-  const { data: profilePictureUrl } = useProfilePicture();
 
   // Fallback user object if data is not available yet
   const userData = user || { name: '', id: '', phone: '', role: '' };
-  
-  // If user is a student, fetch student data from students collection
-  const studentId = userData.role === 'student' && userData.id ? userData.id.toString() : null;
-  const { data: studentData } = useStudent(studentId, { enabled: !!studentId });
 
   // Subscription countdown timer
   const [timeRemaining, setTimeRemaining] = useState(null);
@@ -33,14 +24,6 @@ export default function UserMenu() {
 
   useEffect(() => {
     const isDeveloper = userData.role === 'developer';
-    const isStudent = userData.role === 'student';
-
-    // Don't show subscription timer for students
-    if (isStudent) {
-      setTimeRemaining(null);
-      hasLoggedOutRef.current = false;
-      return;
-    }
 
     // Simple logic: if active = false AND date_of_expiration = null, show expired
     // Otherwise, if date_of_expiration exists, calculate timer
@@ -158,55 +141,32 @@ export default function UserMenu() {
     router.push('/subscription_dashboard');
   };
 
-  const handleChangePassword = () => {
-    router.push('/student_dashboard/change_password');
-  };
-
-  const handleMyQRCode = () => {
-    setOpen(false); // Close the menu
-    setShowQRModal(true);
-  };
 
   const handleInstallApp = () => {
     setOpen(false); // Close the menu
     setShowInstallApp(true);
   };
 
-
   return (
     <div style={{ position: 'relative', marginRight: 32 }} ref={menuRef}>
       <div
         style={{
-          width: 50,
-          height: 50,
+          width: 44,
+          height: 44,
           borderRadius: '50%',
-          background: profilePictureUrl ? 'transparent' : '#e9ecef',
+          background: '#e9ecef',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
           boxShadow: open ? '0 2px 8px rgba(31,168,220,0.15)' : 'none',
           border: open ? '2px solid #1FA8DC' : '2px solid #e9ecef',
-          transition: 'box-shadow 0.2s, border 0.2s',
-          overflow: 'hidden',
-          position: 'relative'
+          transition: 'box-shadow 0.2s, border 0.2s'
         }}
         onClick={() => setOpen((v) => !v)}
         title={userData.name || userData.id}
       >
-        {/* Use profile picture if available, else fallback to initial */}
-        {profilePictureUrl ? (
-          <Image
-            src={profilePictureUrl}
-            alt="Profile"
-            fill
-            style={{
-              objectFit: 'cover',
-              borderRadius: '50%'
-            }}
-            unoptimized
-          />
-        ) : (
+        {/* Use user image if available, else fallback to initial */}
         <span style={{ 
           fontWeight: 700, 
           fontSize: 22, 
@@ -219,35 +179,20 @@ export default function UserMenu() {
           lineHeight: 1,
           textAlign: 'center'
         }}>
-          {(() => {
-            const displayName = userData.role === 'student' && studentData?.name 
-              ? studentData.name 
-              : userData.name;
-            const displayId = userData.role === 'student' && studentData?.id 
-              ? studentData.id.toString() 
-              : userData.id?.toString();
-            
-            if (displayName && displayName.length > 0) {
-              return displayName[0].toUpperCase();
-            } else if (displayId && displayId.length > 0) {
-              return displayId[0].toUpperCase();
-            }
-            return 'U';
-          })()}
+          {userData.name ? userData.name[0].toUpperCase() : (userData.id ? userData.id[0].toUpperCase() : 'U')}
         </span>
-        )}
       </div>
       {open && (
         <div style={{
           position: 'absolute',
           top: 54,
-          right: 25,
+          right: 0,
           minWidth: 270,
           background: '#fff',
           borderRadius: 16,
           boxShadow: '0 8px 32px rgba(31,168,220,0.18)',
           border: '1.5px solid #e9ecef',
-          zIndex: 10000,
+          zIndex: 100,
           padding: '0 0 8px 0',
         }}>
           <div style={{
@@ -256,39 +201,22 @@ export default function UserMenu() {
             textAlign: 'left',
             marginBottom: 8
           }}>
-            {userData.role === 'student' && studentData ? (
-              <>
-                <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 8 }}>
-                  {studentData.name || 'Student'}
-                </div>
-                <div style={{ color: '#495057', fontSize: 15, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Image src="/user-circle3.svg" alt="User" width={18} height={18} />
-                  ID: {studentData.id}
-                </div>
-                {studentData.grade && (
-                  <div style={{ color: '#495057', fontSize: 15, fontWeight: 600 }}>
-                    Grade: {studentData.grade}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 2 }}>{userData.name || userData.id}</div>
-                <div style={{ color: '#495057', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Image src="/user-circle3.svg" alt="User" width={18} height={18} />
-                  {userData.id ? `Username: ${userData.id}` : 'No Username'}
-                </div>
-              </>
-            )}
+            <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {userData.name || userData.id}
+            </div>
+            <div style={{ color: '#495057', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Image src="/user-circle3.svg" alt="User" width={18} height={18} />
+              {userData.id ? `Username: ${userData.id}` : 'No Username'}
+            </div>
           </div>
-          {subscription && userData.role !== 'student' && (
+          {subscription && (
             <div style={{
               padding: '12px 20px',
               borderBottom: '1px solid #e9ecef',
               marginBottom: 8
             }}>
-              {/* Show "Subscription Expired" only if active = false AND date_of_expiration = null */}
-              {subscription.active === false && !subscription.date_of_expiration ? (
+                            {/* Show "Subscription Expired" only if active = false AND date_of_expiration = null */}
+                            {subscription.active === false && !subscription.date_of_expiration ? (
                 <div style={{
                   fontSize: 15,
                   fontWeight: 700,
@@ -327,68 +255,35 @@ export default function UserMenu() {
             </div>
           )}
           <button style={menuBtnStyle} onClick={handleLogout}>
-            <Image src="/logout.svg" alt="Logout" width={20} height={20} style={{ marginRight: '8px', filter: 'brightness(0) saturate(100%) invert(27%) sepia(95%) saturate(6871%) hue-rotate(349deg) brightness(93%) contrast(86%)' }} />
+            <Image src="/logout.svg" alt="Logout" width={20} height={20} style={{ marginRight: '8px', filter: 'brightness(0) saturate(100%) invert(27%) sepia(95%) saturate(6871%) hue-rotate(349deg) brightness(93%) contrast(86%)' , transform: "translateY(5px)" }} />
             Logout
           </button>
-          {userData.role === 'student' && (
-            <>
-              <button style={menuBtnStyle} onClick={handleChangePassword}>
-                <Image src="/key2.svg" alt="Password" width={20} height={20} style={{ marginRight: '8px' }} />
-                Change My Password
-              </button>
-              <button style={menuBtnStyle} onClick={handleMyQRCode}>
-                <Image src="/qrcode3.svg" alt="QR Code" width={20} height={20} style={{ marginRight: '8px' }} />
-                My Qr Code
-              </button>
-            </>
+          <button style={menuBtnStyle} onClick={handleEditProfile}>
+            <Image src="/user-edit2.svg" alt="Edit Profile" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
+            Edit My Profile
+          </button>
+          {(userData.role === 'admin' || userData.role === 'developer') && (
+            <button style={menuBtnStyle} onClick={handleManageAssistants}>
+              <Image src="/settings.svg" alt="Settings" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
+              Manage Assistants
+            </button>
           )}
-          {userData.role !== 'student' && (
-            <>
-              <button style={menuBtnStyle} onClick={handleEditProfile}>
-                <Image src="/user-edit2.svg" alt="Edit Profile" width={20} height={20} style={{ marginRight: '8px' }} />
-                Edit My Profile
-              </button>
-              <button style={menuBtnStyle} onClick={() => {
-                setOpen(false);
-                router.push('/dashboard/public_link_generator');
-              }}>
-                <Image src="/link.svg" alt="Link" width={20} height={20} style={{ marginRight: '8px' }} />
-                Public Link Generator
-              </button>
-              {(userData.role === 'admin' || userData.role === 'developer') && (
-                <button style={menuBtnStyle} onClick={handleManageAssistants}>
-                  <Image src="/settings.svg" alt="Settings" width={18} height={18} style={{ marginRight: '8px' }} />
-                  Manage Assistants
-                </button>
-              )}
-              {(userData.role === 'admin' || userData.role === 'developer' || userData.role === 'assistant') && (
-                <button style={menuBtnStyle} onClick={() => {
-                  setOpen(false);
-                  router.push('/dashboard/manage_online_system');
-                }}>
-                  <Image src="/settings2.svg" alt="Settings" width={20} height={20} style={{ marginRight: '8px' }} />
-                  Manage Online System
-                </button>
-              )}
-              {userData.role === 'developer' && (
-                <button style={menuBtnStyle} onClick={handleSubscriptionDashboard}>
-                  <Image src="/dollar.svg" alt="Dollar" width={20} height={20} style={{ marginRight: '8px' }} />
-                  Subscription Dashboard
-                </button>
-              )}
-            </>
+          {userData.role === 'developer' && (
+            <button style={menuBtnStyle} onClick={handleSubscriptionDashboard}>
+              <Image src="/dollar.svg" alt="Dollar" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
+              Subscription Dashboard
+            </button>
           )}
           <button style={menuBtnStyle} onClick={handleContactDeveloper}>
-            <Image src="/message2.svg" alt="Message" width={20} height={20} style={{ marginRight: '8px' }} />
+            <Image src="/message2.svg" alt="Message" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
             Contact Developer
           </button>
           <button style={menuBtnStyle} onClick={handleInstallApp}>
-            <Image src="/download.svg" alt="Download" width={20} height={20} style={{ marginRight: '8px' }} />
+            <Image src="/download.svg" alt="Download" width={20} height={20} style={{ marginRight: '8px', transform: "translateY(3px)" }} />
             Install App
           </button>
         </div>
       )}
-      <QRCodeModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} />
       <InstallApp isOpen={showInstallApp} onClose={() => setShowInstallApp(false)} />
     </div>
   );
@@ -408,6 +303,4 @@ const menuBtnStyle = {
   transition: 'background 0.15s',
   marginBottom: 2,
   outline: 'none',
-  display: 'flex',
-  alignItems: 'center',
-}; 
+};

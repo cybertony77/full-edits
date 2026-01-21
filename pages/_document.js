@@ -7,18 +7,15 @@ export default function Document() {
         {/* PWA Manifest */}
         <link rel="manifest" href="/manifest.json" />
 
-        {/* Font Awesome */}
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
-
         {/* Theme & App Settings */}
-        <meta name="theme-color" content="#00101f" />
+        <meta name="theme-color" content="#1FA8DC" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Demo Attendance System" />
+        <meta name="apple-mobile-web-app-title" content="Mr. George Magdy Attendance System" />
         <meta name="apple-touch-fullscreen" content="yes" />
-        <meta property="og:title" content="Demo Attendance System" />
-        <meta property="og:description" content="Attendance System for learning teachers" />
+        <meta property="og:title" content="Mr. George Magdy Attendance System" />
+        <meta property="og:description" content="Mr. George Magdy Attendance System" />
         <meta property="og:image" content="/icons/apple-icon-180.png" />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="en_US" />

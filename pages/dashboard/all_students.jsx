@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import Image from 'next/image';
 import { AVAILABLE_CENTERS } from "../../constants/centers";
 import Title from "../../components/Title";
 import GradeSelect from "../../components/GradeSelect";
@@ -10,6 +9,7 @@ import { IconArrowRight, IconSearch, IconChevronLeft, IconChevronRight } from '@
 import { ActionIcon, TextInput, useMantineTheme } from '@mantine/core';
 import { useStudentsPaginated } from '../../lib/api/students';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import Image from "next/image";
 
 export function InputWithButton({ onButtonClick, onKeyDown, ...props }) {
   const theme = useMantineTheme();

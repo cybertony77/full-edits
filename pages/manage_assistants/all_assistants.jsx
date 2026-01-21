@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import Image from "next/image";
 import Title from "../../components/Title";
 import { Table, ScrollArea } from '@mantine/core';
 import { IconArrowRight, IconSearch, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
@@ -8,7 +7,7 @@ import { ActionIcon, TextInput, useMantineTheme } from '@mantine/core';
 import styles from '../../styles/TableScrollArea.module.css';
 import { useAssistantsPaginated } from '../../lib/api/assistants';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-
+import Image from "next/image";
 // Removed token-based checks; authentication is handled globally in _app.js
 
 export function InputWithButton({ onButtonClick, onKeyDown, ...props }) {
@@ -78,11 +77,7 @@ export default function AllAssistants() {
   });
 
   // Extract assistants array and pagination info from response
-  const assistantsRaw = assistantsResponse?.data || [];
-  // Only include supported roles
-  const assistants = assistantsRaw.filter(a =>
-    ['admin', 'assistant', 'developer'].includes(a.role)
-  );
+  const assistants = assistantsResponse?.data || [];
   const pagination = assistantsResponse?.pagination || {
     currentPage: 1,
     totalPages: 1,
@@ -268,26 +263,7 @@ export default function AllAssistants() {
       padding: "20px 5px 20px 5px" 
     }}>
       <div ref={containerRef} style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
-        <Title 
-          backText="Back" 
-          href="/manage_assistants" 
-          backButtonStyle={{
-            background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            padding: '8px 16px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: '0.3s',
-            boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
-            fontSize: 15,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            marginLeft: 25
-          }}
-        >
+        <Title backText="Back" href="/manage_assistants">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/users.svg" alt="All Assistants" width={32} height={32} />
             All Assistants
@@ -332,50 +308,30 @@ export default function AllAssistants() {
           ) : (
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
               <Table striped highlightOnHover withTableBorder withColumnBorders>
-                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa' }}>
+                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
                   <Table.Tr>
-                    <Table.Th style={{ width: '10%', textAlign: 'center' }}>Username</Table.Th>
-                    <Table.Th style={{ width: '15%', textAlign: 'center' }}>Name</Table.Th>
-                    <Table.Th style={{ width: '15%', textAlign: 'center' }}>Phone Number</Table.Th>
-                    <Table.Th style={{ width: '18%', textAlign: 'center' }}>Email</Table.Th>
-                    <Table.Th style={{ width: '12%', textAlign: 'center' }}>Role</Table.Th>
-                    <Table.Th style={{ width: '12%', textAlign: 'center' }}>Account Status</Table.Th>
-                    <Table.Th style={{ width: '18%', textAlign: 'center' }}>Added to Contact Assistants Page</Table.Th>
+                    <Table.Th style={{ width: '15%' }}>Username</Table.Th>
+                    <Table.Th style={{ width: '20%' }}>Name</Table.Th>
+                    <Table.Th style={{ width: '25%' }}>Phone Number</Table.Th>
+                    <Table.Th style={{ width: '20%' }}>Role</Table.Th>
+                    <Table.Th style={{ width: '20%' }}>Account Status</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {assistants.map(assistant => (
                     <Table.Tr key={assistant.id}>
-                      <Table.Td style={{ fontWeight: 'bold', color: '#1FA8DC', textAlign: 'center' }}>{assistant.id}</Table.Td>
-                      <Table.Td style={{ fontWeight: '600', textAlign: 'center' }}>{assistant.name}</Table.Td>
-                      <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem', textAlign: 'center' }}>{assistant.phone}</Table.Td>
-                      <Table.Td style={{ 
-                        fontSize: '0.9rem', 
-                        textAlign: 'center', 
-                        color: assistant.email ? '#495057' : '#6c757d',
-                        wordWrap: 'break-word',
-                        overflowWrap: 'break-word',
-                        maxWidth: '18%'
-                      }}>
-                        {assistant.email || 'No Email'}
-                      </Table.Td>
+                      <Table.Td style={{ fontWeight: 'bold', color: '#1FA8DC' }}>{assistant.id}</Table.Td>
+                      <Table.Td style={{ fontWeight: '600' }}>{assistant.name}</Table.Td>
+                      <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{assistant.phone}</Table.Td>
                       <Table.Td style={{ 
                         fontWeight: '600',
-                        color: assistant.role === 'admin' ? '#dc3545' : (assistant.role === 'developer' ? '#28a745' : (assistant.role === 'assistant' ? '#3175b1' : '#6c757d')),
-                        textAlign: 'center'
+                        color: assistant.role === 'admin' ? '#dc3545' : (assistant.role === 'developer' ? '#28a745' : (assistant.role === 'assistant' ? '#3175b1' : '#6c757d'))
                       }}>{assistant.role}</Table.Td>
                       <Table.Td style={{ textAlign: 'center' }}>
                         {assistant.account_state === 'Deactivated' ? (
                           <span style={{ color: '#dc3545', fontWeight: 'bold' }}>❌ Deactivated</span>
                         ) : (
                           <span style={{ color: '#28a745', fontWeight: 'bold' }}>✅ Activated</span>
-                        )}
-                      </Table.Td>
-                      <Table.Td style={{ textAlign: 'center' }}>
-                        {assistant.ATCA === 'yes' ? (
-                          <span style={{ color: '#28a745', fontWeight: 'bold' }}>✅ Yes</span>
-                        ) : (
-                          <span style={{ color: '#dc3545', fontWeight: 'bold' }}>❌ No</span>
                         )}
                       </Table.Td>
                     </Table.Tr>

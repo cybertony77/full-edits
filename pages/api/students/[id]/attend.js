@@ -98,7 +98,6 @@ export default async function handler(req, res) {
           lastAttendance: null,
           lastAttendanceCenter: null,
           hwDone: false,
-          hwDegree: null,
           quizDegree: null,
           comment: null,
           message_state: false,
@@ -156,7 +155,6 @@ export default async function handler(req, res) {
         [`weeks.${weekIndex}.lastAttendance`]: null,
         [`weeks.${weekIndex}.lastAttendanceCenter`]: null,
         [`weeks.${weekIndex}.hwDone`]: false,
-        [`weeks.${weekIndex}.hwDegree`]: null,
         [`weeks.${weekIndex}.quizDegree`]: null,
         [`weeks.${weekIndex}.comment`]: null,
         [`weeks.${weekIndex}.message_state`]: false

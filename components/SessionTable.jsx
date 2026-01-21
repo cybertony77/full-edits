@@ -125,18 +125,6 @@ export function SessionTable({
       {showSchool && <Table.Td style={{ width: '150px', minWidth: '150px', textAlign: 'center', fontSize: '15px' }}>{student.school || 'N/A'}</Table.Td>}
       <Table.Td style={{ width: '140px', minWidth: '140px', fontFamily: 'monospace', fontSize: '15px', textAlign: 'center' }}>{student.phone || ''}</Table.Td>
       <Table.Td style={{ width: '140px', minWidth: '140px', fontFamily: 'monospace', fontSize: '15px', textAlign: 'center' }}>{student.parents_phone || student.parentsPhone || ''}</Table.Td>
-      <Table.Td style={{ 
-        width: '160px', 
-        minWidth: '160px', 
-        fontSize: '15px', 
-        textAlign: 'center', 
-        color: student.email ? '#495057' : '#6c757d',
-        wordWrap: 'break-word',
-        overflowWrap: 'break-word',
-        maxWidth: '160px'
-      }}>
-        {student.email || 'No Email'}
-      </Table.Td>
       {showMainCenter && <Table.Td style={{ textAlign: 'center', width: '120px', minWidth: '120px', fontSize: '15px' }}>{student.main_center}</Table.Td>}
       {showAccountStatus && (
         <Table.Td style={{ textAlign: 'center', width: '120px', minWidth: '120px', fontSize: '15px' }}>
@@ -162,11 +150,6 @@ export function SessionTable({
             } else if (student.hwDone === "Not Completed" || student.hwDone === "not completed" || student.hwDone === "NOT COMPLETED") {
               return <span style={{ color: '#ffc107', fontSize: '15px', fontWeight: 'bold' }}>⚠️ Not Completed</span>;
             } else if (student.hwDone === true) {
-              // Show homework degree if it exists
-              const hwDegree = student.hwDegree || student.hw_degree;
-              if (hwDegree && String(hwDegree).trim() !== '') {
-                return <span style={{ color: '#28a745', fontSize: '15px', fontWeight: 'bold' }}>✅ Done ({hwDegree})</span>;
-              }
               return <span style={{ color: '#28a745', fontSize: '15px', fontWeight: 'bold' }}>✅ Done</span>;
             } else {
               return <span style={{ color: '#dc3545', fontSize: '15px', fontWeight: 'bold' }}>❌ Not Done</span>;
@@ -266,7 +249,7 @@ export function SessionTable({
   const getMinWidth = () => {
     // Use smaller widths when table is empty
     if (data.length === 0) {
-      let baseWidth = showMainCenter ? 960 : 880; // Compact widths for empty table (increased for email column and statistics columns)
+      let baseWidth = showMainCenter ? 800 : 720; // Compact widths for empty table (increased for statistics columns)
       if (showGrade) baseWidth += 80; // Grade column
       if (showSchool) baseWidth += 100; // School column
       if (showHW) baseWidth += 80;
@@ -278,8 +261,8 @@ export function SessionTable({
       baseWidth += 500; // Statistics columns (140 + 160 + 200)
       return baseWidth;
     } else {
-      // Calculate based on actual column widths: ID(60) + Name(120) + Grade(100) + School(150) + Student(140) + Parents(140) + Email(160) + MainCenter(120) + AttendanceCenter(140) + MessageState(120) + WhatsApp(120) + Stats(500)
-      let baseWidth = 60 + 120 + 140 + 140 + 160; // ID + Name + Student No. + Parents No. + Email
+      // Calculate based on actual column widths: ID(60) + Name(120) + Grade(100) + School(150) + Student(140) + Parents(140) + MainCenter(120) + AttendanceCenter(140) + MessageState(120) + WhatsApp(120) + Stats(500)
+      let baseWidth = 60 + 120 + 140 + 140; // ID + Name + Student No. + Parents No.
       if (showGrade) baseWidth += 100; // Grade column
       if (showSchool) baseWidth += 150; // School column
       if (showMainCenter) baseWidth += 120; // Main Center
@@ -307,7 +290,6 @@ export function SessionTable({
           {showSchool && <Table.Th style={{ minWidth: data.length === 0 ? '100px' : '150px', width: '150px', textAlign: 'center' }}>School</Table.Th>}
           <Table.Th style={{ minWidth: data.length === 0 ? '80px' : '140px', width: '140px', textAlign: 'center' }}>Student No.</Table.Th>
           <Table.Th style={{ minWidth: data.length === 0 ? '80px' : '140px', width: '140px', textAlign: 'center' }}>Parents No.</Table.Th>
-          <Table.Th style={{ minWidth: data.length === 0 ? '120px' : '160px', width: '160px', textAlign: 'center' }}>Email</Table.Th>
           {showMainCenter && <Table.Th style={{ minWidth: data.length === 0 ? '80px' : '120px', width: '120px', textAlign: 'center' }}>Main Center</Table.Th>}
           {showAccountStatus && <Table.Th style={{ minWidth: data.length === 0 ? '80px' : '120px', width: '120px', textAlign: 'center' }}>Account Status</Table.Th>}
           {showStatsColumns && <Table.Th style={{ minWidth: data.length === 0 ? '100px' : '140px', width: '140px', textAlign: 'center' }}>Attend In</Table.Th>}
@@ -327,7 +309,7 @@ export function SessionTable({
         {data.length === 0 ? (
           <Table.Tr>
               <Table.Td 
-              colSpan={1 + 1 + (showGrade ? 1 : 0) + (showSchool ? 1 : 0) + 1 + 1 + 1 + (showMainCenter ? 1 : 0) + 3 + (showHW ? 1 : 0) + (showQuiz ? 1 : 0) + (showComment ? 1 : 0) + (showComment ? 1 : 0) + (showMessageState ? 1 : 0) + (showWhatsApp ? 1 : 0)} 
+              colSpan={1 + 1 + (showGrade ? 1 : 0) + (showSchool ? 1 : 0) + 1 + 1 + (showMainCenter ? 1 : 0) + 3 + (showHW ? 1 : 0) + (showQuiz ? 1 : 0) + (showComment ? 1 : 0) + (showComment ? 1 : 0) + (showMessageState ? 1 : 0) + (showWhatsApp ? 1 : 0)} 
               style={{ 
                 border: 'none', 
                 padding: 0,
@@ -445,8 +427,6 @@ export function SessionTable({
         {/* Absolutely positioned close button */}
         <button
           onClick={() => setDetailsOpen(false)}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           style={{
             position: 'absolute',
             top: '16px',
@@ -462,8 +442,6 @@ export function SessionTable({
             cursor: 'pointer',
             fontSize: '20px',
             zIndex: 1000,
-            transition: 'transform 0.3s ease',
-            transform: 'scale(1)',
             '@media (max-width: 768px)': {
               width: '36px',
               height: '36px',
@@ -474,7 +452,7 @@ export function SessionTable({
           }}
           aria-label="Close details"
         >
-          <Image src="/close-cross.svg" alt="Close" width={35} height={35} />
+          ❌
         </button>
         
         <div style={{ 

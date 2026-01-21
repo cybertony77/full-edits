@@ -1,10 +1,5 @@
-import { useSystemConfig } from '../lib/api/system';
-
 export default function Footer() {
   const year = new Date().getFullYear();
-  const { data: systemConfig } = useSystemConfig();
-  const systemName = systemConfig?.name || 'Demo Attendance System';
-  
   return (
     <footer className="footer" style={{
       width: '100%',
@@ -19,7 +14,7 @@ export default function Footer() {
       marginTop: 'auto',
       flexShrink: 0
     }}>
-      Copyright &copy; {year} - {systemName}
+      Copyright &copy; {year} - Mr George Magdy
 
       <style jsx>{`
         @media (max-width: 768px) {

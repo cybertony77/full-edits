@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { useUpdateMessageState } from '../lib/api/students';
-import { generatePublicStudentLink } from '../lib/generatePublicLink';
-import { useSystemConfig } from '../lib/api/system';
+import Image from 'next/image';
 
 const WhatsAppButton = ({ student, onMessageSent }) => {
-  const { data: systemConfig } = useSystemConfig();
-  const systemName = systemConfig?.name || 'Demo Attendance System';
   const [message, setMessage] = useState('');
   const updateMessageStateMutation = useUpdateMessageState();
 
@@ -14,12 +10,12 @@ const WhatsAppButton = ({ student, onMessageSent }) => {
     setMessage('');
 
     try {
-      // Get phone number from DB (should already include country code, e.g., "201211172756")
+      // Validate and format phone number for WhatsApp
       let parentNumber = student.parents_phone ? student.parents_phone.replace(/[^0-9]/g, '') : null;
       
-      // Validate phone number exists
-      if (!parentNumber || parentNumber.length < 3) {
-        setMessage('Missing or invalid parent phone number');
+      // Enhanced validation for Egyptian phone numbers (must be exactly 11 digits)
+      if (!parentNumber) {
+        setMessage('Missing parent phone number');
         setTimeout(() => setMessage(''), 3000);
         // Update database to mark as failed
         const weekNumber = student.currentWeekNumber || 1;
@@ -27,8 +23,38 @@ const WhatsAppButton = ({ student, onMessageSent }) => {
         return;
       }
       
-      // Use phone number as stored in DB (already includes country code)
-      // Don't add or remove country code
+      // Egyptian phone numbers must be exactly 11 digits
+      if (parentNumber.length !== 11) {
+        setMessage(`Invalid phone number: must be exactly 11 digits, got ${parentNumber.length}`);
+        setTimeout(() => setMessage(''), 3000);
+        // Update database to mark as failed
+        const weekNumber = student.currentWeekNumber || 1;
+        updateMessageStateMutation.mutate({ id: student.id, message_state: false, week: weekNumber });
+        return;
+      }
+      
+      // Must start with 01 (Egyptian mobile format)
+      if (!parentNumber.startsWith('01')) {
+        setMessage('Invalid phone number: must start with 01');
+        setTimeout(() => setMessage(''), 3000);
+        // Update database to mark as failed
+        const weekNumber = student.currentWeekNumber || 1;
+        updateMessageStateMutation.mutate({ id: student.id, message_state: false, week: weekNumber });
+        return;
+      }
+      
+      // Check for suspicious patterns (like repeated digits)
+      if (/^(.)\1{10}$/.test(parentNumber)) { // All same digit (e.g., 11111111111)
+        setMessage('Invalid phone number format');
+        setTimeout(() => setMessage(''), 3000);
+        // Update database to mark as failed
+        const weekNumber = student.currentWeekNumber || 1;
+        updateMessageStateMutation.mutate({ id: student.id, message_state: false, week: weekNumber });
+        return;
+      }
+      
+      // Format Egyptian phone numbers: 01XXXXXXXXX -> 2001XXXXXXXXX
+      parentNumber = '20' + parentNumber.substring(1);
 
       // Validate student data
       if (!student.name) {
@@ -41,14 +67,10 @@ const WhatsAppButton = ({ student, onMessageSent }) => {
       }
 
       // Get current week data - assume we're working with the current week data
-      const currentWeekNumber = student.currentWeekNumber || 1;
-      const weekIndex = currentWeekNumber - 1;
-      const weekData = student.weeks && student.weeks[weekIndex];
       const currentWeek = {
         attended: student.attended_the_session || false,
         lastAttendance: student.lastAttendance || 'N/A',
         hwDone: student.hwDone || false,
-        hwDegree: student.hwDegree || (weekData ? weekData.hwDegree : null) || null,
         quizDegree: student.quizDegree ?? null
       };
 
@@ -69,13 +91,7 @@ We want to inform you that we are in:
         // Format homework status properly
         let homeworkStatus = '';
         if (student.hwDone === true) {
-          // Show homework degree if it exists
-          const hwDegree = currentWeek.hwDegree;
-          if (hwDegree && String(hwDegree).trim() !== '') {
-            homeworkStatus = `Done (${hwDegree})`;
-          } else {
           homeworkStatus = 'Done';
-          }
         } else if (student.hwDone === false) {
           homeworkStatus = 'Not Done';
         } else if (student.hwDone === 'No Homework') {
@@ -96,7 +112,10 @@ We want to inform you that we are in:
       }
       
       // Add comment if it exists and is not null/undefined
-      // Get comment from the current week data (reuse variables from above)
+      // Get comment from the current week data
+      const currentWeekNumber = student.currentWeekNumber;
+      const weekIndex = currentWeekNumber - 1;
+      const weekData = student.weeks && student.weeks[weekIndex];
       const weekComment = weekData ? weekData.comment : null;
       
       if (weekComment && weekComment.trim() !== '' && weekComment !== 'undefined') {
@@ -104,21 +123,14 @@ We want to inform you that we are in:
   • Comment: ${weekComment}`;
       }
 
-      // Generate public link with HMAC
-      const publicLink = generatePublicStudentLink(student.id.toString());
-
       whatsappMessage += `
-
-Please visit the following link to check ${firstName}'s grades and progress: ⬇️
-
-🖇️ ${publicLink}
-
+      
 Note :-
   • ${firstName}'s ID: ${student.id}
 
-We wish ${firstName} gets high scores 😊❤
+We are always happy to stay in touch 😊❤
 
-– ${systemName}`;
+– Here's Mr. George's team`;
 
       // Create WhatsApp URL with the formatted message
       const whatsappUrl = `https://wa.me/${parentNumber}?text=${encodeURIComponent(whatsappMessage)}`;
@@ -207,7 +219,7 @@ We wish ${firstName} gets high scores 😊❤
           transition: 'background-color 0.2s'
         }}
       >
-        <Image src="/whatsapp.svg" alt="WhatsApp" width={30} height={30} />
+        <Image src="/whatsapp.svg" alt="WhatsApp" width={20} height={20} />
         Send
       </button>
       

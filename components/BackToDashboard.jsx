@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import Image from 'next/image';
 
-export default function BackToDashboard({ style = {}, className = "", text = "Back to Dashboard", href }) {
+export default function BackToDashboard({ style = {}, className = "", text = "Back to Dashboard", href = "/dashboard" }) {
   const router = useRouter();
   return (
     <button

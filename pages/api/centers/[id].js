@@ -59,8 +59,8 @@ export default async function handler(req, res) {
     const user = await authMiddleware(req);
 
     if (req.method === 'PUT') {
-      // Update center
-      const { name, location, grades } = req.body;
+      // Update center name
+      const { name } = req.body;
 
       if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Center name is required' });
@@ -81,31 +81,22 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Center name already exists' });
       }
 
-      // Prepare update object
-      const updateData = {
-        name: name.trim(),
-        location: location && location.trim() ? location.trim() : '',
-        updatedAt: new Date()
-      };
-
-      // Add grades if provided
-      if (grades !== undefined) {
-        updateData.grades = Array.isArray(grades) ? grades : [];
-      }
-
-      // Update center in centers collection
+      // Update center name in centers collection
       await db.collection('centers').updateOne(
         { id: centerId },
-        { $set: updateData }
+        { 
+          $set: { 
+            name: name.trim(),
+            updatedAt: new Date()
+          }
+        }
       );
 
-      // Update center name in students collection if name changed
-      if (center.name !== name.trim()) {
-        await db.collection('students').updateMany(
-          { main_center: center.name },
-          { $set: { main_center: name.trim() } }
-        );
-      }
+      // Update center name in students collection
+      await db.collection('students').updateMany(
+        { main_center: center.name },
+        { $set: { main_center: name.trim() } }
+      );
 
       res.json({ success: true });
 

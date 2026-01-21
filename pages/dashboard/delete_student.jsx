@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Image from 'next/image';
 import BackToDashboard from "../../components/BackToDashboard";
 import Title from '../../components/Title';
 import { useStudents, useStudent, useDeleteStudent } from '../../lib/api/students';
-import apiClient from '../../lib/axios';
-import { useQuery } from '@tanstack/react-query';
+import Image from "next/image";
 
 export default function DeleteStudent() {
   const router = useRouter();
@@ -22,25 +20,6 @@ export default function DeleteStudent() {
   const { data: allStudents } = useStudents();
   const { data: student, isLoading: studentLoading, error: studentError } = useStudent(searchId, { enabled: !!searchId });
   const deleteStudentMutation = useDeleteStudent();
-
-  // Get user account data to get email from users collection
-  const { data: userAccount, isLoading: accountLoading } = useQuery({
-    queryKey: ['student-account', searchId],
-    queryFn: async () => {
-      if (!searchId) return null;
-      try {
-        const response = await apiClient.get(`/api/auth/students/${searchId}/account`);
-        return response.data;
-      } catch (err) {
-        if (err.response?.status === 404) {
-          return null; // Account doesn't exist
-        }
-        throw err;
-      }
-    },
-    enabled: !!searchId && !!student,
-    retry: false,
-  });
 
   useEffect(() => {
     // Authentication is now handled by _app.js with HTTP-only cookies
@@ -385,7 +364,7 @@ export default function DeleteStudent() {
             }
           }
         `}</style>
-        <Title>
+        <Title backText={"Back to Dashboard"} href="/dashboard">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/trash2.svg" alt="Delete Student" width={32} height={32} />
             Delete Student
@@ -487,23 +466,18 @@ export default function DeleteStudent() {
                 <p><strong>Grade:</strong> {student.grade}</p>
                 <p><strong>School:</strong> {student.school}</p>
                 <p><strong>Phone:</strong> {student.phone}</p>
-                <p><strong>Email:</strong> {userAccount?.email || student.email || 'No Email'}</p>
                 <p><strong>Parent's Phone:</strong> {student.parents_phone || student.parentsPhone}</p>
                 <p><strong>Main Center:</strong> {student.main_center}</p>
                 <p><strong>Main Comment:</strong> {student.main_comment ||"No Comment"}</p>
                 
                 <div style={{ marginTop: "20px" }}>
                   <p style={{ color: "#dc3545", fontWeight: "bold", marginBottom: "16px" }}>
-                    {userAccount ? (
-                      <>⚠️ Are you sure you want to delete this student's account? This will delete their account and regenerate a new VAC code. This action cannot be undone.</>
-                    ) : (
-                      <>⚠️ Are you sure you want to delete this student? This action cannot be undone.</>
-                    )}
+                    ⚠️ Are you sure you want to delete this student? This action cannot be undone.
                   </p>
                   <button 
                     className="submit-btn"
                     onClick={() => setShowConfirm(true)}
-                    disabled={deleteStudentMutation.isPending || accountLoading}
+                    disabled={deleteStudentMutation.isPending}
                   >
                     🗑️ Yes, Delete Student
                   </button>
@@ -516,18 +490,8 @@ export default function DeleteStudent() {
           <div className="confirm-modal">
             <div className="confirm-content">
               <h3>Confirm Delete</h3>
-              {userAccount ? (
-                <>
-                  <p>Are you sure you want to delete student <strong>{student?.name}</strong> (ID: {studentId})?</p>
-                  <p>This will delete their account and regenerate a new VAC code.</p>
-                  <p><strong>This action cannot be undone!</strong></p>
-                </>
-              ) : (
-                <>
               <p>Are you sure you want to delete student <strong>{student?.name}</strong> (ID: {studentId})?</p>
               <p><strong>This action cannot be undone!</strong></p>
-                </>
-              )}
               <div className="confirm-buttons">
                 <button
                   onClick={deleteStudent}
@@ -549,7 +513,7 @@ export default function DeleteStudent() {
         )}
         {deleted && (
           <div className="success-message" style={{ textAlign: "center", padding: "40px 20px" }}>
-            <div style={{ fontSize: "4rem" }}><Image src="/success-mark3.svg" alt="Delete" width={80} height={80} /></div>
+            <div style={{ fontSize: "4rem" }}><Image src="/success-mark3.svg" alt="Success" width={80} height={80} /></div>
             <h2 style={{ color: "#28a745", marginBottom: "16px" }}>Student Deleted Successfully!</h2>
             <p style={{ color: "#6c757d", marginBottom: "24px" }}>
               Student ID <strong>{studentId}</strong> has been permanently deleted from the database.

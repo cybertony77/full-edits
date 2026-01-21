@@ -1,27 +1,21 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Image from "next/image";
 import Title from "../../components/Title";
 import RoleSelect from "../../components/RoleSelect";
 import AccountStateSelect from "../../components/AccountStateSelect";
-import AddToContactAssistants from "../../components/AddToContactAssistants";
 import { useAssistant, useAssistants, useUpdateAssistant } from '../../lib/api/assistants';
-import PhoneInput from 'react-phone-input-2';
-import 'react-phone-input-2/lib/style.css';
-import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../../lib/phoneUtils';
+import Image from "next/image";
 
 export default function EditAssistant() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [id, setId] = useState("");
   const [searchId, setSearchId] = useState(""); // Separate state for search
-  const [form, setForm] = useState({ id: "", name: "", phone: "", email: "", password: "", role: "", account_state: "Activated", ATCA: "no" });
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [form, setForm] = useState({ id: "", name: "", phone: "", password: "", role: "", account_state: "Activated" });
   const [originalForm, setOriginalForm] = useState(null); // Store original data for comparison
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [searchResults, setSearchResults] = useState([]); // Store multiple search results
   const [showSearchResults, setShowSearchResults] = useState(false); // Show/hide search results
 
@@ -58,15 +52,12 @@ export default function EditAssistant() {
         id: assistant.id, 
         name: assistant.name, 
         phone: assistant.phone, 
-        email: assistant.email || "",
         password: "", 
         role: assistant.role || "assistant",
-        account_state: assistant.account_state || "Activated",
-        ATCA: assistant.ATCA || "no"
+        account_state: assistant.account_state || "Activated"
       };
       setForm(formData);
       setOriginalForm({ ...formData });
-      setConfirmPassword("");
       setStep(2);
     }
   }, [assistant]);
@@ -133,10 +124,9 @@ export default function EditAssistant() {
     setId(value);
     setSearchId(""); // Clear search ID to prevent auto-fetch
     if (!value.trim()) {
-      const emptyForm = { id: "", name: "", phone: "", password: "", role: "assistant", account_state: "Activated", ATCA: "no" };
+      const emptyForm = { id: "", name: "", phone: "", password: "", role: "assistant" };
       setForm(emptyForm);
       setOriginalForm(null);
-      setConfirmPassword("");
       setStep(1);
       setError("");
       setSuccess(false);
@@ -206,52 +196,26 @@ export default function EditAssistant() {
     
     const changedFields = getChangedFields();
     
-    // Validate email - always required
-    if (!form.email || form.email.trim() === '') {
-      setError("❌ Email is required");
-      return;
-    }
-    
-    // Basic email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setError("❌ Please enter a valid email address");
-      return;
-    }
-    
-    // Validate password if user entered one
-    if (form.password && form.password.trim() !== "") {
-      // Validate password length
-      if (form.password.length < 8) {
-        setError("❌ Password must be at least 8 characters long");
-        return;
-      }
-      
-      // Validate password confirmation
-      if (form.password !== confirmPassword) {
-        setError("❌ Passwords do not match");
-        return;
-      }
-    }
-    
     // Only send changed fields
     let payload = { ...changedFields };
     
     // Validate phone number if it was changed
     if (changedFields.phone) {
-      const assistantPhone = formatPhoneForDB(changedFields.phone);
-      // Check if it's valid (not just country code)
-      if (!assistantPhone || assistantPhone.length <= 2) {
-        setError("❌ Please enter a valid phone number");
+      const assistantPhone = changedFields.phone.toString();
+      if (assistantPhone.length !== 11) {
+        setError("❌ Assistant phone number must be exactly 11 digits");
         return;
       }
-      payload.phone = assistantPhone; // Save with country code
+      payload.phone = assistantPhone; // Keep as string to preserve leading zeros exactly
     }
     
-    // Handle password separately - only include if user entered one
-    if (form.password && form.password.trim() !== "") {
+    // Handle password separately - only include if it was changed and not empty
+    if (changedFields.password && changedFields.password.trim() !== "") {
       // Send the raw password - backend will hash it
-      payload.password = form.password;
+      payload.password = changedFields.password;
+    } else if (changedFields.password !== undefined) {
+      // If password field was cleared, don't send it
+      delete payload.password;
     }
     
     updateAssistantMutation.mutate(
@@ -261,11 +225,6 @@ export default function EditAssistant() {
           setSuccess(true);
           // Update original data to reflect the new state
           setOriginalForm({ ...form });
-          // Clear password fields after successful update if password was changed
-          if (form.password && form.password.trim() !== "") {
-            setForm(prev => ({ ...prev, password: "" }));
-            setConfirmPassword("");
-          }
         },
         onError: (err) => {
           if (err.response?.status === 409) {
@@ -497,31 +456,12 @@ export default function EditAssistant() {
             box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
           }
         `}</style>
-                 <Title 
-                   backText="Back" 
-                   href="/manage_assistants" 
-                   backButtonStyle={{
-                     background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
-                     color: 'white',
-                     border: 'none',
-                     borderRadius: 8,
-                     padding: '8px 16px',
-                     fontWeight: 600,
-                     cursor: 'pointer',
-                     transition: '0.3s',
-                     boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
-                     fontSize: 15,
-                     display: 'flex',
-                     alignItems: 'center',
-                     gap: 8,
-                     marginLeft: 25
-                   }}
-                 >
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                     <Image src="/user-edit2.svg" alt="Edit Assistant" width={32} height={32} />
-                     Edit Assistant
-                   </div>
-                 </Title>
+        <Title backText="Back" href="/manage_assistants">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image src="/user-edit2.svg" alt="Edit Assistant" width={32} height={32} />
+            Edit Assistant
+          </div>
+        </Title>
         
           <div className="form-container">
             
@@ -627,33 +567,25 @@ export default function EditAssistant() {
               </div>
               <div className="form-group">
                 <label>Phone</label>
-                <PhoneInput
-                  country="eg"
-                  enableSearch
-                  value={form.phone || ''}
-                  onChange={(value) => {
-                    const validation = validateEgyptPhone(value);
-                    setForm({ ...form, phone: validation.value });
-                  }}
-                  onKeyDown={(e) => handleEgyptPhoneKeyDown(e, form.phone)}
-                  containerClass="phone-container"
-                  inputClass="phone-input"
-                  buttonClass="phone-flag-btn"
-                  dropdownClass="phone-dropdown"
-                  placeholder="Enter Phone Number"
-                />
-              </div>
-              <div className="form-group">
-                <label>Email <span style={{color: 'red'}}>*</span></label>
                 <input
                   className="form-input"
-                  name="email"
-                  type="email"
-                  placeholder="Enter assistant's email"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
+                  name="phone"
+                  type="tel"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  placeholder="Edit assistant's phone number (11 digits)"
+                  value={form.phone}
+                  maxLength={11}
+                  onChange={(e) => {
+                    // Only allow numbers and limit to 11 digits
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                    handleChange({ target: { name: 'phone', value } });
+                  }}
+
                 />
+                <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                  Must be exactly 11 digits (e.g., 12345678901)
+                </small>
               </div>
               <div className="form-group">
                 <label>New Password (leave blank to keep current)</label>
@@ -692,52 +624,7 @@ export default function EditAssistant() {
                     />
                   </button>
                 </div>
-                {form.password && form.password.trim() !== "" && (
-                  <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-                    Must be at least 8 characters long
-                  </small>
-                )}
               </div>
-              {form.password && form.password.trim() !== "" && (
-                <div className="form-group">
-                  <label>Confirm New Password</label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-input"
-                      name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm new password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      style={{ paddingRight: '50px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        width: '24px',
-                        height: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <img 
-                        src={showConfirmPassword ? "/hide.svg" : "/show.svg"} 
-                        alt={showConfirmPassword ? "Hide password" : "Show password"}
-                        style={{ width: '20px', height: '20px' }}
-                      />
-                    </button>
-                  </div>
-                </div>
-              )}
               <div className="form-group">
                 <label>Role</label>
                 <RoleSelect 
@@ -748,11 +635,6 @@ export default function EditAssistant() {
               <AccountStateSelect
                 value={form.account_state || 'Activated'}
                 onChange={(value) => setForm({ ...form, account_state: value })}
-                required={false}
-              />
-              <AddToContactAssistants
-                value={form.ATCA || 'no'}
-                onChange={(value) => setForm({ ...form, ATCA: value })}
                 required={false}
               />
               <button type="submit" disabled={updateAssistantMutation.isPending || !hasChanges()} className="submit-btn">

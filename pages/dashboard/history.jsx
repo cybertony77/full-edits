@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import Image from 'next/image';
 import { AVAILABLE_CENTERS } from "../../constants/centers";
 import { weeks } from "../../constants/weeks";
 import Title from "../../components/Title";
@@ -13,6 +12,7 @@ import { IconArrowRight, IconSearch, IconChevronLeft, IconChevronRight } from '@
 import { ActionIcon, TextInput, useMantineTheme } from '@mantine/core';
 import { useStudentsHistory } from '../../lib/api/students';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import Image from "next/image";
 
 export function InputWithButton(props) {
   const theme = useMantineTheme();
@@ -67,9 +67,9 @@ export default function History() {
 
   // React Query hook with real-time updates - 5 second polling
   const { data: students = [], isLoading, error, refetch, isRefetching, dataUpdatedAt } = useStudentsHistory({
-    // Refetch settings
-    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
-    refetchIntervalInBackground: false, // Don't refetch when tab is not active
+    // Aggressive real-time settings for immediate updates
+    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time updates
+    refetchIntervalInBackground: true, // Continue when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     refetchOnReconnect: true, // Refetch when reconnecting to internet
     staleTime: 0, // Always consider data stale to force refetch
@@ -308,12 +308,12 @@ export default function History() {
     }}>
       <div ref={containerRef} style={{ maxWidth: 800, margin: "40px auto", padding: "20px 15px 20px 15px" }}>
         <div style={{ marginBottom: 20 }}>
-          <Title>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Image src="/history.svg" alt="History" width={32} height={32} />
-              History
-            </div>
-          </Title>
+            <Title backText={"Back to Dashboard"} href="/dashboard">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Image src="/history.svg" alt="History" width={32} height={32} />
+                History
+              </div>
+            </Title>
         </div>
         
         {/* Search Bar */}
@@ -680,7 +680,7 @@ export default function History() {
             <>
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
               <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '1400px' }}>
-                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa' }}>
+                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
                   <Table.Tr>
                     <Table.Th style={{ width: '60px', minWidth: '60px', textAlign: 'center' }}>ID</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Name</Table.Th>
@@ -728,14 +728,6 @@ export default function History() {
                                 fontWeight: 'bold'
                               }}>⚠️ Not Completed</span>;
                             } else if (record.hwDone === true) {
-                              // Show homework degree if it exists
-                              const hwDegree = record.hwDegree;
-                              if (hwDegree && String(hwDegree).trim() !== '') {
-                                return <span style={{ 
-                                  color: '#28a745',
-                                  fontWeight: 'bold'
-                                }}>✅ Done ({hwDegree})</span>;
-                              }
                               return <span style={{ 
                                 color: '#28a745',
                                 fontWeight: 'bold'

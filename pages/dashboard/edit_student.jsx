@@ -1,16 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import Image from 'next/image';
 import CenterSelect from "../../components/CenterSelect";
 import BackToDashboard from "../../components/BackToDashboard";
 import GradeSelect from '../../components/GradeSelect';
 import AccountStateSelect from '../../components/AccountStateSelect';
 import Title from '../../components/Title';
 import { useStudents, useStudent, useUpdateStudent } from '../../lib/api/students';
-import PhoneInput from 'react-phone-input-2';
-import 'react-phone-input-2/lib/style.css';
-import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../../lib/phoneUtils';
-
+import Image from "next/image";
 // Helper to normalize grade values to match select options
 function normalizeGrade(grade) {
   if (!grade) return "";
@@ -234,23 +230,21 @@ export default function EditStudent() {
     
     // Validate phone numbers if they were changed
     if (changedFields.phone) {
-      const studentPhone = formatPhoneForDB(changedFields.phone);
-      // Check if it's valid (not just country code)
-      if (!studentPhone || studentPhone.length <= 2) {
-        setError("Please enter a valid student phone number");
+      const studentPhone = changedFields.phone.toString();
+      if (studentPhone.length !== 11) {
+        setError("Student phone number must be exactly 11 digits");
         return;
       }
-      changedFields.phone = studentPhone; // Save with country code
+      changedFields.phone = studentPhone; // Keep as string to preserve leading zeros exactly
     }
     
     if (changedFields.parents_phone) {
-      const parentPhone = formatPhoneForDB(changedFields.parents_phone);
-      // Check if it's valid (not just country code)
-      if (!parentPhone || parentPhone.length <= 2) {
-        setError("Please enter a valid parent phone number");
+      const parentPhone = changedFields.parents_phone.toString();
+      if (parentPhone.length !== 11) {
+        setError("Parent's phone number must be exactly 11 digits");
         return;
       }
-      changedFields.parents_phone = parentPhone; // Save with country code
+      changedFields.parents_phone = parentPhone; // Keep as string to preserve leading zeros exactly
     }
     
     // Check if student phone number is the same as parent phone number
@@ -570,7 +564,7 @@ export default function EditStudent() {
         }
       `}</style>
 
-      <Title>
+      <Title backText={"Back to Dashboard"} href="/dashboard">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Image src="/user-edit2.svg" alt="Edit Student" width={32} height={32} />
           Edit Student
@@ -709,39 +703,48 @@ export default function EditStudent() {
             <div className="form-row">
               <div className="form-group">
                 <label>Student Phone</label>
-                <PhoneInput
-                  country="eg"
-                  enableSearch
+                <input
+                  className="form-input"
+                  name="phone"
+                  type="tel"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  placeholder="Enter student's phone number (11 digits)"
                   value={formData.phone || ''}
-                  onChange={(value) => {
-                    const validation = validateEgyptPhone(value);
-                    setFormData({ ...formData, phone: validation.value });
+                  maxLength={11}
+                  onChange={(e) => {
+                    // Only allow numbers and limit to 11 digits
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                    handleChange({ target: { name: 'phone', value } });
                   }}
-                  onKeyDown={(e) => handleEgyptPhoneKeyDown(e, formData.phone)}
-                  containerClass="phone-container"
-                  inputClass="phone-input"
-                  buttonClass="phone-flag-btn"
-                  dropdownClass="phone-dropdown"
-                  placeholder="Enter Phone Number"
+                  autocomplete="off"
                 />
+                <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                  Must be exactly 11 digits (e.g., 12345678901)
+                </small>
               </div>
               <div className="form-group">
                 <label>Parent's Phone (Whatsapp)</label>
-                <PhoneInput
-                  country="eg"
-                  enableSearch
+                <input
+                  className="form-input"
+                  name="parents_phone"
+                  type="tel"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  placeholder="Enter parent's phone number (11 digits)"
                   value={formData.parents_phone || ''}
-                  onChange={(value) => {
-                    const validation = validateEgyptPhone(value);
-                    setFormData({ ...formData, parents_phone: validation.value });
+                  maxLength={11}
+                  onChange={(e) => {
+                    // Only allow numbers and limit to 11 digits
+                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 11);
+                    handleChange({ target: { name: 'parents_phone', value } });
                   }}
-                  onKeyDown={(e) => handleEgyptPhoneKeyDown(e, formData.parents_phone)}
-                  containerClass="phone-container"
-                  inputClass="phone-input"
-                  buttonClass="phone-flag-btn"
-                  dropdownClass="phone-dropdown"
-                  placeholder="Enter Parent Number"
+
+                  autocomplete="off"
                 />
+                <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+                  Must be exactly 11 digits (e.g., 12345678901)
+                </small>
               </div>
             </div>
             <div className="form-group" style={{ width: '100%' }}>

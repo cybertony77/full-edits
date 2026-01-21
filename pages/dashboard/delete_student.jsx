@@ -549,7 +549,7 @@ export default function DeleteStudent() {
         )}
         {deleted && (
           <div className="success-message" style={{ textAlign: "center", padding: "40px 20px" }}>
-            <div style={{ fontSize: "4rem", marginBottom: "20px" }}>✅</div>
+            <div style={{ fontSize: "4rem" }}><Image src="/success-mark3.svg" alt="Delete" width={80} height={80} /></div>
             <h2 style={{ color: "#28a745", marginBottom: "16px" }}>Student Deleted Successfully!</h2>
             <p style={{ color: "#6c757d", marginBottom: "24px" }}>
               Student ID <strong>{studentId}</strong> has been permanently deleted from the database.

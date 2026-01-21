@@ -490,7 +490,7 @@ export default function Centers() {
     }}>
       <Title style={{ justifyContent: 'space-between', gap: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Image src="/centers.svg" alt="Centers" width={32} height={32} />
+          <Image src="/center.svg" alt="Centers" width={32} height={32} />
           Centers Management
         </div>
       </Title>

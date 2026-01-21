@@ -403,7 +403,7 @@ export default function GenerateLink() {
           }
         `}</style>
 
-        <Title>
+        <Title backText='Back' href={null}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/link.svg" alt="Link" width={32} height={32} />
             Public Link Generator
@@ -662,7 +662,7 @@ export default function GenerateLink() {
               marginBottom: "20px",
               textAlign: "center"
             }}>
-              📱 Send via WhatsApp
+              <Image src="/whatsapp2.svg" alt="WhatsApp" width={25} height={25} style={{ display: 'inline-block' , transform: 'translateY(4px)' }} /> Send via WhatsApp
             </div>
             
             <div style={{
@@ -750,7 +750,7 @@ We wish you gets high scores 😊❤
                         }}
                       >
                         <Image src="/whatsapp.svg" alt="WhatsApp" width={30} height={30} />
-                        WhatsApp
+                        Send
                       </button>
                     ) : (
                       <div style={{
@@ -807,7 +807,7 @@ We wish ${selectedStudent.name?.split(' ')[0] || 'Student'} gets high scores �
                         }}
                       >
                         <Image src="/whatsapp.svg" alt="WhatsApp" width={30} height={30} />
-                        WhatsApp
+                        Send
                       </button>
                     ) : (
                       <div style={{

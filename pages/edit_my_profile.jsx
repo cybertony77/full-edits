@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import Title from "../../components/Title";
-import { useProfile, useUpdateProfile, useProfilePicture } from '../../lib/api/auth';
-import apiClient from '../../lib/axios';
+import Title from "../components/Title";
+import { useProfile, useUpdateProfile, useProfilePicture } from '../lib/api/auth';
+import apiClient from '../lib/axios';
 import Image from 'next/image';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
-import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../../lib/phoneUtils';
+import { formatPhoneForDB, validateEgyptPhone, handleEgyptPhoneKeyDown } from '../lib/phoneUtils';
 
 export default function EditMyProfile() {
   const [form, setForm] = useState({ name: "", id: "", phone: "", email: "", password: "", profile_picture: null });

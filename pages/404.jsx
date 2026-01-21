@@ -299,14 +299,14 @@ export default function Custom404() {
             className="btn btn-contact"
             onClick={() => router.push('/contact_developer')}
           >
-            <Image src="/message.svg" alt="Contact" width={20} height={20} />
+            <Image src="/message.svg" alt="Contact" style={{ transform: "translateY(4px)" }} width={20} height={20} />
             Contact Developer
           </button>
           <button 
             className="btn btn-primary"
             onClick={() => router.push('/')}
           >
-            <Image src="/login.svg" alt="Login" width={20} height={20} />
+            <Image src="/lock.svg" alt="lock" style={{ transform: "translateY(4px)" }} width={20} height={20} />
             Go to Login
           </button>
           <button 
@@ -322,7 +322,7 @@ export default function Custom404() {
               }
             }}
           >
-            <Image src="/arrow-left.svg" alt="Back" width={20} height={20} />
+            <Image src="/arrow-left.svg" alt="Back" style={{ transform: "translateY(4px)" }} width={20} height={20} />
             Go Back
           </button>
         </div>

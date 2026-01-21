@@ -961,7 +961,7 @@ export default function SessionInfo() {
         {/* Show week info if week is selected */}
         {selectedWeek && (
           <div className="week-info">
-            📅 Showing data for {selectedWeek} - {selectedCenter} - {selectedGrade}
+            <Image src="/books.svg" alt="Week Info" width={20} height={20} style={{ display: 'inline-block' , transform: 'translateY(4px)', marginRight: '5px' }} /> Showing data for {selectedWeek} - {selectedCenter} - {selectedGrade}
           </div>
         )}
         

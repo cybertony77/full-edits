@@ -147,7 +147,7 @@ export default function UserMenu() {
   };
 
   const handleEditProfile = () => {
-    router.push('/dashboard/edit_my_profile');
+    router.push('/edit_my_profile');
   };
 
   const handleContactDeveloper = () => {
@@ -295,7 +295,7 @@ export default function UserMenu() {
                   color: '#dc3545',
                   lineHeight: 1.4
                 }}>
-                  <Image src="/cross-mark.svg" alt="Clock" width={20} height={20} style={{ marginRight: '5px' , transform: "translateY(5px)" }} />
+                  <Image src="/alert-triangle2.svg" alt="alert" width={20} height={20} style={{ marginRight: '5px' , transform: "translateY(5px)" }} />
                   Subscription Expired
                 </div>
               ) : subscription.date_of_expiration && timeRemaining !== null ? (

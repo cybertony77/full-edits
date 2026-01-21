@@ -742,7 +742,7 @@ export default function HomeworkStart() {
               e.currentTarget.style.transform = "translateY(0)";
             }}
           >
-            <Image src="/chevron-left.svg" alt="Previous" width={20} height={20} />
+            <Image src="/chevron-left2.svg" alt="Previous" width={20} height={20} />
             Previous
           </button>
         )}
@@ -776,7 +776,7 @@ export default function HomeworkStart() {
             }}
           >
             Next
-            <Image src="/chevron-right.svg" alt="Next" width={20} height={20} />
+            <Image src="/chevron-right2.svg" alt="Next" width={20} height={20} />
           </button>
         )}
 

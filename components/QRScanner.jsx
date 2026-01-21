@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { BrowserQRCodeReader } from '@zxing/browser';
+import Image from 'next/image';
 
 const QRScanner = ({ onQRCodeScanned, onError }) => {
   const videoRef = useRef(null);
@@ -259,10 +259,7 @@ const QRScanner = ({ onQRCodeScanned, onError }) => {
     <div style={{ background: 'white', borderRadius: 16, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.1)', marginBottom: 24 }}>
       {!isScanning ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, background: '#f8f9fa', borderRadius: 12, border: '2px dashed #dee2e6', padding: 20, textAlign: 'center', gap: 16 }}>
-          <div style={{ color: '#6c757d', fontSize: '1rem', fontWeight: 500, marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-            <Image src="/scan2.svg" alt="Scan" width={20} height={20} />
-            Choose how to scan QR code
-          </div>
+          <div style={{ color: '#6c757d', fontSize: '1rem', fontWeight: 500, marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}><Image src="/scan2.svg" alt="Scan" width={20} height={20} /> Choose how to scan QR code</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button 
               onClick={startCamera} 
@@ -290,8 +287,7 @@ const QRScanner = ({ onQRCodeScanned, onError }) => {
                 opacity: cameraSupported ? 1 : 0.6
               }}
             >
-              <Image src="/camera2.svg" alt="Camera" width={20} height={20} />
-              {cameraSupported ? 'Open Camera' : 'Camera Not Supported'}
+              <Image src="/camera2.svg" alt="Camera" width={20} height={20} /> {cameraSupported ? 'Open Camera' : 'Camera Not Supported'}
             </button>
             <button
               onClick={handleUploadClick}
@@ -313,8 +309,7 @@ const QRScanner = ({ onQRCodeScanned, onError }) => {
                 boxShadow: '0 4px 16px rgba(31, 168, 220, 0.3)'
               }}
             >
-              <Image src="/folder.svg" alt="Upload" width={20} height={20} />
-              Upload QR Code
+              <Image src="/folder.svg" alt="Upload" width={20} height={20} /> Upload QR Code
             </button>
             <input
               ref={fileInputRef}

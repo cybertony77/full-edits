@@ -12,7 +12,7 @@ export default function SubscriptionDashboard() {
       padding: '20px'
     }}>
       <div className="page-container">
-        <Title backText="Back to Dashboard" href="/dashboard">
+        <Title backText="Back" href="/dashboard">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/dollar.svg" alt="Subscription" width={32} height={32} />
             Subscription Dashboard

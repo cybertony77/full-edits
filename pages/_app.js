@@ -15,18 +15,25 @@ import CustomHeader from "../components/publicHeader";
 
 // PWA Service Worker Registration handled by next-pwa
 
-// DevTools Protection Component (only active in production)
+// DevTools Protection Component (blocks devtools on all pages except for developer role)
 function DevToolsProtection({ userRole }) {
   const router = useRouter();
   const [devToolsDetected, setDevToolsDetected] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [timer, setTimer] = useState(15);
 
-  // Check if on login page or sign-up page
+  // Check if on public pages (pages that don't require authentication)
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  const isLoginPage = currentPath === '/';
-  const isSignUpPage = currentPath === '/sign-up';
-  const isPublicPage = isLoginPage || isSignUpPage;
+  const publicPagesList = [
+    '/',
+    '/sign-up',
+    '/contact_developer',
+    '/contact_assistants',
+    '/forgot_password',
+    '/404',
+    '/student_not_found'
+  ];
+  const isPublicPage = publicPagesList.includes(currentPath);
 
   // Check if user is developer
   const isDeveloper = userRole === 'developer';
@@ -206,26 +213,33 @@ function DevToolsProtection({ userRole }) {
     };
   }, [isDeveloper]);
 
-  // Handle logout when devtools detected (only after 15 seconds if still open, skip on login page)
+  // Handle logout when devtools detected (only after 15 seconds if still open)
   useEffect(() => {
     // Skip for developers
     if (isDeveloper) {
       return;
     }
 
-    // Check if on login page or sign-up page
+    // Check if on public pages (pages without token)
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    const isLoginPage = currentPath === '/';
-    const isSignUpPage = currentPath === '/sign-up';
-    const isPublicPage = isLoginPage || isSignUpPage;
+    const publicPagesList = [
+      '/',
+      '/sign-up',
+      '/contact_developer',
+      '/contact_assistants',
+      '/forgot_password',
+      '/404',
+      '/student_not_found'
+    ];
+    const isPublicPage = publicPagesList.includes(currentPath);
     
-    // On login page or sign-up page, show message but don't redirect
+    // On public pages (without token), show message but don't redirect
     if (isPublicPage && devToolsDetected) {
       // Just show the message, no timer or redirect
       return;
     }
     
-    // For non-public pages, set up timer and redirect
+    // For authenticated pages (with token, except developer), set up timer and redirect
     if (devToolsDetected && !isLoggingOut && !isPublicPage) {
       let redirectTimeout;
       let timerInterval;
@@ -328,9 +342,22 @@ function DevToolsProtection({ userRole }) {
     return null;
   }
 
-  // Render protection in both development and production for testing
-  // Show protection on all pages including login page (but with different behavior)
+  // Render protection on all pages (except developer role)
+  // Show protection on all pages: public pages (without token) and authenticated pages (with token)
   if (devToolsDetected) {
+    // Determine if current page is public (without token)
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    const publicPagesList = [
+      '/',
+      '/sign-up',
+      '/contact_developer',
+      '/contact_assistants',
+      '/forgot_password',
+      '/404',
+      '/student_not_found'
+    ];
+    const isPublicPage = publicPagesList.includes(currentPath);
+    
     return (
       <>
         {/* Dark overlay background with blur */}
@@ -753,6 +780,7 @@ export default function App({ Component, pageProps }) {
   const [userRole, setUserRole] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null);
 
   // Define public pages using useMemo to prevent recreation on every render
   const publicPages = useMemo(() => ["/", "/sign-up", "/contact_developer", "/contact_assistants", "/404", "/forgot_password", "/student_not_found", "/dashboard/student_info"], []);
@@ -1063,6 +1091,114 @@ export default function App({ Component, pageProps }) {
     return () => clearInterval(interval);
   }, [isAuthenticated, router.pathname, publicPages]);
 
+  // Subscription countdown timer calculation
+  useEffect(() => {
+    // Only calculate timer if authenticated and subscription exists
+    // Exclude only students, allow assistant, admin, and developer to see timer
+    if (!isAuthenticated || !subscription || userRole === 'student') {
+      setTimeRemaining(null);
+      return;
+    }
+
+    // Simple logic: if active = false AND date_of_expiration = null, don't show timer
+    if (subscription.active === false && !subscription.date_of_expiration) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    // If date_of_expiration doesn't exist, don't show timer
+    if (!subscription.date_of_expiration) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date();
+      const expiration = new Date(subscription.date_of_expiration);
+      const diff = expiration - now;
+
+      // Calculate time components (use Math.max to ensure non-negative)
+      let days = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+      let hours = Math.max(0, Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+      let minutes = Math.max(0, Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)));
+      let seconds = Math.max(0, Math.floor((diff % (1000 * 60)) / 1000));
+
+      // Redistribute time: if hours is 00 and days > 0, borrow 1 day to fill hours
+      if (hours === 0 && days > 0) {
+        days -= 1;
+        hours = 24;
+      }
+      // If minutes is 00 and hours > 0, borrow 1 hour to fill minutes
+      if (minutes === 0 && hours > 0) {
+        hours -= 1;
+        minutes = 60;
+      }
+      // If seconds is 00 and minutes > 0, borrow 1 minute to fill seconds
+      if (seconds === 0 && minutes > 0) {
+        minutes -= 1;
+        seconds = 60;
+      }
+
+      // Update timer with calculated values (always set, even if zero)
+      setTimeRemaining({ days, hours, minutes, seconds });
+    };
+
+    // Calculate timer immediately
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [subscription, userRole, isAuthenticated]);
+
+  // Check if we should show subscription warning
+  const shouldShowSubscriptionWarning = () => {
+    // Don't show if not authenticated
+    if (!isAuthenticated) {
+      return false;
+    }
+
+    // Only hide for student role - show for assistant, admin, and developer
+    if (userRole === 'student') {
+      return false;
+    }
+
+    // Don't show on student_dashboard routes
+    if (isStudentDashboardRoute(router.pathname)) {
+      return false;
+    }
+
+    // Don't show if no subscription data
+    if (!subscription) {
+      return false;
+    }
+
+    // If subscription is expired (active = false and no date_of_expiration)
+    if (subscription.active === false && !subscription.date_of_expiration) {
+      return true;
+    }
+
+    // If subscription is active but expiring within 3 days
+    if (subscription.active === true && subscription.date_of_expiration) {
+      const now = new Date();
+      const expiration = new Date(subscription.date_of_expiration);
+      const fiveDaysBeforeExpiration = new Date(expiration);
+      fiveDaysBeforeExpiration.setDate(fiveDaysBeforeExpiration.getDate() - 3);
+      
+      return now >= fiveDaysBeforeExpiration;
+    }
+
+    return false;
+  };
+
+  // Format remaining time for display
+  const formatRemainingTime = () => {
+    if (!timeRemaining) return '';
+    const { days, hours, minutes, seconds } = timeRemaining;
+    return `${String(days || 0).padStart(2, '0')} days : ${String(hours || 0).padStart(2, '0')} hours : ${String(minutes || 0).padStart(2, '0')} min : ${String(seconds || 0).padStart(2, '0')} sec`;
+  };
+
   // Check subscription expiration and redirect non-developers/non-students to login
   useEffect(() => {
     // Only check if authenticated, not on public pages, and subscription data is loaded
@@ -1150,6 +1286,7 @@ export default function App({ Component, pageProps }) {
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
           <MantineProvider>
+            <DevToolsProtection userRole={userRole} />
             {router.pathname === "/dashboard/student_info" ? (
               <div
                 style={{
@@ -1203,6 +1340,103 @@ export default function App({ Component, pageProps }) {
             minHeight: '100vh' 
           }}>
             <Header />
+            
+            {/* Subscription Warning - Show for assistant/admin/developer, not on student_dashboard */}
+            {shouldShowSubscriptionWarning() && (
+              <div className="subscription-warning" style={{
+                background: 'linear-gradient(135deg, #dc3545 0%, #ff6b6b 100%)',
+                borderRadius: '10px',
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                boxShadow: '0 4px 16px rgba(220, 53, 69, 0.3)',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 600,
+                lineHeight: 1.5,
+                maxWidth: '100%',
+                margin: '10px 10px 0 10px'
+              }}>
+                <Image src="/alert-triangle.svg" alt="Warning" width={24} height={24} style={{ flexShrink: 0 }} />
+                <div style={{ textAlign: 'center' }}>
+                  {subscription.active === false && !subscription.date_of_expiration ? (
+                    <span>
+                      Subscription Expired, to renew contact{' '}
+                      <a 
+                        href="/contact_developer" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/contact_developer');
+                        }}
+                        style={{
+                          color: '#ffffff',
+                          textDecoration: 'underline',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Tony Joseph (developer)
+                      </a>
+                    </span>
+                  ) : (
+                    <span>
+                      Subscription will expire after {formatRemainingTime()}, to renew contact{' '}
+                      <a 
+                        href="/contact_developer" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          router.push('/contact_developer');
+                        }}
+                        style={{
+                          color: '#ffffff',
+                          textDecoration: 'underline',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Tony Joseph (developer)
+                      </a>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <style jsx>{`
+              .subscription-warning {
+                margin: 10px 10px 0 10px;
+              }
+              
+              @media (max-width: 768px) {
+                .subscription-warning {
+                  margin: 10px 10px 0 10px;
+                  padding: 12px 16px;
+                  font-size: 14px;
+                  gap: 10px;
+                }
+                .subscription-warning img {
+                  width: 20px !important;
+                  height: 20px !important;
+                }
+              }
+              
+              @media (max-width: 480px) {
+                .subscription-warning {
+                  margin: 10px 10px 0 10px;
+                  padding: 10px 14px;
+                  font-size: 13px;
+                  gap: 8px;
+                  flex-direction: column;
+                  align-items: center;
+                }
+                .subscription-warning img {
+                  width: 18px !important;
+                  height: 18px !important;
+                }
+              }
+            `}</style>
             
             {/* Session Expiry Warning */}
             {showExpiryWarning && (

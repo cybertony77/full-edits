@@ -590,7 +590,7 @@ export default function DeleteAssistant() {
           </>
         ) : (
           <div className="success-message">
-            <div style={{ fontSize: "4rem", marginBottom: "20px" }}>✅</div>
+            <div style={{ fontSize: "4rem"}}><Image src="/success-mark3.svg" alt="Success" width={80} height={80} /></div>
             <h2 style={{ color: "#28a745", marginBottom: "16px" }}>Assistant Deleted Successfully!</h2>
             <p style={{ color: "#6c757d", marginBottom: "24px" }}>
               Assistant <strong>{assistantId}</strong> has been permanently deleted from the database.

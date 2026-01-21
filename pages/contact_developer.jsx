@@ -3,11 +3,16 @@ import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import Title from "../components/Title";
 import apiClient from "../lib/axios";
+import { useSystemConfig } from "../lib/api/system";
 
 export default function ContactDeveloperPage() {
   const router = useRouter();
+  const { data: systemConfig } = useSystemConfig();
+  const systemName = systemConfig?.name || 'Demo Attendance System';
   const [hasToken, setHasToken] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [developerPhone, setDeveloperPhone] = useState('201211172756');
+  const [developerEmail, setDeveloperEmail] = useState('tony.joseph.business1717@gmail.com');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -25,6 +30,23 @@ export default function ContactDeveloperPage() {
       }
     };
     checkAuth();
+  }, []);
+
+  useEffect(() => {
+    const fetchDeveloperContact = async () => {
+      try {
+        const res = await fetch('/api/developer/contact');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.phone) setDeveloperPhone(data.phone);
+          if (data.email) setDeveloperEmail(data.email);
+        }
+      } catch (err) {
+        console.error('Error fetching developer contact:', err);
+        // Use defaults if fetch fails
+      }
+    };
+    fetchDeveloperContact();
   }, []);
 
   if (loading) {
@@ -176,7 +198,7 @@ export default function ContactDeveloperPage() {
             }} className="loading-logo">
               <Image 
                 src="/logo.png" 
-                alt="Mr. George Magdy Logo" 
+                alt="Demo Attendance System Logo" 
                 width={100} 
                 height={100} 
                 style={{ objectFit: "cover" }} 
@@ -254,7 +276,7 @@ export default function ContactDeveloperPage() {
   return (
     <div style={{ 
       minHeight: "100vh", 
-      padding: "20px",
+      padding: "20px 5px 20px 5px",
       position: "relative",
       overflow: "hidden"
     }}>
@@ -299,7 +321,13 @@ export default function ContactDeveloperPage() {
         zIndex: 2
       }}>
         {/* Show Title component only if user has token */}
-        {hasToken && <Title backText="Back" href={null}>Contact Developer</Title>}
+        {hasToken && (
+          <Title backText="Back" href={null}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              Contact Developer
+            </div>
+          </Title>
+        )}
         
         <div className="contact-card-container">
           <style jsx>{`
@@ -668,7 +696,7 @@ export default function ContactDeveloperPage() {
             {/* Phone Section */}
             <div className="contact-item">
               <div className="contact-icon phone-icon">
-              <Image src="/phone-incoming.svg" alt="Phone" width={32} height={32} />
+                <Image src="/phone-incoming.svg" alt="Phone" width={32} height={32} />
               </div>
               <h3 style={{ 
                 color: "#dc3545", 
@@ -680,13 +708,13 @@ export default function ContactDeveloperPage() {
               </h3>
               <div>
                 <a 
-                  href="tel:01211172756" 
+                  href={`tel:${developerPhone}`}
                   className="contact-link"
                   style={{ color: "#dc3545" }}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Image src="/phone-incoming.svg" alt="Phone" width={20} height={20} />
-                    01211172756
+                    {developerPhone.startsWith('2') ? developerPhone.substring(1) : developerPhone}
                   </span>
                 </a>
               </div>
@@ -710,7 +738,7 @@ export default function ContactDeveloperPage() {
               </h3>
               <div>
                 <a 
-                  href="https://wa.me/201211172756?text=Hello%20Tony,%20I%20need%20help%20in%20Mr.%20Ahmad%20Badr%20Attendance%20System" 
+                  href={`https://wa.me/${developerPhone}?text=${encodeURIComponent(`Hello Tony, I need help in the ${systemName}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="contact-link"
@@ -739,13 +767,13 @@ export default function ContactDeveloperPage() {
               </h3>
               <div>
                 <a 
-                  href="mailto:tony.joseph.business1717@gmail.com" 
+                  href={`mailto:${developerEmail}`}
                   className="contact-link"
                   style={{ color: "#1FA8DC" }}
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Image src="/mail.svg" alt="Email" width={20} height={20} />
-                    tony.joseph.business1717@gmail.com
+                    {developerEmail}
                   </span>
                 </a>
               </div>
@@ -764,7 +792,7 @@ export default function ContactDeveloperPage() {
             borderRadius: "16px",
             border: "1px solid rgba(31, 168, 220, 0.1)"
           }}>
-            💡 Feel free to contact me for any technical support, bug reports, feature requests, or urgent issues regarding the Mr. Ahmad Badr Attendance System. I'm here to help ensure the system runs smoothly for all users.
+            💡 Feel free to contact me for any technical support, bug reports, feature requests, or urgent issues regarding the {systemName}. I'm here to help ensure the system runs smoothly for all users.
           </div>
 
           {/* Action Buttons */}
@@ -807,8 +835,8 @@ export default function ContactDeveloperPage() {
                     e.target.style.boxShadow = "0 4px 16px rgba(40, 167, 69, 0.3)";
                   }}
                 >
-                  <span style={{ marginRight: "8px" }}><Image src="/lock.svg" alt="Lock" style={{ transform: "translateY(4px)" }} width={20} height={20} /></span>
-                  Go to Login
+                  <Image src="/lock.svg" style={{ transform: "translateY(0px) !important" }} alt="Lock" width={20} height={20} />
+                  <span style={{ marginLeft: "8px" }}>Go to Login</span>
                 </button>
 
                 {/* Back Button */}
@@ -841,8 +869,8 @@ export default function ContactDeveloperPage() {
                     e.target.style.boxShadow = "0 4px 16px rgba(31, 168, 220, 0.3)";
                   }}
                 >
-                  <span style={{ marginRight: "8px" }}><Image src="/arrow-left.svg" alt="Back" style={{ transform: "translateY(4px)" }} width={20} height={20} /></span>
-                  Go Back
+                  <Image src="/arrow-left.svg" style={{ transform: "translateY(0px) !important" }} alt="Back" width={20} height={20} />
+                  <span style={{ marginLeft: "8px" }}>Go Back</span>
                 </button>
               </>
             )}

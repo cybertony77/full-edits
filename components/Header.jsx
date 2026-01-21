@@ -1,10 +1,24 @@
 import Image from 'next/image';
 import UserMenu from './UserMenu';
 import { useRouter } from 'next/router';
+import { useProfile } from '../lib/api/auth';
+import { useSystemConfig } from '../lib/api/system';
 
 export default function Header() {
   const router = useRouter();
   const isDashboard = router.pathname === '/dashboard';
+  const { data: user } = useProfile();
+  const { data: systemConfig } = useSystemConfig();
+  const userRole = user?.role || '';
+  const systemName = systemConfig?.name || 'Demo Attendance System';
+  
+  const handleLogoClick = () => {
+    if (userRole === 'student') {
+      router.push('/student_dashboard');
+    } else {
+      router.push('/dashboard');
+    }
+  };
   
   return (
     <header className="header" style={{
@@ -21,10 +35,10 @@ export default function Header() {
       zIndex: 10
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginLeft: 32 }}>
-        <span onClick={() => router.push('/dashboard')} style={{ cursor: 'pointer', display: 'inline-block' }}>
+        <span onClick={handleLogoClick} style={{ cursor: 'pointer', display: 'inline-block' }}>
           <img
             src="/logo.png"
-            alt="Mr. Ahmed Badr Logo"
+            alt={`${systemName} Logo`}
             width={50}
             height={50}
             style={{ 
@@ -65,7 +79,7 @@ export default function Header() {
           letterSpacing: 1.2,
           textShadow: '0 2px 8px rgba(31,168,220,0.10)'
         }}>
-          Mr. Ahmed Badr Attendance System
+          {systemName}
         </span>
       </div>
       <UserMenu />
@@ -84,6 +98,10 @@ export default function Header() {
           span {
             font-size: 17px !important;
             letter-spacing: 0.5px !important;
+          }
+          img {
+            width: 45px !important;
+            height: 45px !important;
           }
         }
       `}</style>

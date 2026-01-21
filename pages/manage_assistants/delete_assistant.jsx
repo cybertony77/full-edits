@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Image from "next/image";
 import Title from "../../components/Title";
 import ContactDeveloper from "../../components/ContactDeveloper";
 import { useAssistant, useAssistants, useDeleteAssistant } from '../../lib/api/assistants';
-import Image from 'next/image';
 
 export default function DeleteAssistant() {
   const router = useRouter();
@@ -152,31 +152,31 @@ export default function DeleteAssistant() {
   return (
     <div style={{ padding: "20px 5px 20px 5px" }}>
       <div style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
-      <Title 
-        backText="Back" 
-        href="/manage_assistants" 
-        backButtonStyle={{
-          background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
-          color: 'white',
-          border: 'none',
-          borderRadius: 8,
-          padding: '8px 16px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          transition: '0.3s',
-          boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
-          fontSize: 15,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginLeft: 25
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Image src="/trash2.svg" alt="Delete Assistant" width={32} height={32} />
-          Delete Assistant
-        </div>
-      </Title>
+                 <Title 
+                   backText="Back" 
+                   href="/manage_assistants" 
+                   backButtonStyle={{
+                     background: 'linear-gradient(90deg, rgb(108, 117, 125) 0%, rgb(73, 80, 87) 100%)',
+                     color: 'white',
+                     border: 'none',
+                     borderRadius: 8,
+                     padding: '8px 16px',
+                     fontWeight: 600,
+                     cursor: 'pointer',
+                     transition: '0.3s',
+                     boxShadow: 'rgba(0, 0, 0, 0.2) 0px 4px 16px',
+                     fontSize: 15,
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: 8,
+                     marginLeft: 25
+                   }}
+                 >
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <Image src="/trash2.svg" alt="Delete Assistant" width={32} height={32} />
+                     Delete Assistant
+                   </div>
+                 </Title>
         <style jsx>{`
           .delete-btn {
             background: linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%);
@@ -531,6 +531,7 @@ export default function DeleteAssistant() {
                 <p><strong>Username:</strong> {assistant.id}</p>
                 <p><strong>Name:</strong> {assistant.name}</p>
                 <p><strong>Phone:</strong> {assistant.phone}</p>
+                <p><strong>Email:</strong> {assistant.email}</p>
                 <p><strong>Role:</strong> {assistant.role}</p>
                 <div style={{ marginTop: "20px" }}>
                   {(currentUser && assistant.id === currentUser.assistant_id) ? (
@@ -551,8 +552,10 @@ export default function DeleteAssistant() {
                         className="danger-btn btn-full"
                         onClick={() => setShowConfirm(true)}
                         disabled={deleteAssistantMutation.isPending}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                       >
-                        🗑️ Yes, Delete Assistant
+                        <Image src="/trash2.svg" alt="Delete" width={20} height={20} />
+                        Yes, Delete Assistant
                       </button>
                     </>
                   )}

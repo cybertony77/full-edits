@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import { generatePublicStudentLink } from '../../lib/generatePublicLink';
 import Title from '../../components/Title';
 import { useStudents } from '../../lib/api/students';
-import Image from 'next/image';
+import { useSystemConfig } from '../../lib/api/system';
 
 export default function GenerateLink() {
+  const { data: systemConfig } = useSystemConfig();
+  const systemName = systemConfig?.name || 'Demo Attendance System';
   const [studentId, setStudentId] = useState('');
   const [generatedLink, setGeneratedLink] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -418,7 +421,8 @@ export default function GenerateLink() {
               required
             />
             <button type="submit" className="fetch-btn">
-              <Image src="/link.svg" alt="Link" width={20} height={20} /> Generate Link
+              <Image src="/link.svg" alt="Link" width={20} height={20} />
+              Generate Link
             </button>
           </form>
           
@@ -582,7 +586,7 @@ export default function GenerateLink() {
                   letterSpacing: "0.5px",
                   marginBottom: "8px"
                 }}>
-                  PARENT'S PHONE (1)
+                  PARENT'S PHONE
                 </div>
                 <div className="student-info-value" style={{
                   fontSize: "1.1rem",
@@ -594,34 +598,6 @@ export default function GenerateLink() {
                 </div>
               </div>
 
-              {/* Parent Phone 2 */}
-              <div className="student-info-card" style={{
-                background: "white",
-                border: "1px solid #e9ecef",
-                borderRadius: "12px",
-                padding: "16px",
-                borderLeft: "4px solid #1FA8DC",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-              }}>
-                <div className="student-info-label" style={{
-                  fontSize: "0.8rem",
-                  fontWeight: "600",
-                  color: "#6c757d",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px",
-                  marginBottom: "8px"
-                }}>
-                  PARENT'S PHONE (2)
-                </div>
-                <div className="student-info-value" style={{
-                  fontSize: "1.1rem",
-                  fontWeight: "700",
-                  color: "#2d3748",
-                  fontFamily: "monospace"
-                }}>
-                  {selectedStudent.parentsPhone2 || selectedStudent.parents_phone2 || 'N/A'}
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -647,7 +623,8 @@ export default function GenerateLink() {
           <>
             <div className="link-container">
               <div className="link-title">
-                <Image src="/link.svg" alt="Link" width={20} height={20} /> Generated Public Link:
+                <Image src="/link.svg" alt="Link" width={20} height={20} />
+                Generated Public Link:
               </div>
               <div className="link-display">
             <strong>{generatedLink}</strong>
@@ -656,7 +633,8 @@ export default function GenerateLink() {
             onClick={copyToClipboard}
                 className="copy-btn"
               >
-                <Image src="/copy2.svg" alt="Copy" width={20} height={20} /> Copy Link
+                <Image src="/copy2.svg" alt="Copy" width={20} height={20} />
+                Copy Link
           </button>
         </div>
             {successMessage && (
@@ -723,17 +701,6 @@ export default function GenerateLink() {
                   }}>
                     Send to Parent 1
                   </th>
-                  <th style={{
-                    padding: "12px",
-                    textAlign: "center",
-                    fontSize: "1rem",
-                    fontWeight: "600",
-                    color: "#495057",
-                    borderBottom: "2px solid #1FA8DC",
-                    backgroundColor: "#f8f9fa"
-                  }}>
-                    Send to Parent 2
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -748,9 +715,9 @@ export default function GenerateLink() {
                       <button
                         className="whatsapp-btn"
                         onClick={() => {
-                          const phoneNumber = selectedStudent.phone.replace(/[^0-9]/g, '');
-                          const formattedPhone = phoneNumber.startsWith('01') ? '20' + phoneNumber.substring(1) : phoneNumber;
-                          const message = `Ahmed Badr's Quality Team: 
+                          // Use phone number as stored in DB (already includes country code)
+                          const formattedPhone = selectedStudent.phone.replace(/[^0-9]/g, '');
+                          const message = `Follow up Message:
 
 Dear ${selectedStudent.name?.split(' ')[0] || 'Student'},
 If you want to keep track of your attendance, homework, and quizzes results.
@@ -760,7 +727,7 @@ Just click the link below to stay updated:
 
 We wish you gets high scores 😊❤
 
-– Mr. Ahmed Badr`;
+– ${systemName}`;
                           const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
                           window.open(whatsappUrl, '_blank');
                         }}
@@ -805,9 +772,10 @@ We wish you gets high scores 😊❤
                       <button
                         className="whatsapp-btn"
                         onClick={() => {
+                          // Use phone number as stored in DB (already includes country code)
                           const phoneNumber = (selectedStudent.parents_phone || selectedStudent.parentsPhone || selectedStudent.parentsPhone1).replace(/[^0-9]/g, '');
-                          const formattedPhone = phoneNumber.startsWith('01') ? '20' + phoneNumber.substring(1) : phoneNumber;
-                          const message = `Ahmed Badr's Quality Team: 
+                          const formattedPhone = phoneNumber;
+                          const message = `Follow up Message:
 
 Dear ${selectedStudent.name?.split(' ')[0] || 'Student'}'s Parent,
 If you'd like to track ${selectedStudent.name?.split(' ')[0] || 'Student'}'s attendance, homework, and quizzes, please visit the link below:
@@ -816,63 +784,7 @@ If you'd like to track ${selectedStudent.name?.split(' ')[0] || 'Student'}'s att
 
 We wish ${selectedStudent.name?.split(' ')[0] || 'Student'} gets high scores 😊❤
 
-– Mr. Ahmed Badr`;
-                          const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
-                          window.open(whatsappUrl, '_blank');
-                        }}
-                        style={{
-                          backgroundColor: '#25D366',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          padding: '12px 20px',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          fontWeight: '600',
-                          transition: 'background-color 0.2s',
-                          width: '100%',
-                          justifyContent: 'center',
-                          margin: '0 auto'
-                        }}
-                      >
-                        <Image src="/whatsapp.svg" alt="WhatsApp" width={30} height={30} />
-                        Send
-                      </button>
-                    ) : (
-                      <div style={{
-                        color: "#6c757d",
-                        fontSize: "0.9rem",
-                        fontStyle: "italic"
-                      }}>
-                        No phone number
-                      </div>
-                    )}
-                  </td>
-                  <td style={{
-                    padding: "16px",
-                    textAlign: "center",
-                    verticalAlign: "middle",
-                    borderBottom: "1px solid #e9ecef"
-                  }}>
-                    {(selectedStudent.parentsPhone2 || selectedStudent.parents_phone2) ? (
-                      <button
-                        className="whatsapp-btn"
-                        onClick={() => {
-                          const phoneNumber = (selectedStudent.parentsPhone2 || selectedStudent.parents_phone2).replace(/[^0-9]/g, '');
-                          const formattedPhone = phoneNumber.startsWith('01') ? '20' + phoneNumber.substring(1) : phoneNumber;
-                          const message = `Ahmed Badr's Quality Team: 
-
-Dear ${selectedStudent.name?.split(' ')[0] || 'Student'}'s Parent,
-If you'd like to track ${selectedStudent.name?.split(' ')[0] || 'Student'}'s attendance, homework, and quizzes, please visit the link below:
-
-🖇️ ${generatedLink}
-
-We wish ${selectedStudent.name?.split(' ')[0] || 'Student'} gets high scores 😊❤
-
-– Mr. Ahmed Badr`;
+– ${systemName}`;
                           const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
                           window.open(whatsappUrl, '_blank');
                         }}

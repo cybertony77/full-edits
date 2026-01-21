@@ -97,7 +97,7 @@ export default async function handler(req, res) {
 
     } else if (req.method === 'POST') {
       // Create new center
-      const { name } = req.body;
+      const { name, location, grades } = req.body;
 
       if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Center name is required' });
@@ -116,6 +116,8 @@ export default async function handler(req, res) {
       const newCenter = {
         id: nextId,
         name: name.trim(),
+        location: location && location.trim() ? location.trim() : '',
+        grades: grades && Array.isArray(grades) ? grades : [],
         createdAt: new Date()
       };
 

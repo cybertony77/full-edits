@@ -7,16 +7,18 @@ export default function Document() {
         {/* PWA Manifest */}
         <link rel="manifest" href="/manifest.json" />
 
+        {/* Font Awesome */}
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+
         {/* Theme & App Settings */}
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#00101f" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Trackify" />
+        <meta name="apple-mobile-web-app-title" content="Demo Attendance System" />
         <meta name="apple-touch-fullscreen" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="Mr. Ahmad Badr Attendance System" />
-        <meta property="og:title" content="Mr. Ahmad Badr Attendance System" />
-        <meta property="og:description" content="Mr. Ahmad Badr Attendance System" />
+        <meta property="og:title" content="Demo Attendance System" />
+        <meta property="og:description" content="Attendance System for learning teachers" />
         <meta property="og:image" content="/icons/apple-icon-180.png" />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="en_US" />
@@ -25,7 +27,6 @@ export default function Document() {
         <meta httpEquiv="Permissions-Policy" content="camera=(self)" />
 
         {/* Icons for iOS */}
-        <link rel="icon" type="image/png" sizes="196x196" href="/icons/favicon-196.png" />
         <link rel="apple-touch-icon" href="/icons/apple-icon-180.png" />
       </Head>
       <body>

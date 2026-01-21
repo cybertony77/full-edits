@@ -10,7 +10,6 @@ export default function Custom404() {
   return (
     <div style={{ 
       minHeight: "100vh",
-      background: "linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -300,14 +299,14 @@ export default function Custom404() {
             className="btn btn-contact"
             onClick={() => router.push('/contact_developer')}
           >
-            <span className="icon"><Image src="/message.svg" alt="Message" style={{ transform: "translateY(4px)" }} width={20} height={20} /></span>
+            <Image src="/message.svg" alt="Contact" style={{ transform: "translateY(4px)" }} width={20} height={20} />
             Contact Developer
           </button>
           <button 
             className="btn btn-primary"
             onClick={() => router.push('/')}
           >
-            <span className="icon"><Image src="/lock.svg" alt="lock" style={{ transform: "translateY(4px)" }} width={20} height={20} /></span>
+            <Image src="/lock.svg" alt="lock" style={{ transform: "translateY(4px)" }} width={20} height={20} />
             Go to Login
           </button>
           <button 
@@ -323,7 +322,7 @@ export default function Custom404() {
               }
             }}
           >
-            <span className="icon"><Image src="/arrow-left.svg" alt="Back" style={{ transform: "translateY(4px)" }} width={20} height={20} /></span>
+            <Image src="/arrow-left.svg" alt="Back" style={{ transform: "translateY(4px)" }} width={20} height={20} />
             Go Back
           </button>
         </div>

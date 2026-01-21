@@ -28,6 +28,7 @@ export default function CustomHeader() {
           background: "white",
           boxShadow: "0 2px 8px rgba(31,168,220,0.10)",
           objectFit: "cover",
+          cursor: "pointer"
         }}
         onClick={() => router.push('/')}
       />
@@ -62,3 +63,4 @@ export default function CustomHeader() {
     </header>
   );
 }
+

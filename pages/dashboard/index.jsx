@@ -15,7 +15,7 @@ export default function Dashboard() {
   return (
     <div style={{ 
       // height: "calc(100dvh - 10rem)",
-      padding: "10px 50px 35px",
+      padding: "10px 35px 5px 35px",
       display: 'flex',
       flexDirection: 'column',
       overflow: 'auto'
@@ -37,10 +37,10 @@ export default function Dashboard() {
               borderRadius: "50%",
               boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
               objectFit: "cover",
-              background: "white"
+              background: "transparent"
             }}
           />
-              <h1 style={{ margin: 0, color: "#ffffff" }}>Mr. Ahmed Badr Dashboard</h1>
+              <h1 style={{ margin: 0, color: "#ffffff" }}>System Main Dashboard</h1>
         </div>
         
         {/* Access Denied Message */}
@@ -145,25 +145,9 @@ export default function Dashboard() {
         </button>
         <button
           className="dashboard-btn"
-          onClick={() => router.push("/dashboard/payment")}
-          style={{ background: "linear-gradient(90deg, #28a745 0%, #20c997 100%)" }}
-        >
-          <Image src="/money.svg" alt="Payment" width={25} height={25} />
-          Payment
-        </button>
-        <button
-          className="dashboard-btn"
-          onClick={() => router.push("/dashboard/mock_exam")}
-          style={{ background: "linear-gradient(90deg, #6f42c1 0%, #8e44ad 100%)" }}
-        >
-          <Image src="/exam.svg" alt="Mock Exam" width={20} height={20} />
-          Mock Exam
-        </button>
-        <button
-          className="dashboard-btn"
           onClick={() => router.push("/dashboard/qr_generator")}
         >
-          <Image src="/qrcode.svg" alt="Create QR Code" width={20} height={20} />
+          <Image src="/qrcode.svg" alt="QR Code" width={20} height={20} />
           Create QR Code
         </button>
         <button

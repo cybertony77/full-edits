@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import Image from 'next/image';
 import { QRCode } from "react-qrcode-logo";
 import JSZip from "jszip";
 import { useRouter } from "next/router";
 import html2canvas from "html2canvas";
 import Title from "../../components/Title";
-import Image from 'next/image';
 
 export default function QRGenerator() {
   const router = useRouter();
@@ -300,7 +300,7 @@ export default function QRGenerator() {
           visibility: hidden;
         }
         .hidden-qr .qr-container {
-          background: linear-gradient(180deg, #1FA8DC 0%, #FEB954 100%);
+          background: linear-gradient(180deg, #00101f 0%, #4c84b9 100%);
           padding: 10px;
           border-radius: 20px;
           overflow: hidden;
@@ -329,7 +329,7 @@ export default function QRGenerator() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(180deg, #1FA8DC 0%, #FEB954 100%);
+          background: linear-gradient(180deg, #00101f 0%, #4c84b9 100%);
           padding: 24px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.1);
           margin-left: auto;
@@ -500,12 +500,12 @@ export default function QRGenerator() {
           }
         }
       `}</style>
-      <Title>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Image src="/qrcode.svg" alt="QR Code Generator" width={32} height={32} />
-          QR Code Generator
-        </div>
-      </Title>
+             <Title>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                 <Image src="/qrcode.svg" alt="QR Code" width={32} height={32} />
+                 QR Code Generator
+               </div>
+             </Title>
       <button className="qr-btn" onClick={() => setMode("single")}>Single QR Code Generator</button>
       <button className="qr-btn" onClick={() => setMode("many")}>Many QR Codes Generator</button>
       {mode === "single" && (
@@ -537,7 +537,7 @@ export default function QRGenerator() {
                 <div className="qr-container">
                   <QRCode
                     id="single-qr-svg"
-                    value={`https://link.gettap.co/ahmedbadr92?id=${singleId}`}
+                    value={`https://wa.me/201211172756?text=Hello%2C%20Tony%20your%20attendance%20system%20is%20very%20good%20and%20premium.%20Tell%20me%20about%20the%20system%20more&?id=${singleId}`}
                     size={qrSize}
                     ecLevel="H"
                     logoImage="/logo.png"
@@ -552,8 +552,9 @@ export default function QRGenerator() {
                   />
                   <div className="qr-id-text">{`ID No. ${singleId}`}</div>
                 </div>
-                <button className="download-btn" onClick={downloadSingleQR}>
-                  <Image src="/download.svg" alt="Download" width={20} height={20} /> Download QR
+                <button className="download-btn" onClick={downloadSingleQR} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <Image src="/download.svg" alt="Download" width={20} height={20} />
+                  Download QR
                 </button>
               </div>
             </div>
@@ -589,7 +590,7 @@ export default function QRGenerator() {
               }}
             />
           </div>
-          <button className="qr-btn" onClick={e => { e.preventDefault(); generateManyQRCodes(); }} disabled={manyGenerating}>
+          <button className="qr-btn" onClick={e => { e.preventDefault(); generateManyQRCodes(); }} disabled={manyGenerating} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             {manyGenerating ? "Generating..." : (
               <>
                 <Image src="/zip-file.svg" alt="ZIP" width={20} height={20} />
@@ -604,8 +605,10 @@ export default function QRGenerator() {
                   href={zipUrl} 
                   download={`QrCodes_From_${manyFrom}_To_${manyTo}.zip`} 
                   className="download-btn"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  <Image src="/zip-file.svg" alt="Download ZIP" width={20} height={20} /> Download ZIP
+                  <Image src="/zip-file.svg" alt="Download ZIP" width={20} height={20} />
+                  Download ZIP
                 </a>
               </div>
             </div>
@@ -616,7 +619,7 @@ export default function QRGenerator() {
               <div className="qr-container" key={id}>
                 <QRCode
                   id={`hidden-qr-${id}`}
-                  value={`https://link.gettap.co/ahmedbadr92?id=${id}`}
+                  value={`https://wa.me/201211172756?text=Hello%2C%20Tony%20your%20attendance%20system%20is%20very%20good%20and%20premium.%20Tell%20me%20about%20the%20system%20more&?id=${id}`}
                   size={qrSize}
                   ecLevel="H"
                   logoImage="/logo.png"

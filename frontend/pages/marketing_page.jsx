@@ -77,6 +77,97 @@ const PAGE_STATE_CARD = {
   color: '#1e293b',
 };
 
+const MAX_TEACHER_IMAGE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_TEACHER_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
+
+function resolveTeacherImageMime(file) {
+  const type = (file?.type || '').toLowerCase();
+  if (ALLOWED_TEACHER_IMAGE_TYPES.has(type)) {
+    return type === 'image/jpg' ? 'image/jpeg' : type;
+  }
+  const ext = (file?.name || '').split('.').pop()?.toLowerCase();
+  const byExt = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+  };
+  return byExt[ext] || null;
+}
+
+function readFileAsDataUrl(blobOrFile) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read image file'));
+    reader.readAsDataURL(blobOrFile);
+  });
+}
+
+async function prepareTeacherImageForUpload(file) {
+  const mime = resolveTeacherImageMime(file);
+  if (!mime) return null;
+
+  if (file.size > MAX_TEACHER_IMAGE_BYTES) {
+    throw new Error('MAX_SIZE');
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Invalid image file'));
+      el.src = objectUrl;
+    });
+
+    const maxDim = 1600;
+    let { naturalWidth: width, naturalHeight: height } = img;
+    const shouldResize = file.size > 900 * 1024 || width > maxDim || height > maxDim;
+
+    if (!shouldResize) {
+      const dataUrl = await readFileAsDataUrl(file);
+      return { dataUrl, fileType: mime };
+    }
+
+    const scale = Math.min(1, maxDim / width, maxDim / height);
+    width = Math.max(1, Math.round(width * scale));
+    height = Math.max(1, Math.round(height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not process image');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const outMime = mime === 'image/png' || mime === 'image/gif' ? mime : 'image/jpeg';
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('Could not process image'))),
+        outMime,
+        outMime === 'image/jpeg' ? 0.88 : undefined
+      );
+    });
+
+    if (blob.size > MAX_TEACHER_IMAGE_BYTES) {
+      throw new Error('MAX_SIZE');
+    }
+
+    const dataUrl = await readFileAsDataUrl(blob);
+    return { dataUrl, fileType: outMime };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function buildBaselineSnapshot(json) {
   const L = json.links?.length ? json.links : [{ name: '', link: '', phone: '' }];
   const links = L.map((row) => {
@@ -344,33 +435,29 @@ export default function MarketingPage() {
     setTeacherPicError('');
     teacherPreviewBeforeUploadRef.current = imagePreview;
 
-    if (!file.type.startsWith('image/')) {
-      setTeacherPicError('Please select an image file');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setTeacherPicError('Max size is 5 MB. Try a smaller image.');
+    let prepared;
+    try {
+      prepared = await prepareTeacherImageForUpload(file);
+      if (!prepared) {
+        setTeacherPicError('Please select a JPEG, PNG, GIF, or WEBP image.');
+        return;
+      }
+    } catch (prepErr) {
+      if (prepErr?.message === 'MAX_SIZE') {
+        setTeacherPicError('Max size is 10 MB. Try a smaller image.');
+        return;
+      }
+      setTeacherPicError(prepErr?.message || 'Invalid image file. Please try another picture.');
       return;
     }
 
-    const previewReader = new FileReader();
-    previewReader.onloadend = () => {
-      setImagePreview(previewReader.result);
-    };
-    previewReader.readAsDataURL(file);
-
+    setImagePreview(prepared.dataUrl);
     setUploadingPic(true);
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
       const response = await apiClient.post('/api/upload/profile-picture', {
-        file: base64,
+        file: prepared.dataUrl,
         fileName: file.name,
-        fileType: file.type,
+        fileType: prepared.fileType,
         folder: 'unlisted',
       });
       if (response.data?.success && response.data?.public_id) {
@@ -721,7 +808,13 @@ export default function MarketingPage() {
               </div>
             </TitleBar>
 
-            <Paper radius="lg" p="lg" className={mp.pageStateCard}>
+            <Paper
+              shadow="none"
+              radius="lg"
+              p="lg"
+              className={mp.pageStateCard}
+              styles={{ root: { boxShadow: 'none' } }}
+            >
               <div className={mp.pageStateInner}>
                 <div className={mp.pageStateText}>
                   <Text fw={800} size="lg" className={mp.pageStateTitle}>
@@ -881,7 +974,7 @@ export default function MarketingPage() {
                                   cursor: 'pointer',
                                   boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                                   transition: 'all 0.2s ease',
-                                  zIndex: 10,
+                                  zIndex: 9,
                                 }}
                                 title="Remove image"
                               >
@@ -963,7 +1056,7 @@ export default function MarketingPage() {
                             style={{ display: 'none' }}
                           />
                           <small style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center' }}>
-                            Max size: 5 MB.
+                            Max size: 10 MB.
                           </small>
                           {teacherPicError ? (
                             <Text size="sm" c="red.4" mt={4} style={{ maxWidth: 280 }}>

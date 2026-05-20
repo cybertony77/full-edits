@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useProfile } from '../../../lib/api/auth';
 import Title from '../../../components/Title';
+import MarketingPageLoader from '../../../components/MarketingPageLoader';
 import LinkFormModal from '../../../components/LinkFormModal';
 import LinksGridView from '../../../components/LinksGridView';
 import apiClient from '../../../lib/axios';
@@ -32,6 +32,7 @@ export default function ManageLinksPage() {
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
+  const [deleteConfirmIndex, setDeleteConfirmIndex] = useState(null);
 
   const allowedRoles = ['admin', 'developer', 'assistant'];
 
@@ -99,6 +100,25 @@ export default function ManageLinksPage() {
     await persistItems(draft);
   };
 
+  const requestDelete = (index) => setDeleteConfirmIndex(index);
+
+  const cancelDelete = () => setDeleteConfirmIndex(null);
+
+  const confirmDelete = async () => {
+    if (deleteConfirmIndex === null) return;
+    const index = deleteConfirmIndex;
+    try {
+      await handleDelete(index);
+    } finally {
+      setDeleteConfirmIndex(null);
+    }
+  };
+
+  const deleteTargetName =
+    deleteConfirmIndex !== null && deleteConfirmIndex >= 0 && deleteConfirmIndex < items.length
+      ? items[deleteConfirmIndex]?.name
+      : '';
+
   const formInitial = useMemo(() => {
     if (editIndex === null) return { name: '', link: '', phone: '' };
     if (editIndex < 0 || editIndex >= items.length) return { name: '', link: '', phone: '' };
@@ -106,37 +126,9 @@ export default function ManageLinksPage() {
   }, [editIndex, items]);
 
   if (isLoading || loading) {
-    const loader = (
-      <div
-        className={styles.manageLoadingScreen}
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-        aria-label="Loading links"
-      >
-        <div className={styles.manageLoadingCard}>
-          <div className={styles.manageLoadingIconWrap} aria-hidden>
-            <Image src="/link.svg" alt="" width={28} height={28} />
-          </div>
-          <div className={styles.manageLoadingSpinnerWrap} aria-hidden>
-            <div className={styles.manageLoadingSpinner} />
-            <div className={styles.manageLoadingSpinnerInner} />
-          </div>
-          <p className={styles.manageLoadingLabel}>
-            Loading links
-            <span className={styles.manageLoadingEllipsis} aria-hidden>
-              <span>.</span>
-              <span>.</span>
-              <span>.</span>
-            </span>
-          </p>
-          <p className={styles.manageLoadingSub}>Fetching your social media links</p>
-        </div>
-      </div>
+    return (
+      <MarketingPageLoader label="Loading links" sub="Fetching your social media links" />
     );
-
-    if (typeof document === 'undefined') return loader;
-    return createPortal(loader, document.body);
   }
 
   if (accessDenied || !profile || !allowedRoles.includes(profile.role)) {
@@ -208,7 +200,7 @@ export default function ManageLinksPage() {
                   <button type="button" className={styles.btnEdit} onClick={() => openEdit(i)} disabled={saving}>
                     Edit
                   </button>
-                  <button type="button" className={styles.btnDelete} onClick={() => handleDelete(i)} disabled={saving}>
+                  <button type="button" className={styles.btnDelete} onClick={() => requestDelete(i)} disabled={saving}>
                     Delete
                   </button>
                 </div>
@@ -247,6 +239,46 @@ export default function ManageLinksPage() {
         title={editIndex === null ? 'Add link' : 'Edit link'}
         light
       />
+
+      {deleteConfirmIndex !== null && (
+        <div
+          className={styles.confirmOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-link-confirm-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !saving) cancelDelete();
+          }}
+        >
+          <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+            <h3 id="delete-link-confirm-title" className={styles.confirmTitle}>
+              Delete link?
+            </h3>
+            <p className={styles.confirmMessage}>
+              Are you sure you want to delete{' '}
+              <strong>{deleteTargetName || 'this link'}</strong>? This action cannot be undone.
+            </p>
+            <div className={styles.confirmActions}>
+              <button
+                type="button"
+                className={styles.confirmDeleteBtn}
+                onClick={confirmDelete}
+                disabled={saving}
+              >
+                {saving ? 'Deleting…' : 'Delete'}
+              </button>
+              <button
+                type="button"
+                className={styles.confirmCancelBtn}
+                onClick={cancelDelete}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

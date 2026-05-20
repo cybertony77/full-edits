@@ -152,10 +152,15 @@
 .pageStateCard {
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: none !important;
+  --paper-shadow: none;
   color: #e2e8f0;
   overflow: hidden;
   max-width: 100%;
+}
+
+.pageStateCard:global(.mantine-Paper-root) {
+  box-shadow: none !important;
 }
 
 .pageStateTitle {

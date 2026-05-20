@@ -15,10 +15,10 @@ export default function Document() {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Demo Full System" />
+        <meta name="apple-mobile-web-app-title" content="American Diploma Academy" />
         <meta name="apple-touch-fullscreen" content="yes" />
-        <meta property="og:title" content="Demo Full System" />
-        <meta property="og:description" content="Demo Full System For Testing" />
+        <meta property="og:title" content="American Diploma Academy" />
+        <meta property="og:description" content="American Diploma Academy students" />
         <meta property="og:image" content="/icons/apple-icon-180.png" />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="en_US" />

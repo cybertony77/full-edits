@@ -23,7 +23,16 @@ export default async function handler(req, res) {
         ? folderRaw.trim()
         : 'profile-pictures';
 
-    if (!fileType || !ALLOWED_MIME_TYPES.includes(fileType)) {
+    let normalizedFileType = typeof fileType === 'string' ? fileType.toLowerCase().trim() : '';
+    if (normalizedFileType === 'image/jpg') normalizedFileType = 'image/jpeg';
+    if (!normalizedFileType && typeof file === 'string') {
+      const dataUriMatch = file.match(/^data:(image\/[a-z0-9.+-]+);/i);
+      if (dataUriMatch) {
+        normalizedFileType = dataUriMatch[1].toLowerCase() === 'image/jpg' ? 'image/jpeg' : dataUriMatch[1].toLowerCase();
+      }
+    }
+
+    if (!normalizedFileType || !ALLOWED_MIME_TYPES.includes(normalizedFileType)) {
       return res.status(400).json({
         error: 'Invalid file type. Only image formats (JPEG, PNG, GIF, WEBP) are allowed.',
       });

@@ -18,7 +18,7 @@ export default function Document() {
         <meta name="apple-mobile-web-app-title" content="Demo Full System" />
         <meta name="apple-touch-fullscreen" content="yes" />
         <meta property="og:title" content="Demo Full System" />
-        <meta property="og:description" content="Tony Joseph, Demo Full System For Testing" />
+        <meta property="og:description" content="Demo Full System For Testing" />
         <meta property="og:image" content="/icons/apple-icon-180.png" />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="en_US" />

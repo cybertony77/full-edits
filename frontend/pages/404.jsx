@@ -4,8 +4,14 @@ import Image from 'next/image';
 export default function Custom404() {
   const router = useRouter();
   
-  // Get the page that user tried to access
-  const requestedPage = router.asPath || 'unknown page';
+  const pathFromQuery = router.query.path;
+  const requestedPage =
+    (typeof pathFromQuery === 'string' && pathFromQuery) ||
+    (Array.isArray(pathFromQuery) && pathFromQuery[0]) ||
+    (router.asPath && router.asPath.split('?')[0] !== '/404'
+      ? router.asPath.split('?')[0]
+      : null) ||
+    'unknown page';
 
   return (
     <div style={{ 

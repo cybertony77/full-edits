@@ -95,6 +95,20 @@ function buildDirectZoomUrl(downloadUrl, accessToken) {
   }
 }
 
+function extractZoomDownloadKey(downloadUrl) {
+  const raw = String(downloadUrl || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    const match = url.pathname.match(/\/rec\/download\/([^/]+)/i);
+    if (match?.[1]) return decodeURIComponent(match[1]);
+  } catch {
+    const match = raw.match(/\/rec\/download\/([^/?#]+)/i);
+    if (match?.[1]) return decodeURIComponent(match[1]);
+  }
+  return '';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -123,6 +137,7 @@ export default async function handler(req, res) {
     const accessToken = payload?._resolved_access_token || '';
     const mapped = meetings.map((meeting) => {
       const mp4DownloadUrl = getMp4DownloadUrl(meeting);
+      const zoomDownloadKey = extractZoomDownloadKey(mp4DownloadUrl);
       return ({
       ...(meeting || {}),
       uuid: meeting.uuid || '',
@@ -134,7 +149,8 @@ export default async function handler(req, res) {
       created_at: resolveMeetingDate(meeting),
       recording_files: Array.isArray(meeting.recording_files) ? meeting.recording_files : [],
       zoom_mp4_download_url: mp4DownloadUrl,
-      zoom_direct_video_url: buildDirectZoomUrl(mp4DownloadUrl, accessToken),
+      zoom_direct_video_url: zoomDownloadKey || buildDirectZoomUrl(mp4DownloadUrl, accessToken),
+      zoom_download_key: zoomDownloadKey,
       created_at_formated: formatDateTime(resolveMeetingDate(meeting), meeting.timezone),
       duration_furmated: formatDuration(meeting.duration),
       });

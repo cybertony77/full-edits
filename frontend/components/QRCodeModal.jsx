@@ -4,9 +4,11 @@ import html2canvas from "html2canvas";
 import Image from 'next/image';
 import { useProfile } from '../lib/api/auth';
 import { useStudent } from '../lib/api/students';
+import { useSystemConfig } from '../lib/api/system';
 
 export default function QRCodeModal({ isOpen, onClose }) {
   const { data: profile } = useProfile();
+  const { data: systemConfig } = useSystemConfig();
   const studentId = profile?.id ? profile.id.toString() : null;
   const { data: studentData, isLoading: studentDataLoading } = useStudent(studentId, {
     enabled: !!studentId && isOpen,
@@ -109,8 +111,21 @@ export default function QRCodeModal({ isOpen, onClose }) {
     }
   };
 
-  const qrValue = studentData?.id 
-    ? `https://www.facebook.com/share/1AShaU7c3t/?id=${studentData.id}`
+  const isMarketingPageEnabled =
+    systemConfig?.marketing_page === true || systemConfig?.marketing_page === 'true';
+  const originDomain =
+    typeof window !== 'undefined' ? window.location.origin.replace(/\/+$/, '') : '';
+  const configuredDomain = (systemConfig?.domain || '').replace(/\/+$/, '');
+
+  const qrValue = studentData?.id
+    ? (() => {
+        if (isMarketingPageEnabled) {
+          const baseDomain = originDomain || configuredDomain;
+          if (!baseDomain) return `/marketing_page?id=${studentData.id}`;
+          return `${baseDomain}/marketing_page?id=${studentData.id}`;
+        }
+        return `https://www.facebook.com/share/1AShaU7c3t/?id=${studentData.id}`;
+      })()
     : '';
 
   if (!isOpen) return null;

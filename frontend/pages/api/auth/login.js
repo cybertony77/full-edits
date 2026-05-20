@@ -36,7 +36,16 @@ const envConfig = loadEnvConfig();
 const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'topphysics_secret';
 const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'mr-george-magdy';
-const SUBSCRIPTION_ENABLED = envConfig.SYSTEM_SUBSCRIPTION === 'true' || process.env.SYSTEM_SUBSCRIPTION === 'true';
+function isSubscriptionEnabled() {
+  try {
+    const latestEnv = loadEnvConfig();
+    const rawValue = latestEnv.SYSTEM_SUBSCRIPTION || process.env.SYSTEM_SUBSCRIPTION;
+    const normalized = String(rawValue || '').toLowerCase().trim();
+    return normalized === 'true' || normalized === '1';
+  } catch {
+    return false;
+  }
+}
 
 // Helper to dynamically check if device limitations are enabled on each request
 function isDeviceLimitationsEnabled() {
@@ -180,7 +189,7 @@ export default async function handler(req, res) {
     }
 
     // Check subscription status (only if subscription system is enabled)
-    if (SUBSCRIPTION_ENABLED) {
+    if (isSubscriptionEnabled()) {
       const subscription = await db.collection('subscription').findOne({});
       if (subscription) {
         const now = new Date();

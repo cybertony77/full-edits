@@ -333,6 +333,14 @@ export default function ManageOnlineSystem() {
             </button>
           )}
 
+          <button
+            className="dashboard-btn"
+            onClick={() => router.push('/dashboard/manage_online_system/links')}
+          >
+            <Image src="/link.svg" alt="Links" width={20} height={20} />
+            Social Media Links
+          </button>
+
           <button 
             className="dashboard-btn"
             onClick={() => router.push("/dashboard/manage_online_system/verification_accounts_codes")}

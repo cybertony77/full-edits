@@ -16,7 +16,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No file provided' });
     }
 
-    const { file, fileType } = req.body;
+    const { file, fileType, folder: folderRaw } = req.body;
+    const allowedFolders = new Set(['profile-pictures', 'unlisted']);
+    const folder =
+      typeof folderRaw === 'string' && allowedFolders.has(folderRaw.trim())
+        ? folderRaw.trim()
+        : 'profile-pictures';
 
     if (!fileType || !ALLOWED_MIME_TYPES.includes(fileType)) {
       return res.status(400).json({
@@ -33,7 +38,7 @@ export default async function handler(req, res) {
     }
 
     const uploadResult = await cloudinary.uploader.upload(file, {
-      folder: 'profile-pictures',
+      folder,
       resource_type: 'image',
       type: 'private',
       overwrite: false,

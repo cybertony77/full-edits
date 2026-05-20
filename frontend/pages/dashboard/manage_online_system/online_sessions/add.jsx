@@ -24,6 +24,8 @@ function extractZoomMeetingId(value) {
   if (!raw) return '';
   const noSpaces = raw.replace(/\s+/g, '');
   if (/^[0-9]+$/.test(noSpaces)) return noSpaces;
+  const downloadMatch = noSpaces.match(/\/rec\/download\/([^/?#]+)/i);
+  if (downloadMatch?.[1]) return decodeURIComponent(downloadMatch[1]);
   const match = noSpaces.match(/zoom\.us\/(?:j|wc\/j(?:oin)?)\/([0-9]+)/i);
   if (match?.[1]) return match[1];
   // UUID selected from Zoom recordings list

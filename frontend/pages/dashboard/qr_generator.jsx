@@ -5,9 +5,11 @@ import JSZip from "jszip";
 import { useRouter } from "next/router";
 import html2canvas from "html2canvas";
 import Title from "../../components/Title";
+import { useSystemConfig } from "../../lib/api/system";
 
 export default function QRGenerator() {
   const router = useRouter();
+  const { data: systemConfig } = useSystemConfig();
   const [mode, setMode] = useState("");
   const [singleId, setSingleId] = useState("");
   const [showQR, setShowQR] = useState(false);
@@ -20,6 +22,21 @@ export default function QRGenerator() {
   const [logoSize, setLogoSize] = useState(85);
 
   const inputRef = useRef(null);
+  const isMarketingPageEnabled =
+    systemConfig?.marketing_page === true || systemConfig?.marketing_page === "true";
+  const originDomain =
+    typeof window !== "undefined" ? window.location.origin.replace(/\/+$/, "") : "";
+  const configuredDomain = (systemConfig?.domain || "").replace(/\/+$/, "");
+
+  const buildQrValue = (id) => {
+    if (!id) return "";
+    if (isMarketingPageEnabled) {
+      const baseDomain = originDomain || configuredDomain;
+      if (!baseDomain) return `/marketing_page?id=${id}`;
+      return `${baseDomain}/marketing_page?id=${id}`;
+    }
+    return `https://www.facebook.com/share/1AShaU7c3t/?id=${id}`;
+  };
 
   // Handle responsive QR code sizing
   useEffect(() => {
@@ -537,7 +554,7 @@ export default function QRGenerator() {
                 <div className="qr-container">
                   <QRCode
                     id="single-qr-svg"
-                    value={`https://www.facebook.com/share/1AShaU7c3t/?id=${singleId}`}
+                    value={buildQrValue(singleId)}
                     size={qrSize}
                     ecLevel="H"
                     logoImage="/logo.png"
@@ -619,7 +636,7 @@ export default function QRGenerator() {
               <div className="qr-container" key={id}>
                 <QRCode
                   id={`hidden-qr-${id}`}
-                  value={`https://www.facebook.com/share/1AShaU7c3t/?id=${id}`}
+                  value={buildQrValue(id)}
                   size={qrSize}
                   ecLevel="H"
                   logoImage="/logo.png"

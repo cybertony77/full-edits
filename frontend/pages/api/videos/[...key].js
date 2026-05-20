@@ -48,6 +48,10 @@ const accountId = envConfig.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCO
 const accessKeyId = envConfig.R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
 const secretAccessKey = envConfig.R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY;
 const bucketName = envConfig.R2_BUCKET_NAME || process.env.R2_BUCKET_NAME;
+const zoomRecordingBaseUrl =
+  envConfig.ZOOM_RECORDING_BASE_URL ||
+  process.env.ZOOM_RECORDING_BASE_URL ||
+  'https://us06web.zoom.us/rec/download/';
 
 const httpsAgent = new https.Agent({
   keepAlive: true,
@@ -120,21 +124,38 @@ export default async function handler(req, res) {
   // - /api/videos/{meetingId}
   // - /api/videos/zoom/{meetingId}
   if (isZoomByPrefix || isZoomByMeetingIdRoute) {
-    const meetingId = isZoomByPrefix ? routeParts.slice(1).join('/') : routeParts[0];
-    if (!meetingId) {
+    const zoomIdentifier = decodeURIComponent(
+      String(isZoomByPrefix ? routeParts.slice(1).join('/') : routeParts[0] || '').trim()
+    );
+    if (!zoomIdentifier) {
       return res.status(400).json({ error: 'Zoom meeting ID is required' });
     }
 
     try {
-      let recordingInfo;
-      try {
-        recordingInfo = await getZoomMeetingMp4DownloadUrl(meetingId);
-      } catch (err) {
-        if (err?.statusCode === 401) {
-          recordingInfo = await getZoomMeetingMp4DownloadUrl(meetingId, true);
-        } else {
-          throw err;
+      const isNumericMeetingId = /^[0-9]+$/.test(zoomIdentifier);
+      let downloadUrl = '';
+
+      if (isNumericMeetingId) {
+        let recordingInfo;
+        try {
+          recordingInfo = await getZoomMeetingMp4DownloadUrl(zoomIdentifier);
+        } catch (err) {
+          if (err?.statusCode === 401) {
+            recordingInfo = await getZoomMeetingMp4DownloadUrl(zoomIdentifier, true);
+          } else {
+            throw err;
+          }
         }
+        downloadUrl = recordingInfo.downloadUrl;
+      } else if (/^https?:\/\//i.test(zoomIdentifier)) {
+        const parsed = new URL(zoomIdentifier);
+        const match = parsed.pathname.match(/\/rec\/download\/([^/]+)/i);
+        const key = match?.[1] ? decodeURIComponent(match[1]) : '';
+        downloadUrl = key
+          ? `${zoomRecordingBaseUrl.replace(/\/+$/, '')}/${encodeURIComponent(key)}`
+          : zoomIdentifier;
+      } else {
+        downloadUrl = `${zoomRecordingBaseUrl.replace(/\/+$/, '')}/${encodeURIComponent(zoomIdentifier)}`;
       }
 
       let token;
@@ -151,7 +172,7 @@ export default async function handler(req, res) {
         upstreamHeaders.Range = req.headers.range;
       }
 
-      let zoomVideoResponse = await fetch(recordingInfo.downloadUrl, {
+      let zoomVideoResponse = await fetch(downloadUrl, {
         method: req.method,
         headers: upstreamHeaders,
       });
@@ -164,7 +185,7 @@ export default async function handler(req, res) {
         if (req.headers.range) {
           retryHeaders.Range = req.headers.range;
         }
-        zoomVideoResponse = await fetch(recordingInfo.downloadUrl, {
+        zoomVideoResponse = await fetch(downloadUrl, {
           method: req.method,
           headers: retryHeaders,
         });

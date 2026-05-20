@@ -35,22 +35,28 @@ const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME;
 
 // Get current time (minutes since midnight) in Egypt/Cairo timezone
 function getCairoNowMinutes() {
-  const now = new Date();
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Africa/Cairo',
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const parts = formatter.formatToParts(now);
-  const hourPart = parts.find((p) => p.type === 'hour');
-  const minutePart = parts.find((p) => p.type === 'minute');
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Cairo',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const parts = formatter.formatToParts(now);
+    const hourPart = parts.find((p) => p.type === 'hour');
+    const minutePart = parts.find((p) => p.type === 'minute');
 
-  const hours = hourPart ? parseInt(hourPart.value, 10) : 0;
-  const minutes = minutePart ? parseInt(minutePart.value, 10) : 0;
+    const hours = hourPart ? parseInt(hourPart.value, 10) : 0;
+    const minutes = minutePart ? parseInt(minutePart.value, 10) : 0;
 
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
-  return hours * 60 + minutes;
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  } catch {
+    // Fallback to server local time if Cairo timezone formatting fails.
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
 }
 
 // Convert stored time object (hours, minutes, AM/PM) into minutes since midnight (Cairo local day)
@@ -77,7 +83,15 @@ export default async function handler(req, res) {
 
   let client;
   try {
-    const user = await authMiddleware(req);
+    let user;
+    try {
+      user = await authMiddleware(req);
+    } catch (authError) {
+      if (authError?.message === 'No token provided' || authError?.name === 'JsonWebTokenError') {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      throw authError;
+    }
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -90,8 +104,13 @@ export default async function handler(req, res) {
     client = await MongoClient.connect(MONGO_URI);
     const db = client.db(DB_NAME);
 
-    // Get student data
-    const student = await db.collection('students').findOne({ id: parseInt(studentId) });
+    // Get student data (support numeric or string ids)
+    const numericStudentId = Number(studentId);
+    const idCandidates = [studentId];
+    if (!Number.isNaN(numericStudentId)) idCandidates.push(numericStudentId);
+    const student = await db.collection('students').findOne({
+      $or: idCandidates.map((id) => ({ id })),
+    });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }

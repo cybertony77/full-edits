@@ -51,6 +51,7 @@ export default async function handler(req, res) {
     const paymentSystem = envConfig.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
     const subscription = envConfig.SYSTEM_SUBSCRIPTION === 'true' || process.env.SYSTEM_SUBSCRIPTION === 'true';
     const deviceLimitations = envConfig.SYSTEM_DEVICE_LIMITATIONS === 'true' || process.env.SYSTEM_DEVICE_LIMITATIONS === 'true';
+    const marketingPage = envConfig.SYSTEM_MARKETING_PAGE === 'true' || process.env.SYSTEM_MARKETING_PAGE === 'true';
     
     res.json({ 
       domain: systemDomain,
@@ -68,7 +69,8 @@ export default async function handler(req, res) {
       zoom_integrations: zoomIntegrations,
       payment_system: paymentSystem,
       subscription: subscription,
-      device_limitations: deviceLimitations
+      device_limitations: deviceLimitations,
+      marketing_page: marketingPage
     });
   } catch (error) {
     console.error('Error fetching system config:', error);

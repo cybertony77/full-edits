@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useQuery } from '@tanstack/react-query';
 import { useProfile, useProfilePicture } from '../lib/api/auth';
 import { useSubscription } from '../lib/api/subscription';
 import { useStudent } from '../lib/api/students';
 import { useSystemConfig } from '../lib/api/system';
 import QRCodeModal from './QRCodeModal';
 import InstallApp from './InstallApp';
+import StudentLinksModal from './StudentLinksModal';
 import apiClient from '../lib/axios';
 import Image from 'next/image';
 
@@ -13,6 +15,7 @@ export default function UserMenu() {
   const [open, setOpen] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showInstallApp, setShowInstallApp] = useState(false);
+  const [showLinksModal, setShowLinksModal] = useState(false);
   const menuRef = useRef(null);
   const router = useRouter();
   
@@ -23,9 +26,24 @@ export default function UserMenu() {
   const { data: systemConfig } = useSystemConfig();
   const isScoringEnabled = systemConfig?.scoring_system === true || systemConfig?.scoring_system === 'true';
   const isSubscriptionEnabled = systemConfig?.subscription === true || systemConfig?.subscription === 'true';
+  const isMarketingSystemEnabled =
+    systemConfig?.marketing_page === true || systemConfig?.marketing_page === 'true';
+
+  const { data: mpVisibility } = useQuery({
+    queryKey: ['marketing-page-visibility'],
+    queryFn: async () => (await apiClient.get('/api/marketing_page/visibility')).data,
+    enabled: Boolean(isMarketingSystemEnabled),
+    staleTime: 30_000,
+  });
 
   // Fallback user object if data is not available yet
   const userData = user || { name: '', id: '', phone: '', role: '' };
+
+  const showMarketingPageMenu =
+    Boolean(isMarketingSystemEnabled) &&
+    (mpVisibility?.page_state !== false ||
+      userData.role === 'admin' ||
+      userData.role === 'developer');
   
   // If user is a student, fetch student data from students collection
   const studentId = userData.role === 'student' && userData.id ? userData.id.toString() : null;
@@ -348,6 +366,16 @@ export default function UserMenu() {
           </button>
           {userData.role === 'student' && (
             <>
+              <button
+                style={menuBtnStyle}
+                onClick={() => {
+                  setOpen(false);
+                  setShowLinksModal(true);
+                }}
+              >
+                <Image src="/link.svg" alt="Links" width={20} height={20} style={{ marginRight: '8px' }} />
+                Social Media Links
+              </button>
               <button style={menuBtnStyle} onClick={handleChangePassword}>
                 <Image src="/key2.svg" alt="Password" width={20} height={20} style={{ marginRight: '8px' }} />
                 Change My Password
@@ -386,6 +414,18 @@ export default function UserMenu() {
                     <Image src="/settings2.svg" alt="Settings" width={20} height={20} style={{ marginRight: '8px' }} />
                     Manage Online System
                   </button>
+                  {showMarketingPageMenu && (
+                    <button
+                      style={menuBtnStyle}
+                      onClick={() => {
+                        setOpen(false);
+                        router.push('/marketing_page');
+                      }}
+                    >
+                      <Image src="/marketing.svg" alt="Marketing" width={20} height={20} style={{ marginRight: '8px' }} />
+                      Manage Marketing Page
+                    </button>
+                  )}
                   {isScoringEnabled && (
                     <button style={menuBtnStyle} onClick={() => {
                       setOpen(false);
@@ -417,6 +457,7 @@ export default function UserMenu() {
       )}
       <QRCodeModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} />
       <InstallApp isOpen={showInstallApp} onClose={() => setShowInstallApp(false)} />
+      <StudentLinksModal isOpen={showLinksModal} onClose={() => setShowLinksModal(false)} />
     </div>
   );
 }

@@ -528,7 +528,7 @@ export default function PreviewStudentHomeworks() {
         <Title backText="Back" href="/dashboard/manage_online_system">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/books.svg" alt="Preview Homeworks" width={32} height={32} />
-            Preview Student Homeworks
+            Preview Student Homework
           </div>
         </Title>
 
@@ -676,13 +676,13 @@ export default function PreviewStudentHomeworks() {
                     margin: "0 auto 20px",
                     animation: "spin 1s linear infinite"
                   }} />
-                  <p style={{ color: "#6c757d", fontSize: "1rem" }}>Loading homeworks...</p>
+                  <p style={{ color: "#6c757d", fontSize: "1rem" }}>Loading homework...</p>
                 </div>
               </div>
             ) : homeworks.length === 0 ? (
               <div className="homeworks-container">
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d', fontSize: '1rem' }}>
-                  This student has no online homeworks
+                  This student has no online homework
                 </div>
               </div>
             ) : (

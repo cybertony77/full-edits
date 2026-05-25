@@ -122,7 +122,7 @@ async function prepareTeacherImageForUpload(file) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const img = await new Promise((resolve, reject) => {
-      const el = new Image();
+      const el = new window.Image();
       el.onload = () => resolve(el);
       el.onerror = () => reject(new Error('Invalid image file'));
       el.src = objectUrl;
@@ -313,12 +313,25 @@ export default function MarketingPage() {
 
   const lastServerHashRef = useRef('');
   const hasFormChangesRef = useRef(false);
+  const testimonialAutoTimerRef = useRef(null);
+  const testimonialResumeTimerRef = useRef(null);
+  const testimonialPausedRef = useRef(false);
+  const testimonialProgrammaticScrollRef = useRef(false);
+  const teacherImageDraftRef = useRef(false);
+  const TESTIMONIAL_AUTO_MS = 5000;
+  const TESTIMONIAL_RESUME_MS = 3000;
+
+  const viewTestimonialCount = useMemo(() => {
+    return (data?.students_testimonials || []).filter((t) => t.name && t.course && t.text).length;
+  }, [data?.students_testimonials]);
 
   const applyFormFromServer = useCallback((json) => {
     setPageStateChecked(json.page_state !== false);
     setTeacherPicture(json.teacher_picture);
     setTeacherPictureUrl(json.teacher_picture_url);
-    setImagePreview(json.teacher_picture_url || null);
+    if (!teacherImageDraftRef.current) {
+      setImagePreview(json.teacher_picture_url || null);
+    }
     setTeacherName(json.teacher_name || '');
     setTeacherDescription(json.teacher_description || '');
     setOutroText(json.outro_text || '');
@@ -384,6 +397,7 @@ export default function MarketingPage() {
 
         if (json.canEdit) {
           if (shouldSyncForm) {
+            if (forceFormSync) teacherImageDraftRef.current = false;
             applyFormFromServer(json);
           }
           if (!silent || forceFormSync) {
@@ -451,6 +465,7 @@ export default function MarketingPage() {
       return;
     }
 
+    teacherImageDraftRef.current = true;
     setImagePreview(prepared.dataUrl);
     setUploadingPic(true);
     try {
@@ -461,18 +476,7 @@ export default function MarketingPage() {
         folder: 'unlisted',
       });
       if (response.data?.success && response.data?.public_id) {
-        const pid = response.data.public_id;
-        await apiClient.patch('/api/marketing_page', { teacher_picture: pid });
-        setTeacherPicture(pid);
-        const res = await fetch('/api/marketing_page', { credentials: 'include' });
-        if (res.ok) {
-          const j = await res.json();
-          setTeacherPictureUrl(j.teacher_picture_url);
-          setImagePreview(j.teacher_picture_url || null);
-          setData((d) =>
-            d ? { ...d, teacher_picture_url: j.teacher_picture_url, teacher_picture: pid } : d
-          );
-        }
+        setTeacherPicture(response.data.public_id);
       }
     } catch (err) {
       setTeacherPicError(err.response?.data?.error || 'Failed to upload image. Please try again.');
@@ -509,16 +513,98 @@ export default function MarketingPage() {
     e.target.value = '';
   };
 
-  useEffect(() => {
-    if (!embla || canEdit || !(data?.students_testimonials || []).filter((t) => t.name && t.course && t.text).length) {
-      return;
+  const clearTestimonialTimers = useCallback(() => {
+    if (testimonialAutoTimerRef.current) {
+      clearInterval(testimonialAutoTimerRef.current);
+      testimonialAutoTimerRef.current = null;
     }
-    const id = setInterval(() => {
+    if (testimonialResumeTimerRef.current) {
+      clearTimeout(testimonialResumeTimerRef.current);
+      testimonialResumeTimerRef.current = null;
+    }
+  }, []);
+
+  const pauseTestimonialAutoplay = useCallback(() => {
+    testimonialPausedRef.current = true;
+    clearTestimonialTimers();
+  }, [clearTestimonialTimers]);
+
+  const startTestimonialAutoplay = useCallback(() => {
+    if (!embla || canEdit || testimonialPausedRef.current) return;
+    clearTestimonialTimers();
+    testimonialAutoTimerRef.current = setInterval(() => {
+      if (testimonialPausedRef.current) return;
+      testimonialProgrammaticScrollRef.current = true;
       if (embla.canScrollNext()) embla.scrollNext();
       else embla.scrollTo(0);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [embla, data?.students_testimonials, canEdit]);
+    }, TESTIMONIAL_AUTO_MS);
+  }, [embla, canEdit, clearTestimonialTimers]);
+
+  const scheduleTestimonialResume = useCallback(() => {
+    if (testimonialResumeTimerRef.current) clearTimeout(testimonialResumeTimerRef.current);
+    testimonialResumeTimerRef.current = setTimeout(() => {
+      testimonialPausedRef.current = false;
+      startTestimonialAutoplay();
+    }, TESTIMONIAL_RESUME_MS);
+  }, [startTestimonialAutoplay]);
+
+  const handleTestimonialUserInteract = useCallback(() => {
+    pauseTestimonialAutoplay();
+    scheduleTestimonialResume();
+  }, [pauseTestimonialAutoplay, scheduleTestimonialResume]);
+
+  useEffect(() => {
+    if (!embla || canEdit || viewTestimonialCount === 0) {
+      clearTestimonialTimers();
+      return undefined;
+    }
+
+    const onSelect = () => {
+      if (testimonialProgrammaticScrollRef.current) {
+        testimonialProgrammaticScrollRef.current = false;
+        return;
+      }
+      handleTestimonialUserInteract();
+    };
+
+    const root = embla.rootNode();
+    const onPointerDown = () => pauseTestimonialAutoplay();
+    const onPointerUp = () => scheduleTestimonialResume();
+
+    embla.on('select', onSelect);
+    root.addEventListener('pointerdown', onPointerDown);
+    root.addEventListener('pointerup', onPointerUp);
+    root.addEventListener('touchstart', onPointerDown, { passive: true });
+    root.addEventListener('touchend', onPointerUp, { passive: true });
+    root.addEventListener('mouseenter', onPointerDown);
+    root.addEventListener('mouseleave', onPointerUp);
+    root.addEventListener('focusin', onPointerDown);
+    root.addEventListener('focusout', onPointerUp);
+
+    startTestimonialAutoplay();
+
+    return () => {
+      embla.off('select', onSelect);
+      root.removeEventListener('pointerdown', onPointerDown);
+      root.removeEventListener('pointerup', onPointerUp);
+      root.removeEventListener('touchstart', onPointerDown);
+      root.removeEventListener('touchend', onPointerUp);
+      root.removeEventListener('mouseenter', onPointerDown);
+      root.removeEventListener('mouseleave', onPointerUp);
+      root.removeEventListener('focusin', onPointerDown);
+      root.removeEventListener('focusout', onPointerUp);
+      clearTestimonialTimers();
+    };
+  }, [
+    embla,
+    canEdit,
+    viewTestimonialCount,
+    clearTestimonialTimers,
+    pauseTestimonialAutoplay,
+    scheduleTestimonialResume,
+    startTestimonialAutoplay,
+    handleTestimonialUserInteract,
+  ]);
 
   const patch = async (body) => {
     setSaving(true);
@@ -936,6 +1022,7 @@ export default function MarketingPage() {
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element -- data URL preview from FileReader (same as sign-up) */}
                                 <img
+                                  key={teacherPicture || 'teacher-draft-preview'}
                                   src={imagePreview}
                                   alt="Profile preview"
                                   style={{
@@ -948,14 +1035,10 @@ export default function MarketingPage() {
                               </div>
                               <button
                                 type="button"
-                                onClick={async () => {
+                                onClick={() => {
+                                  teacherImageDraftRef.current = true;
                                   setImagePreview(null);
-                                  await apiClient.patch('/api/marketing_page', { teacher_picture: null });
                                   setTeacherPicture(null);
-                                  setTeacherPictureUrl(null);
-                                  setData((d) =>
-                                    d ? { ...d, teacher_picture_url: null, teacher_picture: null } : d
-                                  );
                                   const el = document.getElementById('marketing-teacher-picture-upload');
                                   if (el) el.value = '';
                                 }}
@@ -1138,7 +1221,7 @@ export default function MarketingPage() {
                             />
                           </Title>
                           <Text fw={700} c="gray.1">
-                            Students teached
+                            Students taught
                           </Text>
                         </>
                       )}

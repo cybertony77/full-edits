@@ -569,7 +569,7 @@ export default function SignUp() {
               alignItems: 'center',
               gap: '12px'
             }}>
-              {form.profile_picture && imagePreview ? (
+              {imagePreview ? (
                 // Show uploaded image in circle
                 <div
                   style={{
@@ -600,6 +600,7 @@ export default function SignUp() {
                     title="Drag & drop new image"
                   >
                     <img
+                      key={form.profile_picture || 'local-preview'}
                       src={imagePreview}
                       alt="Profile preview"
                       className="profile-picture-image"

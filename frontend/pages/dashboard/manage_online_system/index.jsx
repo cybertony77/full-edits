@@ -288,7 +288,7 @@ export default function ManageOnlineSystem() {
               onClick={() => router.push("/dashboard/manage_online_system/homeworks_videos")}
             >
               <Image src="/play-pause.svg" alt="Play Pause" width={20} height={20} />
-              Homeworks Videos
+              Homework Videos
             </button>
           )}
 
@@ -308,7 +308,7 @@ export default function ManageOnlineSystem() {
               onClick={() => router.push("/dashboard/manage_online_system/homeworks")}
             >
               <Image src="/books.svg" alt="Homeworks" width={20} height={20} />
-              Homeworks
+              Homework
             </button>
           )}
 
@@ -402,7 +402,7 @@ export default function ManageOnlineSystem() {
               onClick={() => router.push("/dashboard/manage_online_system/preview_student_homeworks")}
             >
               <Image src="/books.svg" alt="Preview Homeworks" width={20} height={20} />
-              Preview Student Homeworks
+              Preview Student Homework
             </button>
           )}
 

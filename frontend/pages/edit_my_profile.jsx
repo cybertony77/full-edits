@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Title from "../components/Title";
 import { useProfile, useUpdateProfile, useProfilePicture } from '../lib/api/auth';
@@ -20,6 +20,7 @@ export default function EditMyProfile() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const localPreviewActiveRef = useRef(false);
   const router = useRouter();
 
   // React Query hooks
@@ -28,12 +29,15 @@ export default function EditMyProfile() {
   const updateProfileMutation = useUpdateProfile();
   const usernameCheck = useCheckUsername(form.id);
   
-  // Set image preview from signed URL when available
+  // Set image preview from signed URL when available (skip while user picked a new local file)
   useEffect(() => {
-    if (profilePictureUrl && form.profile_picture) {
-      setImagePreview(profilePictureUrl);
-    } else if (!form.profile_picture) {
+    if (!form.profile_picture) {
       setImagePreview(null);
+      localPreviewActiveRef.current = false;
+      return;
+    }
+    if (profilePictureUrl && !localPreviewActiveRef.current) {
+      setImagePreview(profilePictureUrl);
     }
   }, [profilePictureUrl, form.profile_picture]);
 
@@ -104,6 +108,7 @@ export default function EditMyProfile() {
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
+      localPreviewActiveRef.current = true;
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
@@ -135,6 +140,7 @@ export default function EditMyProfile() {
       }
     } catch (err) {
       setError(err.response?.data?.error || '❌ Failed to upload image. Please try again.');
+      localPreviewActiveRef.current = false;
       setImagePreview(null);
       setForm(prev => ({ ...prev, profile_picture: originalForm?.profile_picture || null }));
     } finally {
@@ -176,6 +182,7 @@ export default function EditMyProfile() {
 
   // Handle profile picture removal
   const handleRemoveImage = () => {
+    localPreviewActiveRef.current = false;
     setImagePreview(null);
     setForm(prev => ({ ...prev, profile_picture: null }));
     const fileInput = document.getElementById('profile-picture-upload-editprofile');
@@ -306,6 +313,7 @@ export default function EditMyProfile() {
     updateProfileMutation.mutate(submitForm, {
       onSuccess: () => {
         setSuccess(true);
+        localPreviewActiveRef.current = false;
         // Update original data to reflect the new state
         setOriginalForm({ ...form });
         // Clear password fields after successful update
@@ -475,7 +483,7 @@ export default function EditMyProfile() {
             {/* Profile Picture Upload */}
             <div className="form-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
               <label style={{ textAlign: 'center', width: '100%' }}>Profile Picture</label>
-              {form.profile_picture && imagePreview ? (
+              {imagePreview ? (
                 // Show uploaded image in circle
                 <div
                   style={{
@@ -506,6 +514,7 @@ export default function EditMyProfile() {
                     title="Drag & drop new image"
                   >
                     <img
+                      key={form.profile_picture || 'local-preview'}
                       src={imagePreview}
                       alt="Profile preview"
                       className="profile-picture-image"

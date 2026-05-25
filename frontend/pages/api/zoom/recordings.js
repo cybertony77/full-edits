@@ -1,5 +1,9 @@
 import { authMiddleware } from '../../../lib/authMiddleware';
 import { listZoomUserRecordings } from '../../../lib/zoomServer';
+import {
+  getMp4DownloadUrlFromMeeting,
+  getZoomProxyId,
+} from '../../../lib/zoomUtils';
 
 function formatDateTime(dateString, timezone) {
   const date = new Date(dateString);
@@ -31,7 +35,6 @@ function formatDateTime(dateString, timezone) {
 
     return `${day}/${month}/${year} at ${hour}:${minute} ${dayPeriod}`;
   } catch {
-    // Fallback to UTC if provided timezone is invalid.
     const parts = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'UTC',
       day: '2-digit',
@@ -72,47 +75,14 @@ function resolveMeetingDate(meeting) {
   );
 }
 
-function getMp4DownloadUrl(meeting) {
-  const files = Array.isArray(meeting?.recording_files) ? meeting.recording_files : [];
-  const mp4File = files.find((file) => {
-    const fileType = String(file?.file_type || '').toUpperCase();
-    const status = String(file?.status || '').toLowerCase();
-    return fileType === 'MP4' && (!status || status === 'completed');
-  });
-  return mp4File?.download_url || '';
-}
-
-function buildDirectZoomUrl(downloadUrl, accessToken) {
-  const raw = String(downloadUrl || '').trim();
-  const token = String(accessToken || '').trim();
-  if (!raw || !token) return '';
-  try {
-    const url = new URL(raw);
-    url.searchParams.set('access_token', token);
-    return url.toString();
-  } catch {
-    return '';
-  }
-}
-
-function extractZoomDownloadKey(downloadUrl) {
-  const raw = String(downloadUrl || '').trim();
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    const match = url.pathname.match(/\/rec\/download\/([^/]+)/i);
-    if (match?.[1]) return decodeURIComponent(match[1]);
-  } catch {
-    const match = raw.match(/\/rec\/download\/([^/?#]+)/i);
-    if (match?.[1]) return decodeURIComponent(match[1]);
-  }
-  return '';
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   try {
     const user = await authMiddleware(req);
@@ -134,26 +104,25 @@ export default async function handler(req, res) {
     }
 
     const meetings = Array.isArray(payload?.meetings) ? payload.meetings : [];
-    const accessToken = payload?._resolved_access_token || '';
     const mapped = meetings.map((meeting) => {
-      const mp4DownloadUrl = getMp4DownloadUrl(meeting);
-      const zoomDownloadKey = extractZoomDownloadKey(mp4DownloadUrl);
-      return ({
-      ...(meeting || {}),
-      uuid: meeting.uuid || '',
-      id: meeting.id || null,
-      topic: meeting.topic || '',
-      start_time: meeting.start_time || null,
-      duration: meeting.duration || 0,
-      timezone: meeting.timezone || null,
-      created_at: resolveMeetingDate(meeting),
-      recording_files: Array.isArray(meeting.recording_files) ? meeting.recording_files : [],
-      zoom_mp4_download_url: mp4DownloadUrl,
-      zoom_direct_video_url: zoomDownloadKey || buildDirectZoomUrl(mp4DownloadUrl, accessToken),
-      zoom_download_key: zoomDownloadKey,
-      created_at_formated: formatDateTime(resolveMeetingDate(meeting), meeting.timezone),
-      duration_furmated: formatDuration(meeting.duration),
-      });
+      const proxyId = getZoomProxyId(meeting);
+      return {
+        ...(meeting || {}),
+        uuid: meeting.uuid || '',
+        id: meeting.id || null,
+        topic: meeting.topic || '',
+        start_time: meeting.start_time || null,
+        duration: meeting.duration || 0,
+        timezone: meeting.timezone || null,
+        created_at: resolveMeetingDate(meeting),
+        recording_files: Array.isArray(meeting.recording_files) ? meeting.recording_files : [],
+        zoom_mp4_download_url: getMp4DownloadUrlFromMeeting(meeting),
+        // Recording uuid (unique per session) — not numeric meeting id (shared on recurring meetings)
+        zoom_direct_video_url: proxyId,
+        zoom_proxy_id: proxyId,
+        created_at_formated: formatDateTime(resolveMeetingDate(meeting), meeting.timezone),
+        duration_furmated: formatDuration(meeting.duration),
+      };
     });
 
     return res.json({

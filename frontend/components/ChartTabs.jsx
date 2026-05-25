@@ -111,7 +111,7 @@ export default function ChartTabs({
             fontSize: '1rem'
           }}
         >
-          Homeworks Chart
+          Homework Chart
         </button>
         <button
           onClick={() => setActive('quiz')}

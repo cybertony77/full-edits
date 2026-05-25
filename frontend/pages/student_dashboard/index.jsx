@@ -1176,7 +1176,7 @@ export default function StudentDashboard() {
                   onClick={() => router.push("/student_dashboard/homeworks_videos")}
                 >
                   <Image src="/play-pause.svg" alt="Play Pause" width={20} height={20} />
-                  Homeworks Videos
+                  Homework Videos
                 </button>
               )}
 
@@ -1196,7 +1196,7 @@ export default function StudentDashboard() {
                   onClick={() => router.push("/student_dashboard/my_homeworks")}
                 >
                   <Image src="/books.svg" alt="Books" width={20} height={20} />
-                  My Homeworks
+                  My Homework
                 </button>
               )}
 

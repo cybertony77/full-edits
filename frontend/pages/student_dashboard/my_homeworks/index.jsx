@@ -536,7 +536,7 @@ export default function MyHomeworks() {
           <Title backText="Back" href="/student_dashboard">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Image src="/books.svg" alt="Books" width={32} height={32} />
-              My Homeworks
+              My Homework
             </div>
           </Title>
           
@@ -573,7 +573,7 @@ export default function MyHomeworks() {
               margin: "0 auto 20px",
               animation: "spin 1s linear infinite"
             }} />
-            <p style={{ color: "#6c757d", fontSize: "1rem" }}>Loading homeworks...</p>
+            <p style={{ color: "#6c757d", fontSize: "1rem" }}>Loading homework...</p>
             <style jsx>{`
               @keyframes spin {
                 0% { transform: rotate(0deg); }
@@ -595,7 +595,7 @@ export default function MyHomeworks() {
         <Title backText="Back" href="/student_dashboard">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/books.svg" alt="Books" width={32} height={32} />
-            My Homeworks
+            My Homework
           </div>
         </Title>
 

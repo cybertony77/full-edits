@@ -1,5 +1,6 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import VideoWatermarkOverlay from './VideoWatermarkOverlay';
+import { buildZoomVideoProxyPath } from '../lib/zoomUtils';
 
 export default function ZoomVideoPlayer({
   meetingId,
@@ -10,13 +11,14 @@ export default function ZoomVideoPlayer({
 }) {
   const hasMilestoneRef = useRef(false);
   const hasCompleteRef = useRef(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+
   const src = useMemo(() => {
-    if (!meetingId) return '';
-    const value = String(meetingId).trim();
-    if (/^https?:\/\//i.test(value)) return value;
-    // Backward compatibility for old saved meeting IDs
-    return `/api/videos/zoom/${encodeURIComponent(value)}`;
-  }, [meetingId]);
+    const base = buildZoomVideoProxyPath(meetingId);
+    if (!base) return '';
+    // Cache-bust query param so browsers never reuse an expired segment response
+    return retryNonce ? `${base}?_=${retryNonce}` : base;
+  }, [meetingId, retryNonce]);
 
   const handleTimeUpdate = (event) => {
     const video = event.currentTarget;
@@ -34,10 +36,22 @@ export default function ZoomVideoPlayer({
     }
   };
 
+  const handleVideoError = () => {
+    setRetryNonce((n) => n + 1);
+  };
+
   if (!meetingId) {
     return (
       <div style={{ color: '#fff', padding: '32px', textAlign: 'center' }}>
         No Zoom meeting ID provided
+      </div>
+    );
+  }
+
+  if (!src) {
+    return (
+      <div style={{ color: '#fff', padding: '32px', textAlign: 'center' }}>
+        Invalid Zoom recording link — please re-select the recording from the list
       </div>
     );
   }
@@ -54,6 +68,7 @@ export default function ZoomVideoPlayer({
       }}
     >
       <video
+        key={src}
         src={src}
         controls
         controlsList="nodownload"
@@ -69,6 +84,7 @@ export default function ZoomVideoPlayer({
           display: 'block',
         }}
         onTimeUpdate={handleTimeUpdate}
+        onError={handleVideoError}
       />
       <VideoWatermarkOverlay text={watermarkText} />
     </div>

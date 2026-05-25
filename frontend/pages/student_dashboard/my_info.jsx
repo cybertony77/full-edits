@@ -67,13 +67,17 @@ export default function MyInfo() {
     }
   }, [profile?.profile_picture]);
   
-  // Set image preview from signed URL when available
+  const localPreviewActiveRef = useRef(false);
+
+  // Set image preview from signed URL when available (skip while user picked a new local file)
   useEffect(() => {
-    if (profilePictureUrl && profilePicturePublicId) {
-      // Use signed URL for preview (this will update when profile picture changes)
-      setImagePreview(profilePictureUrl);
-    } else if (!profilePicturePublicId) {
+    if (!profilePicturePublicId) {
       setImagePreview(null);
+      localPreviewActiveRef.current = false;
+      return;
+    }
+    if (profilePictureUrl && !localPreviewActiveRef.current) {
+      setImagePreview(profilePictureUrl);
     }
   }, [profilePictureUrl, profilePicturePublicId]);
   
@@ -287,6 +291,7 @@ export default function MyInfo() {
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
+      localPreviewActiveRef.current = true;
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
@@ -319,7 +324,8 @@ export default function MyInfo() {
         
         // Update profile in database
         await updateProfileMutation.mutateAsync({ profile_picture: newPublicId });
-        
+        localPreviewActiveRef.current = false;
+
         // The signed URL will be fetched and update the preview automatically
         // Keep the base64 preview until the signed URL is ready
       } else {
@@ -327,6 +333,7 @@ export default function MyInfo() {
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to upload image. Please try again.');
+      localPreviewActiveRef.current = false;
       setImagePreview(null);
       setProfilePicturePublicId(null);
     } finally {
@@ -372,6 +379,7 @@ export default function MyInfo() {
       setUploadingImage(true);
       // Update profile to remove picture
       await updateProfileMutation.mutateAsync({ profile_picture: null });
+      localPreviewActiveRef.current = false;
       setProfilePicturePublicId(null);
       setImagePreview(null);
       const fileInput = document.getElementById('profile-picture-upload-myinfo');
@@ -581,7 +589,7 @@ export default function MyInfo() {
               {/* Profile Picture Upload */}
               <div className="detail-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                 <div className="detail-label" style={{ textAlign: 'center', width: '100%' }}>Profile Picture</div>
-                {profilePicturePublicId && imagePreview ? (
+                {imagePreview ? (
                   // Show uploaded image in circle
                   <div
                     style={{
@@ -612,6 +620,7 @@ export default function MyInfo() {
                       title="Drag & drop new image"
                     >
                       <img
+                        key={profilePicturePublicId || 'local-preview'}
                         src={imagePreview}
                         alt="Profile preview"
                         className="profile-picture-image"

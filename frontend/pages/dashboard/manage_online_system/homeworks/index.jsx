@@ -268,7 +268,7 @@ export default function Homeworks() {
           <Title backText="Back" href="/dashboard/manage_online_system">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Image src="/books.svg" alt="Homeworks" width={32} height={32} />
-              Homeworks
+              Homework
             </div>
           </Title>
           
@@ -289,7 +289,7 @@ export default function Homeworks() {
               margin: "0 auto 20px",
               animation: "spin 1s linear infinite"
             }} />
-            <p style={{ color: "#6c757d", fontSize: "1rem" }}>Loading homeworks...</p>
+            <p style={{ color: "#6c757d", fontSize: "1rem" }}>Loading homework...</p>
             <style jsx>{`
               @keyframes spin {
                 0% { transform: rotate(0deg); }
@@ -317,7 +317,7 @@ export default function Homeworks() {
         <Title backText="Back" href="/dashboard/manage_online_system">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/books.svg" alt="Homeworks" width={32} height={32} />
-            Homeworks
+            Homework
           </div>
         </Title>
 
@@ -502,7 +502,7 @@ export default function Homeworks() {
           {/* Homeworks List */}
           {filteredHomeworks.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6c757d' }}>
-              {homeworks.length === 0 ? '❌ No homeworks found. Click "Add Homework" to create one.' : '❌ No homeworks match your filters.'}
+              {homeworks.length === 0 ? '❌ No homework found. Click "Add Homework" to create one.' : '❌ No homework match your filters.'}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

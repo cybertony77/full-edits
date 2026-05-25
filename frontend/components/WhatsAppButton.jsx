@@ -126,16 +126,16 @@ We want to inform you that we are in:
   • Attendance Info: ${currentLesson.attended ? `${currentLesson.lastAttendance}` : 'Absent'}`;
 
       // Add previous lesson homework and quiz if available
-  //     if (previousAssignment || previousQuizDegree) {
-  //       if (previousAssignment) {
-  //         whatsappMessage += `
-  // • Previous Assignment: ${previousAssignment}`;
-  //       }
-  //       if (previousQuizDegree) {
-  //         whatsappMessage += `
-  // • Previous Quiz Degree: ${previousQuizDegree}`;
-  //       }
-  //     }
+      if (previousAssignment || previousQuizDegree) {
+        if (previousAssignment) {
+          whatsappMessage += `
+  • Previous Assignment: ${previousAssignment}`;
+        }
+        if (previousQuizDegree) {
+          whatsappMessage += `
+  • Previous Quiz Degree: ${previousQuizDegree}`;
+        }
+      }
       
       // Add comment if it exists and is not null/undefined
       // Get comment from the current lesson data (reuse variables from above)

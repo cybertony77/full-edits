@@ -48,7 +48,7 @@ function toPreviewSrc(url) {
   const kind = detectLinkKind(url);
   if (kind === 'youtube') {
     const id = extractYoutubeId(url);
-    if (id) return `https://www.youtube.com/embed/${id}?rel=0`;
+    if (id) return `https://www.youtube.com/embed/${id}?rel=0&playsinline=1&modestbranding=1`;
     return null;
   }
   if (kind === 'drive') {
@@ -481,9 +481,12 @@ export default function AppVideosModal({ isOpen, onClose, role = '' }) {
                                   className={`${styles.player} ${isReady ? styles.playerVisible : styles.playerHidden}`}
                                   src={item.previewSrc}
                                   title={item.label}
-                                  allow="autoplay; encrypted-media; picture-in-picture"
+                                  width="100%"
+                                  height="100%"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                   allowFullScreen
                                   loading="eager"
+                                  referrerPolicy="strict-origin-when-cross-origin"
                                   onLoad={() => handleIframeLoad(item.id)}
                                   onError={() => handleIframeError(item.id)}
                                 />

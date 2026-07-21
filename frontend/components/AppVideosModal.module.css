@@ -514,24 +514,25 @@
   position: relative;
   width: 100%;
   max-width: 100%;
-  aspect-ratio: 16 / 9;
-  min-height: 0;
-  height: auto;
+  height: 0;
+  padding-top: 56.25%; /* 16:9 — reliable on mobile */
   border-radius: 15px;
   overflow: hidden;
-  background: #0b1220;
+  background: #000;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .player {
   position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100%;
+  min-height: 100%;
   max-width: none;
-  border: none;
-  background: #0b1220;
+  border: 0;
+  background: #000;
   z-index: 1;
 }
 
@@ -549,7 +550,10 @@
 
 .spinnerOverlay {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -558,6 +562,7 @@
   gap: 14px;
   padding: 16px;
   background: #0b1220;
+  box-sizing: border-box;
 }
 
 .spinner {
@@ -581,7 +586,10 @@
 
 .errorBox {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -756,24 +764,24 @@
   }
 }
 
-/* Phone — keep as centered popup (not full-bleed) */
+/* Phone — full-bleed video player */
 @media (max-width: 560px) {
   .overlay {
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     padding:
-      max(12px, env(safe-area-inset-top))
-      max(12px, env(safe-area-inset-right))
-      max(12px, env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
   }
 
   .panel {
-    width: min(100%, 440px);
+    width: 100%;
     max-width: 100%;
     height: auto;
-    max-height: min(88dvh, 760px);
-    border-radius: 20px;
+    max-height: min(94dvh, 100%);
+    border-radius: 16px;
     border: 1px solid rgba(31, 168, 220, 0.3);
   }
 
@@ -803,12 +811,17 @@
   }
 
   .body {
-    padding: 12px 12px 14px;
+    padding: 10px 0 14px;
     gap: 16px;
+  }
+
+  .section {
+    padding: 0;
   }
 
   .sectionHeader {
     gap: 8px;
+    padding: 0 12px;
   }
 
   .sectionTitle {
@@ -822,12 +835,16 @@
 
   .card {
     gap: 10px;
-    padding: 12px;
-    border-radius: 14px;
+    padding: 12px 0 12px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    box-shadow: none;
   }
 
   .cardTop {
     gap: 10px;
+    padding: 0 12px;
   }
 
   .cardBadge {
@@ -847,6 +864,8 @@
 
   .cardLink {
     margin-top: 6px;
+    margin-left: 12px;
+    margin-right: 12px;
     font-size: 0.7rem;
     padding: 7px 8px;
     display: -webkit-box;
@@ -858,6 +877,7 @@
   .actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+    padding: 0 12px;
   }
 
   .btnShare {
@@ -877,30 +897,38 @@
   .toast {
     gap: 8px;
     padding: 10px;
+    margin: 0 12px;
     font-size: 0.82rem;
   }
 
   .playerShell {
-    width: calc(100% + 24px);
-    max-width: none;
-    margin-left: -12px;
-    margin-right: -12px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
     border-radius: 0;
     padding: 0;
     box-shadow: none;
+    background: #000;
   }
 
+  /* Tall player so portrait / phone-UI embeds are not cropped (esp. 400–560px) */
   .playerWrap {
+    width: 100%;
+    max-width: 100%;
+    height: min(75dvh, 680px);
+    min-height: 560px;
+    padding-top: 0;
     border-radius: 0;
-    aspect-ratio: 16 / 9;
-    min-height: 0;
   }
 
   .player {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100%;
+    min-height: 100%;
   }
 
   .spinner {
@@ -923,9 +951,18 @@
   }
 
   .emptyBox {
-    margin: 8px 0;
+    margin: 8px 12px;
     padding: 28px 14px;
     border-radius: 14px;
+  }
+}
+
+/* Mid phones / narrow tablets — keep tall player so lower video is not clipped */
+@media (min-width: 401px) and (max-width: 560px) {
+  .playerWrap {
+    height: min(78dvh, 720px);
+    min-height: 600px;
+    padding-top: 0;
   }
 }
 

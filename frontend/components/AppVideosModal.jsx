@@ -456,7 +456,7 @@ export default function AppVideosModal({ isOpen, onClose, role = '' }) {
                             <div className={styles.playerWrap}>
                               {isLoading && (
                                 <div className={styles.spinnerOverlay} aria-live="polite">
-                                  <div className={styles.spinner} />
+                                  <div className={styles.spinner} aria-hidden="true" />
                                   <p className={styles.spinnerText}>Loading video…</p>
                                 </div>
                               )}
@@ -483,6 +483,7 @@ export default function AppVideosModal({ isOpen, onClose, role = '' }) {
                                   title={item.label}
                                   allow="autoplay; encrypted-media; picture-in-picture"
                                   allowFullScreen
+                                  loading="eager"
                                   onLoad={() => handleIframeLoad(item.id)}
                                   onError={() => handleIframeError(item.id)}
                                 />

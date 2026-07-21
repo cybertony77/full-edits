@@ -243,37 +243,46 @@ export default function MyCertificatesPage() {
                 const isError = isOpen && state?.status === 'error';
 
                 return (
-                  <article key={id} className={`${styles.card} ${isOpen ? styles.cardOpen : ''}`}>
-                    <div className={styles.cardTop}>
-                      <div className={styles.cardBadge}>
-                        <Image src="/certificate.svg" alt="" width={24} height={24} />
+                  <article
+                    key={id}
+                    className={`${styles.card} ${styles.cardClickable} ${isOpen ? styles.cardOpen : ''}`}
+                    onClick={() => handleToggle(cert)}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isOpen}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleToggle(cert);
+                      }
+                    }}
+                  >
+                    <div className={styles.cardHeaderRow}>
+                      <div className={styles.cardTop}>
+                        <div className={styles.cardBadge}>
+                          <Image src="/certificate.svg" alt="" width={24} height={24} />
+                        </div>
+                        <div className={styles.cardMeta}>
+                          <h3 className={styles.cardTitle}>{cert.certificate_name}</h3>
+                          {cert.create_date && <p className={styles.cardHint}>{cert.create_date}</p>}
+                        </div>
                       </div>
-                      <div className={styles.cardMeta}>
-                        <h3 className={styles.cardTitle}>{cert.certificate_name}</h3>
-                        {cert.create_date && <p className={styles.cardHint}>{cert.create_date}</p>}
-                      </div>
-                    </div>
-
-                    <div className={styles.actions}>
-                      <button
-                        type="button"
-                        className={`${styles.btn} ${styles.btnView} ${isOpen ? styles.btnViewActive : ''}`}
-                        onClick={() => handleToggle(cert)}
-                        aria-expanded={isOpen}
-                      >
-                        {isOpen ? 'Close' : 'View'}
+                      <div className={styles.cardChevron} aria-hidden>
                         <Image
                           src={isOpen ? '/chevron-down.svg' : '/chevron-right.svg'}
                           alt=""
-                          width={18}
-                          height={18}
-                          className={styles.chevron}
+                          width={20}
+                          height={20}
                         />
-                      </button>
+                      </div>
                     </div>
 
                     {isOpen && (
-                      <div className={styles.viewerShell}>
+                      <div
+                        className={styles.viewerShell}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <div className={styles.viewerWrap}>
                           {isLoadingCert && (
                             <div className={styles.spinnerOverlay} aria-live="polite">

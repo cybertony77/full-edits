@@ -727,6 +727,15 @@ export default function QR() {
         setOptimisticAttended(null);
         // Disable QR auto-attend after a successful toggle so manual reversals work correctly
         setIsQRScanned(false);
+
+        // Always refresh student so payment.numberOfSessions (±1) shows immediately
+        if (refetchStudent) {
+          try {
+            await refetchStudent();
+          } catch (err) {
+            console.error('Failed to refetch student after attendance:', err);
+          }
+        }
         
         // Calculate score for attendance (only if scoring system is enabled)
         // If reversing to absent, get the last attendance history entry and reverse it
@@ -787,7 +796,7 @@ export default function QR() {
               data: { status: 'attend' }
             });
           }
-          // Refetch student data to update score
+          // Refetch again after scoring updates
           if (refetchStudent) {
             refetchStudent();
           }

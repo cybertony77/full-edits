@@ -4,9 +4,14 @@ import fs from 'fs';
 import http from 'http';
 import https from 'https';
 import path from 'path';
+import { MongoClient } from 'mongodb';
 import { authMiddleware } from '../../../lib/authMiddleware';
 import { getZoomAccessToken, resolveZoomMp4DownloadUrl } from '../../../lib/zoomServer';
 import { extractZoomMeetingId } from '../../../lib/zoomUtils';
+import {
+  getMongoFromEnv,
+  MARKETING_DOC_ID,
+} from '../../../lib/marketingPageMongo';
 import { Readable } from 'stream';
 
 // Disable Next.js body parsing — we stream raw bytes
@@ -49,6 +54,7 @@ const accountId = envConfig.CLOUDFLARE_ACCOUNT_ID || process.env.CLOUDFLARE_ACCO
 const accessKeyId = envConfig.R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
 const secretAccessKey = envConfig.R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY;
 const bucketName = envConfig.R2_BUCKET_NAME || process.env.R2_BUCKET_NAME;
+
 const httpsAgent = new https.Agent({
   keepAlive: true,
   maxSockets: 100,
@@ -91,19 +97,65 @@ function getContentType(key) {
   return 'application/octet-stream';
 }
 
+function idsMatch(a, b) {
+  const left = String(a || '').trim();
+  const right = String(b || '').trim();
+  if (!left || !right) return false;
+  if (left === right) return true;
+  const leftNorm = extractZoomMeetingId(left) || left;
+  const rightNorm = extractZoomMeetingId(right) || right;
+  return leftNorm === rightNorm;
+}
+
+/** Allow unauthenticated playback only for the published welcome free-session video. */
+async function isPublicMarketingSessionVideo(routeParts, { isZoomByPrefix, isZoomByMeetingIdRoute }) {
+  const systemEnabled =
+    (loadEnvConfig().SYSTEM_MARKETING_PAGE === 'true') ||
+    process.env.SYSTEM_MARKETING_PAGE === 'true';
+  if (!systemEnabled) return false;
+
+  const { MONGO_URI, DB_NAME } = getMongoFromEnv();
+  let client;
+  try {
+    client = await MongoClient.connect(MONGO_URI);
+    const db = client.db(DB_NAME);
+    const doc = await db.collection('marketing_page').findOne(
+      { _id: MARKETING_DOC_ID },
+      { projection: { page_state: 1, session_video_type: 1, session_video_id: 1 } }
+    );
+    if (!doc || doc.page_state === false) return false;
+
+    const type = String(doc.session_video_type || '').toLowerCase();
+    const savedId = String(doc.session_video_id || '').trim();
+    if (!type || !savedId) return false;
+
+    if (type === 'zoom' && (isZoomByPrefix || isZoomByMeetingIdRoute)) {
+      const zoomIdentifier = decodeURIComponent(
+        String(isZoomByPrefix ? routeParts.slice(1).join('/') : routeParts[0] || '').trim()
+      );
+      return idsMatch(zoomIdentifier, savedId);
+    }
+
+    if (type === 'r2' && !isZoomByPrefix && !isZoomByMeetingIdRoute) {
+      const objectKey = routeParts.join('/');
+      return idsMatch(objectKey, savedId) || idsMatch(decodeURIComponent(objectKey), savedId);
+    }
+
+    return false;
+  } catch (e) {
+    console.error('public marketing session video check failed:', e);
+    return false;
+  } finally {
+    if (client) await client.close();
+  }
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   // Only GET and HEAD
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // ── Auth check ────────────────────────────────────────────────────────────
-  try {
-    await authMiddleware(req);
-  } catch {
-    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // ── Build key from catch-all segments ────────────────────────────────────
@@ -116,9 +168,29 @@ export default async function handler(req, res) {
   const isZoomByPrefix = routeParts[0] === 'zoom';
   const isZoomByMeetingIdRoute = routeParts.length === 1 && /^[0-9]+$/.test(String(routeParts[0]));
 
+  // ── Auth check (allow public welcome free-session Zoom/R2 video) ───────────
+  let isAuthenticated = false;
+  try {
+    await authMiddleware(req);
+    isAuthenticated = true;
+  } catch {
+    isAuthenticated = false;
+  }
+
+  if (!isAuthenticated) {
+    const allowedPublic = await isPublicMarketingSessionVideo(routeParts, {
+      isZoomByPrefix,
+      isZoomByMeetingIdRoute,
+    });
+    if (!allowedPublic) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
   // Zoom routes:
   // - /api/videos/{meetingId}
-  // - /api/videos/zoom/{meetingId}
+  // - /api/videos/zoom/{uuid|meetingId|downloadKey}
+  // Each request resolves a FRESH download_url from Zoom (UUID architecture preserved).
   if (isZoomByPrefix || isZoomByMeetingIdRoute) {
     const zoomIdentifier = decodeURIComponent(
       String(isZoomByPrefix ? routeParts.slice(1).join('/') : routeParts[0] || '').trim()
@@ -148,6 +220,7 @@ export default async function handler(req, res) {
 
       let { response: zoomVideoResponse } = await fetchUpstream(false);
 
+      // Token or download_url expired — refresh OAuth + re-resolve fresh download_url
       if (
         zoomVideoResponse.status === 401 ||
         zoomVideoResponse.status === 403

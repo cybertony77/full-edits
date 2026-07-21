@@ -12,6 +12,7 @@ import CenterSelect from '../../../../components/CenterSelect';
 import AccountStateSelect from '../../../../components/AccountStateSelect';
 const PdfViewerModal = dynamic(() => import('../../../../components/PdfViewerModal'), { ssr: false });
 import apiClient from '../../../../lib/axios';
+import { downloadFileUrl } from '../../../../lib/downloadFileUrl';
 
 function InputWithButton(props) {
   const theme = useMantineTheme();
@@ -76,9 +77,14 @@ export default function MaterialPage() {
       setSelectedMaterial(null);
       queryClient.invalidateQueries(['materials']);
       if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
-      successTimeoutRef.current = setTimeout(() => setSuccessMessage(''), 5000);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(''), 6000);
     },
-    onError: (err) => setSuccessMessage(`❌ ${err.response?.data?.error || 'Failed to delete material'}`),
+    onError: (err) => {
+      const errorMsg = err.response?.data?.error || 'Failed to delete material';
+      setSuccessMessage(errorMsg.startsWith('❌') ? errorMsg : `❌ ${errorMsg}`);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(''), 6000);
+    },
   });
 
   useEffect(() => {
@@ -86,6 +92,22 @@ export default function MaterialPage() {
   }, [searchInput, searchTerm]);
 
   const handleSearch = () => setSearchTerm(searchInput.trim());
+
+  const openConfirmDeleteModal = (material) => {
+    setSelectedMaterial(material);
+    setConfirmDeleteOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedMaterial) {
+      deleteMutation.mutate(selectedMaterial._id);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setConfirmDeleteOpen(false);
+    setSelectedMaterial(null);
+  };
 
   return (
     <div style={{ minHeight: '100vh', padding: '20px 5px' }}>
@@ -170,7 +192,7 @@ export default function MaterialPage() {
                   </div>
                   <div className="material-buttons" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {item.pdf_url && (
-                      <button onClick={() => fetch(item.pdf_url).then((r) => r.blob()).then((b) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${item.pdf_file_name || 'file'}.pdf`; a.click(); URL.revokeObjectURL(a.href); })} style={{ padding: '8px 16px', background: '#32b750', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => downloadFileUrl(item.pdf_url, `${item.pdf_file_name || 'file'}.pdf`).catch((err) => alert(err.message || 'Download failed'))} style={{ padding: '8px 16px', background: '#32b750', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Image src="/pdf.svg" alt="PDF" width={18} height={18} />
                         Download PDF
                       </button>
@@ -194,7 +216,7 @@ export default function MaterialPage() {
                       <Image src="/edit.svg" alt="Edit" width={18} height={18} />
                       Edit
                     </button>
-                    <button onClick={() => { setSelectedMaterial(item); setConfirmDeleteOpen(true); }} style={{ padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button onClick={() => openConfirmDeleteModal(item)} style={{ padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Image src="/trash2.svg" alt="Delete" width={18} height={18} />
                       Delete
                     </button>
@@ -204,18 +226,103 @@ export default function MaterialPage() {
             </div>
           )}
 
-          {successMessage && <div style={{ marginTop: 18, textAlign: 'center', fontWeight: 600, color: successMessage.startsWith('❌') ? '#991b1b' : '#155724' }}>{successMessage}</div>}
+          {/* Success / Error Message */}
+          {successMessage && (
+            <div style={{
+              background: successMessage.startsWith('❌') ? '#fee2e2' : '#d4edda',
+              color: successMessage.startsWith('❌') ? '#991b1b' : '#155724',
+              borderRadius: 10,
+              padding: 16,
+              marginTop: 24,
+              textAlign: 'center',
+              fontWeight: 600,
+              border: successMessage.startsWith('❌') ? '1.5px solid #fca5a5' : '1.5px solid #c3e6cb',
+              fontSize: '1.1rem',
+              boxShadow: successMessage.startsWith('❌') ? '0 4px 16px rgba(220, 53, 69, 0.08)' : '0 4px 16px rgba(40, 167, 69, 0.08)'
+            }}>
+              {successMessage}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Confirmation Modal */}
       {confirmDeleteOpen && (
-        <div onClick={(e) => e.target === e.currentTarget && setConfirmDeleteOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420 }}>
-            <h3 style={{ marginTop: 0, textAlign: 'center' }}>Confirm Delete</h3>
-            <p style={{ color: '#6c757d', textAlign: 'center' }}>Delete "{selectedMaterial?.material_name}"?</p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-              <button onClick={() => selectedMaterial && deleteMutation.mutate(selectedMaterial._id)} style={{ padding: '10px 18px', background: '#dc3545', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Delete</button>
-              <button onClick={() => setConfirmDeleteOpen(false)} style={{ padding: '10px 18px', background: '#6c757d', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+        <div
+          className="confirm-modal"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleDeleteCancel();
+            }
+          }}
+        >
+          <div
+            className="confirm-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '400px',
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: '16px', textAlign: 'center' }}>
+              Confirm Delete
+            </h3>
+            <p style={{ textAlign: 'center', marginBottom: '24px', color: '#6c757d' }}>
+              Are you sure you want to delete &quot;{selectedMaterial?.material_name}&quot;? This action cannot be undone.
+            </p>
+            <div className="confirm-buttons" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteMutation.isLoading}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: deleteMutation.isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  opacity: deleteMutation.isLoading ? 0.7 : 1
+                }}
+              >
+                {deleteMutation.isLoading ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                onClick={handleDeleteCancel}
+                disabled={deleteMutation.isLoading}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: deleteMutation.isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  opacity: deleteMutation.isLoading ? 0.7 : 1
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -273,6 +380,24 @@ export default function MaterialPage() {
           .material-buttons button {
             width: 100%;
             justify-content: center;
+          }
+          .confirm-modal {
+            padding: 10px !important;
+          }
+          .confirm-content {
+            margin: 5px;
+          }
+          .confirm-content h3 {
+            font-size: 1.1rem !important;
+            margin-bottom: 12px !important;
+          }
+          .confirm-content p {
+            font-size: 0.9rem !important;
+            margin-bottom: 20px !important;
+          }
+          .confirm-content button {
+            padding: 8px 16px !important;
+            font-size: 0.9rem !important;
           }
         }
       `}</style>

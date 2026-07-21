@@ -117,7 +117,7 @@ export default async function handler(req, res) {
         created_at: resolveMeetingDate(meeting),
         recording_files: Array.isArray(meeting.recording_files) ? meeting.recording_files : [],
         zoom_mp4_download_url: getMp4DownloadUrlFromMeeting(meeting),
-        // Recording uuid (unique per session) — not numeric meeting id (shared on recurring meetings)
+        // Recording uuid (unique per session) — never an access_token URL that expires
         zoom_direct_video_url: proxyId,
         zoom_proxy_id: proxyId,
         created_at_formated: formatDateTime(resolveMeetingDate(meeting), meeting.timezone),

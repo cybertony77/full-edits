@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import HwChart from "./HwChart";
 import QuizChart from "./QuizChart";
 import MockExamChart from "./MockExamChart";
+import { useSystemConfig } from "../lib/api/system";
 
 export default function ChartTabs({
   lessons,
@@ -13,7 +14,15 @@ export default function ChartTabs({
   quizChartData,
   quizChartLoading,
 }) {
+  const { data: systemConfig } = useSystemConfig();
+  const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
   const [active, setActive] = useState('hw');
+
+  useEffect(() => {
+    if (!isMockExamsEnabled && active === 'mock') {
+      setActive('hw');
+    }
+  }, [isMockExamsEnabled, active]);
 
   const normalizedLessons = useMemo(() => {
     // Ensure lessons are in array of { lesson, homework_degree, quizDegree }
@@ -118,7 +127,7 @@ export default function ChartTabs({
           style={{
             flex: 1,
             padding: '12px 16px',
-            borderRadius: '0',
+            borderRadius: isMockExamsEnabled ? '0' : '0 8px 8px 0',
             border: active === 'quiz' ? '2px solid #1FA8DC' : '1px solid #dee2e6',
             background: active === 'quiz' ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' : 'white',
             color: active === 'quiz' ? '#1FA8DC' : '#6c757d',
@@ -129,22 +138,24 @@ export default function ChartTabs({
         >
           Quizzes Chart
         </button>
-        <button
-          onClick={() => setActive('mock')}
-          style={{
-            flex: 1,
-            padding: '12px 16px',
-            borderRadius: '0 8px 8px 0',
-            border: active === 'mock' ? '2px solid #1FA8DC' : '1px solid #dee2e6',
-            background: active === 'mock' ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' : 'white',
-            color: active === 'mock' ? '#1FA8DC' : '#6c757d',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}
-        >
-          Mock Exams Chart
-        </button>
+        {isMockExamsEnabled && (
+          <button
+            onClick={() => setActive('mock')}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: '0 8px 8px 0',
+              border: active === 'mock' ? '2px solid #1FA8DC' : '1px solid #dee2e6',
+              background: active === 'mock' ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' : 'white',
+              color: active === 'mock' ? '#1FA8DC' : '#6c757d',
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontSize: '1rem'
+            }}
+          >
+            Mock Exams Chart
+          </button>
+        )}
       </div>
 
       <div className="chart-tabs-body" style={{ background: 'white', border: '1px solid #dee2e6', borderRadius: 12, padding: 20 }}>
@@ -160,8 +171,14 @@ export default function ChartTabs({
             chartData={quizChartData}
             chartLoading={quizChartLoading}
           />
-        ) : (
+        ) : isMockExamsEnabled ? (
           <MockExamChart mockExams={normalizedMockExams} />
+        ) : (
+          <HwChart
+            lessons={normalizedLessons}
+            chartData={homeworkChartData}
+            chartLoading={homeworkChartLoading}
+          />
         )}
       </div>
       <style jsx>{`

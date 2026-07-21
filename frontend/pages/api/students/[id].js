@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import { getCookieValue } from '../../../lib/cookies';
-import { authMiddleware } from "../../../lib/authMiddleware";
+import { authMiddleware, isAuthError } from "../../../lib/authMiddleware";
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -84,6 +84,13 @@ export default async function handler(req, res) {
         lastAttendance = `${dateStr} in ${currentLesson.lastAttendanceCenter}`;
       }
       
+      // Email lives in users collection (only present after student signup)
+      const userAccount = await db.collection('users').findOne(
+        { id: student_id, role: 'student' },
+        { projection: { email: 1 } }
+      );
+      const studentEmail = (userAccount?.email && String(userAccount.email).trim()) || null;
+
       res.json({
         id: student.id,
         name: student.name,
@@ -104,6 +111,7 @@ export default async function handler(req, res) {
         homework_degree: currentLesson.homework_degree,
         school: student.school || null,
         age: student.age || null,
+        email: studentEmail,
         quizDegree: currentLesson.quizDegree,
         message_state: currentLesson.message_state,
         account_state: student.account_state || "Activated", // Default to Activated
@@ -119,11 +127,48 @@ export default async function handler(req, res) {
       });
     } else if (req.method === 'PUT') {
       // Edit student - handle partial updates properly
-      const { name, grade, course, courseType, phone, parents_phone, main_center, age, gender, school, main_comment, comment, account_state, score } = req.body;
+      const { name, grade, course, courseType, phone, parents_phone, main_center, age, gender, school, main_comment, comment, account_state, score, email } = req.body;
       
       // Validate grade is required
       if (grade !== undefined && (grade === null || grade === '')) {
         return res.status(400).json({ error: 'Grade is required' });
+      }
+
+      // Email is stored on users collection (only editable when the student already has one)
+      let emailUpdated = false;
+      if (email !== undefined) {
+        const userAccount = await db.collection('users').findOne({
+          id: student_id,
+          role: 'student'
+        });
+
+        if (!userAccount) {
+          return res.status(400).json({ error: 'Student does not have a user account' });
+        }
+        if (!userAccount.email || String(userAccount.email).trim() === '') {
+          return res.status(400).json({ error: 'Student does not have an email to edit' });
+        }
+
+        if (email === null || (typeof email === 'string' && email.trim() === '')) {
+          return res.status(400).json({ error: 'Email cannot be empty' });
+        }
+        if (typeof email !== 'string') {
+          return res.status(400).json({ error: 'Invalid email type' });
+        }
+
+        const trimmedEmail = email.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+          return res.status(400).json({ error: 'Invalid email format' });
+        }
+
+        if (trimmedEmail !== String(userAccount.email).trim()) {
+          await db.collection('users').updateOne(
+            { id: student_id, role: 'student' },
+            { $set: { email: trimmedEmail } }
+          );
+          emailUpdated = true;
+        }
       }
 
       // Build update object with only defined values (not null or undefined)
@@ -221,16 +266,23 @@ export default async function handler(req, res) {
         }
       }
       
-      // Only proceed if there are fields to update
-      if (Object.keys(update).length === 0) {
+      // Only proceed if there are fields to update (email alone is also valid)
+      if (Object.keys(update).length === 0 && !emailUpdated && email === undefined) {
         return res.status(400).json({ error: 'No valid fields to update' });
       }
-      
-      const result = await db.collection('students').updateOne(
-        { id: student_id },
-        { $set: update }
-      );
-      if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });
+
+      if (Object.keys(update).length > 0) {
+        const result = await db.collection('students').updateOne(
+          { id: student_id },
+          { $set: update }
+        );
+        if (result.matchedCount === 0) return res.status(404).json({ error: 'Student not found' });
+      } else {
+        // Email-only update: ensure student exists
+        const studentExists = await db.collection('students').findOne({ id: student_id }, { projection: { id: 1 } });
+        if (!studentExists) return res.status(404).json({ error: 'Student not found' });
+      }
+
       res.json({ success: true });
     } else if (req.method === 'DELETE') {
       // Delete student
@@ -271,12 +323,11 @@ export default async function handler(req, res) {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    if (error.message.includes('Unauthorized') || error.message.includes('Invalid token')) {
-      res.status(401).json({ error: error.message });
-    } else {
-      console.error('Error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+    if (isAuthError(error)) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
+    console.error('Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   } finally {
     if (client) await client.close();
   }

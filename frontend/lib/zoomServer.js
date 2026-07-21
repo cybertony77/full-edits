@@ -34,6 +34,8 @@ const envConfig = loadEnvConfig();
 const ZOOM_CLIENT_ID = envConfig.ZOOM_CLIENT_ID || process.env.ZOOM_CLIENT_ID;
 const ZOOM_CLIENT_SECRET = envConfig.ZOOM_CLIENT_SECRET || process.env.ZOOM_CLIENT_SECRET;
 const ZOOM_ACCOUNT_ID = envConfig.ZOOM_ACCOUNT_ID || process.env.ZOOM_ACCOUNT_ID;
+const ZOOM_ACCESS_TOKEN = envConfig.ZOOM_ACCESS_TOKEN || process.env.ZOOM_ACCESS_TOKEN;
+
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
 
@@ -137,6 +139,7 @@ export async function getZoomMeetingMp4DownloadUrl(meetingId, forceRefresh = fal
 function encodeZoomMeetingIdForApi(meetingId) {
   const id = String(meetingId || '').trim();
   if (/^[0-9]+$/.test(id)) return id;
+  // Zoom UUIDs can contain "/" — require double encoding for the path segment
   if (id.includes('/') || id.includes('//')) {
     return encodeURIComponent(encodeURIComponent(id));
   }
@@ -259,7 +262,12 @@ export async function resolveZoomMp4DownloadUrl(identifier, forceRefresh = false
 const ZOOM_LIST_FETCH_MS = 60_000;
 
 export async function listZoomUserRecordings(nextPageToken = '', forceRefresh = false) {
-  const token = await getZoomAccessToken(forceRefresh);
+  const staticToken = ZOOM_ACCESS_TOKEN && String(ZOOM_ACCESS_TOKEN).trim()
+    ? String(ZOOM_ACCESS_TOKEN).trim()
+    : '';
+  // After a 401, callers pass forceRefresh: use OAuth so a stale env token does not loop forever.
+  const token =
+    staticToken && !forceRefresh ? staticToken : await getZoomAccessToken(forceRefresh);
   const safeNextPageToken = String(nextPageToken || '').trim();
   const today = new Date();
   const to = today.toISOString().slice(0, 10);
@@ -314,5 +322,8 @@ export async function listZoomUserRecordings(nextPageToken = '', forceRefresh = 
     throw err;
   }
 
-  return payload;
+  return {
+    ...payload,
+    _resolved_access_token: token,
+  };
 }

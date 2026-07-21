@@ -18,7 +18,7 @@ const nextConfig = {
   // PDFs over a poor connection) aren't killed by the Next.js HTTP server
   // before they complete.
   experimental: {
-    proxyTimeout: 5 * 60 * 1000, // 5 minutes
+    proxyTimeout: 30 * 60 * 1000, // 30 minutes for large Cloudinary uploads
   },
   async headers() {
     return [

@@ -23,6 +23,7 @@ import { getCloudinaryCredentials } from '../../../lib/cloudinaryConfig';
 const FOLDER_POLICY = {
   // Images (private delivery, signed URLs to view).
   'profile-pictures': { resource_type: 'image', type: 'private' },
+  'certificates': { resource_type: 'image', type: 'private' },
   'homeworks-questions-images': { resource_type: 'image', type: 'private' },
   'quizzes-questions-images': { resource_type: 'image', type: 'private' },
   'mock-exams-questions-images': { resource_type: 'image', type: 'private' },
@@ -42,6 +43,21 @@ function buildSignaturePayload(params) {
 }
 
 export default function handler(req, res) {
+  // CORS so signed direct uploads work from any deployed origin / local IP.
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -83,6 +99,13 @@ export default function handler(req, res) {
       resource_type: policy.resource_type,
       type: policy.type,
       upload_url: `https://api.cloudinary.com/v1_1/${cloud_name}/${policy.resource_type}/upload`,
+      // Client hints for size validation / chunking
+      max_bytes:
+        folder === 'material'
+          ? 200 * 1024 * 1024
+          : folder === 'profile-pictures' || folder.includes('questions-images')
+            ? 10 * 1024 * 1024
+            : 100 * 1024 * 1024,
     });
   } catch (error) {
     console.error('Cloudinary sign error:', error?.message || error);

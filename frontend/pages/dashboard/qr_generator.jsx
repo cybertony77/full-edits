@@ -6,10 +6,15 @@ import { useRouter } from "next/router";
 import html2canvas from "html2canvas";
 import Title from "../../components/Title";
 import { useSystemConfig } from "../../lib/api/system";
+import {
+  createSystemCanvasGradient,
+  getClientSystemBackground,
+} from "../../lib/systemColors";
 
 export default function QRGenerator() {
   const router = useRouter();
   const { data: systemConfig } = useSystemConfig();
+  const qrBg = getClientSystemBackground(systemConfig?.page_background);
   const [mode, setMode] = useState("");
   const [singleId, setSingleId] = useState("");
   const [showQR, setShowQR] = useState(false);
@@ -20,6 +25,7 @@ export default function QRGenerator() {
   const [qrIds, setQrIds] = useState([]);
   const [qrSize, setQrSize] = useState(350);
   const [logoSize, setLogoSize] = useState(85);
+  const [busy, setBusy] = useState(null); // 'download' | 'share' | 'zip-share' | null
 
   const inputRef = useRef(null);
   const isMarketingPageEnabled =
@@ -32,10 +38,10 @@ export default function QRGenerator() {
     if (!id) return "";
     if (isMarketingPageEnabled) {
       const baseDomain = originDomain || configuredDomain;
-      if (!baseDomain) return `/marketing_page?id=${id}`;
-      return `${baseDomain}/marketing_page?id=${id}`;
+      if (!baseDomain) return `/welcome?id=${id}`;
+      return `${baseDomain}/welcome?id=${id}`;
     }
-    return `https://www.facebook.com/share/1AShaU7c3t/?id=${id}`;
+    return window.location.origin + `/?id=${id}`;
   };
 
   // Handle responsive QR code sizing
@@ -71,29 +77,115 @@ export default function QRGenerator() {
     }
   }, [router.isReady, router.query]);
 
-  // Single QR download
+  // Single QR download / share
+  const captureSingleQrBlob = async () => {
+    const container = document.querySelector('.qr-container');
+    if (!container) throw new Error('QR code not found. Please generate a QR code first.');
+    const canvas = await html2canvas(container, {
+      backgroundColor: null,
+      useCORS: true,
+    });
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        async (blob) => {
+          if (!blob) {
+            reject(new Error('Failed to create image'));
+            return;
+          }
+          try {
+            const bytes = await blob.arrayBuffer();
+            resolve(new Blob([bytes], { type: 'image/png' }));
+          } catch (err) {
+            reject(err);
+          }
+        },
+        'image/png',
+        1
+      );
+    });
+  };
+
+  const toPngFile = async (blob, name) => {
+    const bytes = await blob.arrayBuffer();
+    return new File([bytes], name, {
+      type: 'image/png',
+      lastModified: Date.now(),
+    });
+  };
+
+  const singleFileName = `StudentID_${singleId}.png`;
+
   const downloadSingleQR = async () => {
+    setBusy('download');
     try {
-      const container = document.querySelector('.qr-container');
-      if (!container) {
-        alert("QR code not found. Please generate a QR code first.");
-        return;
-      }
-      // Use html2canvas to capture the container
-      const canvas = await html2canvas(container, {
-        backgroundColor: null, // preserve transparency if any
-        useCORS: true
-      });
-      const url = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
+      const file = await toPngFile(await captureSingleQrBlob(), singleFileName);
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `StudentID_${singleId}.png`;
+      a.download = file.name;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Download error:", error);
-      alert("Download failed. Please try again.");
+      console.error('Download error:', error);
+      alert(error.message || 'Download failed. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const shareSingleQR = async () => {
+    setBusy('share');
+    try {
+      if (typeof navigator === 'undefined' || !navigator.share) {
+        alert('Sharing is not supported on this device');
+        return;
+      }
+      const file = await toPngFile(await captureSingleQrBlob(), singleFileName);
+      console.log(file);
+      console.log(file.type);
+      console.log(file.name);
+      if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
+        alert('Sharing images is not supported on this device');
+        return;
+      }
+      await navigator.share({
+        files: [file],
+        title: 'QR Code',
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      console.error('Share error:', error);
+      alert(error.message || 'Share failed. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const shareZip = async () => {
+    if (!zipUrl) return;
+    setBusy('zip-share');
+    try {
+      if (typeof navigator === 'undefined' || !navigator.share) {
+        alert('Sharing is not supported on this device');
+        return;
+      }
+      const res = await fetch(zipUrl);
+      const blob = await res.blob();
+      const file = new File([blob], 'qr-codes.zip', {
+        type: 'application/zip',
+      });
+      await navigator.share({
+        files: [file],
+        title: 'QR Codes',
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') return;
+      console.error('Share ZIP error:', error);
+      alert(error.message || 'Share failed. Please try again.');
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -155,10 +247,15 @@ export default function QRGenerator() {
               canvas.height = (containerHeight + extraHeight) * scale;
               ctx.scale(scale, scale);
               
-              // Create gradient background
-              const gradient = ctx.createLinearGradient(0, 0, 0, containerHeight + extraHeight);
-              gradient.addColorStop(0, '#1FA8DC');
-              gradient.addColorStop(1, '#FEB954');
+              // Create gradient background from SYSTEM_COLORS
+              const gradient = createSystemCanvasGradient(
+                ctx,
+                0,
+                0,
+                0,
+                containerHeight + extraHeight,
+                qrBg
+              );
               
               const radius = 20; // Smaller radius for compact design
               ctx.fillStyle = gradient;
@@ -317,7 +414,7 @@ export default function QRGenerator() {
           visibility: hidden;
         }
         .hidden-qr .qr-container {
-          background: linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);
+          background: var(--system-page-bg, linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%));
           padding: 10px;
           border-radius: 20px;
           overflow: hidden;
@@ -346,7 +443,7 @@ export default function QRGenerator() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);
+          background: var(--system-page-bg, linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%));
           padding: 24px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.1);
           margin-left: auto;
@@ -392,35 +489,88 @@ export default function QRGenerator() {
           letter-spacing: 1px;
           text-align: center;
         }
-        .download-btn {
-          width: 200px;
-          margin: 40px auto 0 auto;
-          padding: 14px 24px;
-          background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        .qr-action-row {
+          width: 100%;
+          max-width: 440px;
+          margin: 28px auto 0;
+          display: flex;
+          gap: 10px;
+          align-items: stretch;
+        }
+        .download-btn,
+        .share-btn {
+          flex: 1 1 50%;
+          width: 50%;
+          min-width: 0;
+          margin: 0;
+          padding: 15px 12px;
           color: white;
           border: none;
-          border-radius: 12px;
-          font-size: 1rem;
-          font-weight: 600;
+          border-radius: 14px;
+          font-size: 0.95rem;
+          font-weight: 800;
           cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+          transition: all 0.25s ease;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
+          letter-spacing: 0.01em;
+          position: relative;
+          overflow: hidden;
           text-decoration: none;
+          box-sizing: border-box;
         }
-        .download-btn:hover {
-          background: linear-gradient(135deg, #1e7e34 0%, #17a2b8 100%);
-          transform: translateY(-3px);
-          box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        .download-btn {
+          background: linear-gradient(135deg, #1FA8DC 0%, #0ea5e9 42%, #feb954 160%);
+          box-shadow:
+            0 12px 28px rgba(31, 168, 220, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.28);
+        }
+        .share-btn {
+          background: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #20c997 130%);
+          box-shadow:
+            0 12px 28px rgba(34, 197, 94, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        }
+        .download-btn::before,
+        .share-btn::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%);
+          transform: translateX(-120%);
+          transition: transform 0.55s ease;
+        }
+        .download-btn:hover:not(:disabled)::before,
+        .share-btn:hover:not(:disabled)::before {
+          transform: translateX(120%);
+        }
+        .download-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 48%, #f59e0b 150%);
+          transform: translateY(-2px);
+          box-shadow: 0 16px 32px rgba(31, 168, 220, 0.42);
           text-decoration: none;
           color: white;
         }
-        .download-btn:active {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+        .share-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #16a34a 0%, #15803d 48%, #0d9488 140%);
+          transform: translateY(-2px);
+          box-shadow: 0 16px 32px rgba(34, 197, 94, 0.45);
+          color: white;
+        }
+        .download-btn:disabled,
+        .share-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+        .btn-icon {
+          filter: brightness(0) invert(1);
+          position: relative;
+          z-index: 1;
+          flex-shrink: 0;
         }
         input {
           width: 100%;
@@ -470,10 +620,8 @@ export default function QRGenerator() {
             padding: 14px 0;
             font-size: 1rem;
           }
-          .download-btn {
-            width: 100%;
-            max-width: 250px;
-            margin: 20px auto 0 auto;
+          .qr-action-row {
+            margin-top: 20px;
           }
           .range-inputs {
             grid-template-columns: 1fr;
@@ -511,9 +659,6 @@ export default function QRGenerator() {
           }
           .qr-id-text {
             font-size: 1.1rem;
-          }
-          .download-btn {
-            margin: 30px auto 0 auto;
           }
         }
       `}</style>
@@ -569,10 +714,26 @@ export default function QRGenerator() {
                   />
                   <div className="qr-id-text">{`ID No. ${singleId}`}</div>
                 </div>
-                <button className="download-btn" onClick={downloadSingleQR} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <Image src="/download.svg" alt="Download" width={20} height={20} />
-                  Download QR
-                </button>
+                <div className="qr-action-row">
+                  <button
+                    type="button"
+                    className="download-btn"
+                    onClick={downloadSingleQR}
+                    disabled={!!busy}
+                  >
+                    <Image src="/download.svg" alt="" width={20} height={20} className="btn-icon" />
+                    {busy === 'download' ? 'Downloading…' : 'Download'}
+                  </button>
+                  <button
+                    type="button"
+                    className="share-btn"
+                    onClick={shareSingleQR}
+                    disabled={!!busy}
+                  >
+                    <Image src="/share.svg" alt="" width={20} height={20} className="btn-icon" />
+                    {busy === 'share' ? 'Sharing…' : 'Share'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -618,15 +779,25 @@ export default function QRGenerator() {
           {zipUrl && (
             <div className="qr-center-wrapper">
               <div className="qr-display">
-                <a 
-                  href={zipUrl} 
-                  download={`QrCodes_From_${manyFrom}_To_${manyTo}.zip`} 
-                  className="download-btn"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Image src="/zip-file.svg" alt="Download ZIP" width={20} height={20} />
-                  Download ZIP
-                </a>
+                <div className="qr-action-row">
+                  <a
+                    href={zipUrl}
+                    download={`QrCodes_From_${manyFrom}_To_${manyTo}.zip`}
+                    className="download-btn"
+                  >
+                    <Image src="/zip-file.svg" alt="" width={20} height={20} className="btn-icon" />
+                    Download ZIP
+                  </a>
+                  <button
+                    type="button"
+                    className="share-btn"
+                    onClick={shareZip}
+                    disabled={busy === 'zip-share'}
+                  >
+                    <Image src="/share.svg" alt="" width={20} height={20} className="btn-icon" />
+                    {busy === 'zip-share' ? 'Sharing…' : 'Share'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -18,6 +18,8 @@ export default function VideoInput({
   canRemove,
   errors,
   showUploadTab,
+  hideTitle = false,
+  hideVideoName = false,
 }) {
   const { data: systemConfig } = useSystemConfig();
   const showZoomTab =
@@ -239,26 +241,32 @@ export default function VideoInput({
       backgroundColor: '#f8f9fa'
     }}>
       {/* Header with Video number and Remove button */}
-      <div className="video-input-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h4 style={{ margin: 0, color: '#333' }}>Video {index + 1}</h4>
-        {canRemove && (
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-              cursor: 'pointer'
-            }}
-          >
-            ❌ Remove
-          </button>
-        )}
-      </div>
+      {(!hideTitle || canRemove) && (
+        <div className="video-input-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          {!hideTitle ? (
+            <h4 style={{ margin: 0, color: '#333' }}>Video {index + 1}</h4>
+          ) : (
+            <span />
+          )}
+          {canRemove && (
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              ❌ Remove
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       {(
@@ -297,25 +305,27 @@ export default function VideoInput({
       )}
 
       {/* Video Name Input - shown in both tabs */}
-      <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: '500' }}>
-          Video Name
-        </label>
-        <input
-          type="text"
-          value={video.video_name || ''}
-          onChange={(e) => onVideoNameChange(index, e.target.value)}
-          placeholder={`Video ${index + 1}`}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            border: '1px solid #ddd',
-            borderRadius: '6px',
-            fontSize: '1rem',
-            boxSizing: 'border-box'
-          }}
-        />
-      </div>
+      {!hideVideoName && (
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: '500' }}>
+            Video Name
+          </label>
+          <input
+            type="text"
+            value={video.video_name || ''}
+            onChange={(e) => onVideoNameChange(index, e.target.value)}
+            placeholder={`Video ${index + 1}`}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid #ddd',
+              borderRadius: '6px',
+              fontSize: '1rem',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+      )}
 
       {/* YouTube Tab Content */}
       {activeTab === 'youtube' && (

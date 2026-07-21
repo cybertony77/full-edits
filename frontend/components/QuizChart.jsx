@@ -85,11 +85,8 @@ export default function QuizChart({ lessons, chartData, chartLoading }) {
           })
           .filter(Boolean)
       : [];
-    if (chartData !== undefined && chartData !== null) {
-      if (!Array.isArray(chartData) || chartData.length === 0) {
-        return lessonsFallback;
-      }
-      return chartData
+    if (chartData !== undefined && chartData !== null && Array.isArray(chartData) && chartData.length > 0) {
+      const fromApi = chartData
         .map((item) => {
           const percentage = item.percentage || 0;
           const result = item.result || '0 / 0';
@@ -100,6 +97,7 @@ export default function QuizChart({ lessons, chartData, chartLoading }) {
           };
         })
         .filter(item => item.degree > 0 || item.originalDegree !== '0 / 0');
+      if (fromApi.length > 0) return fromApi;
     }
 
     return lessonsFallback;

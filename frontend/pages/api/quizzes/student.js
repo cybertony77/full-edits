@@ -147,6 +147,7 @@ export default async function handler(req, res) {
           if (quiz.quiz_type === 'pdf') {
             sanitized.pdf_file_name = quiz.pdf_file_name || '';
             sanitized.pdf_url = quiz.pdf_url || '';
+            sanitized.allow_downloading = quiz.allow_downloading !== false && quiz.allow_downloading !== 'false';
           }
 
           if (quiz.quiz_type !== 'pdf') {

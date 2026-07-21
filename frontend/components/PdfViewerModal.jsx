@@ -26,6 +26,18 @@ export default function PdfViewerModal({ isOpen, onClose, fileUrl, fileName }) {
 
   const normalizedFileUrl = typeof fileUrl === 'string' && fileUrl.trim() ? fileUrl.trim() : null;
 
+  const documentFile = useMemo(() => {
+    if (!normalizedFileUrl) return null;
+    // Same-origin R2 proxy needs cookies for authMiddleware
+    if (
+      normalizedFileUrl.startsWith('/api/files/') ||
+      normalizedFileUrl.includes('/api/files/')
+    ) {
+      return { url: normalizedFileUrl, withCredentials: true };
+    }
+    return normalizedFileUrl;
+  }, [normalizedFileUrl]);
+
   const bumpDocumentRetry = useCallback(() => {
     setDocumentRetryKey((k) => k + 1);
   }, []);
@@ -202,7 +214,7 @@ export default function PdfViewerModal({ isOpen, onClose, fileUrl, fileName }) {
         <div className="pdf-viewer-body" ref={scrollBodyRef}>
           <Document
             key={`${normalizedFileUrl ?? 'none'}-${documentRetryKey}`}
-            file={normalizedFileUrl}
+            file={documentFile}
             loading={
               <div className="pdf-state-card pdf-state-card--loading" role="status" aria-live="polite">
                 <div className="pdf-state-spinner" aria-hidden="true" />

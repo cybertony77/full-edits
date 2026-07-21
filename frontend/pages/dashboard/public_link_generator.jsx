@@ -130,6 +130,36 @@ export default function GenerateLink() {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
+  const shareLink = async () => {
+    if (!generatedLink) return;
+    try {
+      if (typeof navigator === 'undefined' || !navigator.share) {
+        setSuccessMessage('');
+        setError('Sharing is not supported on this device');
+        setTimeout(() => setError(''), 3000);
+        return;
+      }
+      const title = selectedStudent?.name
+        ? `${selectedStudent.name} — Public Profile`
+        : 'Public Student Link';
+      const shareData = {
+        title,
+        text: title,
+        url: generatedLink,
+      };
+      if (typeof navigator.canShare === 'function' && !navigator.canShare(shareData)) {
+        await navigator.share({ title, text: generatedLink });
+      } else {
+        await navigator.share(shareData);
+      }
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      console.error('Share failed:', err);
+      setError(err.message || 'Share failed. Please try again.');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   // Handle student selection from search results
   const handleStudentSelect = (student) => {
     const link = generatePublicStudentLink(student.id.toString());
@@ -259,12 +289,24 @@ export default function GenerateLink() {
             color: #2d3748;
             line-height: 1.6;
           }
+          .link-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            width: 100%;
+          }
+          .copy-btn,
+          .share-btn {
+            flex: 1 1 calc(50% - 6px);
+            min-width: 140px;
+            box-sizing: border-box;
+          }
           .copy-btn {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
             color: white;
             border: none;
             border-radius: 12px;
-            padding: 14px 28px;
+            padding: 14px 20px;
             font-weight: 700;
             font-size: 1rem;
             cursor: pointer;
@@ -274,16 +316,37 @@ export default function GenerateLink() {
             align-items: center;
             justify-content: center;
             gap: 10px;
-            width: 100%;
+          }
+          .share-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 45%, #20c997 130%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 20px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
           }
           .copy-btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(255, 107, 107, 0.5);
             background: linear-gradient(135deg, #ff5252 0%, #e53935 100%);
           }
-          .copy-btn:active {
+          .share-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.5);
+            filter: brightness(1.04);
+          }
+          .copy-btn:active,
+          .share-btn:active {
             transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
           }
           .success-message {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
@@ -324,12 +387,18 @@ export default function GenerateLink() {
               font-size: 14px;
               word-break: break-all;
             }
-            .copy-btn {
+            .copy-btn,
+            .share-btn {
+              flex: 1 1 100%;
               width: 100%;
               padding: 12px 20px;
               font-size: 0.9rem;
               justify-content: center;
               text-align: center;
+            }
+            .link-actions {
+              flex-direction: column;
+              gap: 10px;
             }
             .success-message {
               padding: 12px;
@@ -353,7 +422,8 @@ export default function GenerateLink() {
               padding: 12px;
               font-size: 13px;
             }
-            .copy-btn {
+            .copy-btn,
+            .share-btn {
               padding: 10px 16px;
               font-size: 0.85rem;
             }
@@ -629,13 +699,30 @@ export default function GenerateLink() {
               <div className="link-display">
             <strong>{generatedLink}</strong>
           </div>
-          <button
-            onClick={copyToClipboard}
-                className="copy-btn"
-              >
-                <Image src="/copy2.svg" alt="Copy" width={20} height={20} />
-                Copy Link
-          </button>
+          <div className="link-actions">
+            <button
+              onClick={copyToClipboard}
+              className="copy-btn"
+              type="button"
+            >
+              <Image src="/copy2.svg" alt="Copy" width={20} height={20} />
+              Copy Link
+            </button>
+            <button
+              onClick={shareLink}
+              className="share-btn"
+              type="button"
+            >
+              <Image
+                src="/share.svg"
+                alt="Share"
+                width={20}
+                height={20}
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+              Share Link
+            </button>
+          </div>
         </div>
             {successMessage && (
               <div className="success-message">

@@ -99,9 +99,9 @@ export default function EditMyProfile() {
       return;
     }
 
-    // Validate file size (5 MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('❌ Sorry, Max profile picture size is 5 MB, Please try another picture');
+    // Validate file size (10 MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('❌ Sorry, Max profile picture size is 10 MB, Please try another picture');
       return;
     }
 
@@ -647,7 +647,7 @@ export default function EditMyProfile() {
                 style={{ display: 'none' }}
               />
               <small style={{ color: '#6c757d', fontSize: '0.85rem', textAlign: 'center', marginTop: '4px' }}>
-                Max size: 5 MB. Formats: JPEG, PNG, GIF, WEBP
+                Max size: 10 MB. Formats: JPEG, PNG, GIF, WEBP
               </small>
             </div>
 

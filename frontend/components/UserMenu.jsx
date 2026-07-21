@@ -8,6 +8,7 @@ import { useSystemConfig } from '../lib/api/system';
 import QRCodeModal from './QRCodeModal';
 import InstallApp from './InstallApp';
 import StudentLinksModal from './StudentLinksModal';
+import AppVideosModal from './AppVideosModal';
 import apiClient from '../lib/axios';
 import Image from 'next/image';
 
@@ -16,7 +17,12 @@ export default function UserMenu() {
   const [showQRModal, setShowQRModal] = useState(false);
   const [showInstallApp, setShowInstallApp] = useState(false);
   const [showLinksModal, setShowLinksModal] = useState(false);
+  const [showAppVideos, setShowAppVideos] = useState(false);
+  const [showOther, setShowOther] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const menuRef = useRef(null);
+  const otherRef = useRef(null);
+  const otherHoverTimer = useRef(null);
   const router = useRouter();
   
   // Use React Query to get user profile data
@@ -160,6 +166,57 @@ export default function UserMenu() {
     if (open) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
+
+  // Desktop vs mobile: Other submenu only at 580px+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 580px)');
+    const update = () => {
+      setIsDesktop(mq.matches);
+      if (!mq.matches) setShowOther(false);
+    };
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  // Close the "Other" submenu when the main menu closes
+  useEffect(() => {
+    if (!open) setShowOther(false);
+  }, [open]);
+
+  // Close the "Other" submenu when clicking outside of it
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (otherRef.current && !otherRef.current.contains(e.target)) {
+        setShowOther(false);
+      }
+    }
+    if (showOther) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showOther]);
+
+  useEffect(() => {
+    return () => {
+      if (otherHoverTimer.current) clearTimeout(otherHoverTimer.current);
+    };
+  }, []);
+
+  const isStaff =
+    userData.role === 'admin' ||
+    userData.role === 'developer' ||
+    userData.role === 'assistant';
+
+  const useOtherMenu = isStaff && isDesktop;
+
+  const openOther = () => {
+    if (otherHoverTimer.current) clearTimeout(otherHoverTimer.current);
+    setShowOther(true);
+  };
+
+  const closeOtherSoon = () => {
+    if (otherHoverTimer.current) clearTimeout(otherHoverTimer.current);
+    otherHoverTimer.current = setTimeout(() => setShowOther(false), 150);
+  };
 
   const handleLogout = async () => {
     try {
@@ -419,7 +476,7 @@ export default function UserMenu() {
                       style={menuBtnStyle}
                       onClick={() => {
                         setOpen(false);
-                        router.push('/marketing_page');
+                        router.push('/welcome');
                       }}
                     >
                       <Image src="/marketing.svg" alt="Marketing" width={20} height={20} style={{ marginRight: '8px' }} />
@@ -445,19 +502,89 @@ export default function UserMenu() {
               )}
             </>
           )}
-          <button style={menuBtnStyle} onClick={handleContactDeveloper}>
-            <Image src="/message2.svg" alt="Message" width={20} height={20} style={{ marginRight: '8px' }} />
-            Contact Developer
-          </button>
-          <button style={menuBtnStyle} onClick={handleInstallApp}>
-            <Image src="/download.svg" alt="Download" width={20} height={20} style={{ marginRight: '8px' }} />
-            Install App
-          </button>
+          {useOtherMenu ? (
+            <div
+              ref={otherRef}
+              style={{ position: 'relative' }}
+              onMouseEnter={openOther}
+              onMouseLeave={closeOtherSoon}
+            >
+              <button
+                style={menuBtnStyle}
+                onClick={() => setShowOther((v) => !v)}
+              >
+                <Image src="/other.svg" alt="Other" width={20} height={20} style={{ marginRight: '8px' }} />
+                Other
+              </button>
+              {showOther && (
+                <div style={subMenuStyle}>
+                  <button
+                    style={menuBtnStyle}
+                    onClick={() => {
+                      setShowOther(false);
+                      setOpen(false);
+                      handleContactDeveloper();
+                    }}
+                  >
+                    <Image src="/message2.svg" alt="Message" width={20} height={20} style={{ marginRight: '8px' }} />
+                    Contact Developer
+                  </button>
+                  <button
+                    style={menuBtnStyle}
+                    onClick={() => {
+                      setShowOther(false);
+                      setOpen(false);
+                      setShowAppVideos(true);
+                    }}
+                  >
+                    <Image src="/video.svg" alt="App Videos" width={20} height={20} style={{ marginRight: '8px' }} />
+                    App Videos
+                  </button>
+                  <button
+                    style={menuBtnStyle}
+                    onClick={() => {
+                      setShowOther(false);
+                      handleInstallApp();
+                    }}
+                  >
+                    <Image src="/download.svg" alt="Download" width={20} height={20} style={{ marginRight: '8px' }} />
+                    Install App
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button style={menuBtnStyle} onClick={handleContactDeveloper}>
+                <Image src="/message2.svg" alt="Message" width={20} height={20} style={{ marginRight: '8px' }} />
+                Contact Developer
+              </button>
+              <button
+                style={menuBtnStyle}
+                onClick={() => {
+                  setOpen(false);
+                  setShowAppVideos(true);
+                }}
+              >
+                <Image src="/video.svg" alt="App Videos" width={20} height={20} style={{ marginRight: '8px' }} />
+                App Videos
+              </button>
+              <button style={menuBtnStyle} onClick={handleInstallApp}>
+                <Image src="/download.svg" alt="Download" width={20} height={20} style={{ marginRight: '8px' }} />
+                Install App
+              </button>
+            </>
+          )}
         </div>
       )}
       <QRCodeModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} />
       <InstallApp isOpen={showInstallApp} onClose={() => setShowInstallApp(false)} />
       <StudentLinksModal isOpen={showLinksModal} onClose={() => setShowLinksModal(false)} />
+      <AppVideosModal
+        isOpen={showAppVideos}
+        onClose={() => setShowAppVideos(false)}
+        role={userData.role}
+      />
     </div>
   );
 }
@@ -478,4 +605,19 @@ const menuBtnStyle = {
   outline: 'none',
   display: 'flex',
   alignItems: 'center',
+};
+
+const subMenuStyle = {
+  position: 'absolute',
+  bottom: 0,
+  top: 'auto',
+  right: '100%',
+  marginRight: 10,
+  minWidth: 230,
+  background: '#fff',
+  borderRadius: 14,
+  boxShadow: '0 8px 32px rgba(31,168,220,0.18)',
+  border: '1.5px solid #e9ecef',
+  zIndex: 10001,
+  padding: '8px 0',
 }; 

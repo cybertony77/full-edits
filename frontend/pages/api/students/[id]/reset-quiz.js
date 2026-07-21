@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
     const onlineQuizzes = student.online_quizzes || [];
     
-    // Find the quiz to get the week number
+    // Find the quiz to get the week / lesson context
     const quizToReset = onlineQuizzes.find(
       qz => qz.quiz_id === quiz_id
     );
@@ -88,13 +88,37 @@ export default async function handler(req, res) {
       });
     }
 
+    // Resolve lesson name so we can clear lessons[].quizDegree
+    let lessonName =
+      (quizToReset && quizToReset.lesson) ||
+      null;
+
+    if (!lessonName) {
+      try {
+        const quizDoc = await db.collection('quizzes').findOne({
+          _id: new ObjectId(quiz_id),
+        });
+        if (quizDoc?.lesson) {
+          lessonName = quizDoc.lesson;
+        }
+      } catch (err) {
+        console.error('Error fetching quiz document for reset:', err);
+      }
+    }
+
+    const updateFields = {
+      online_quizzes: updatedQuizzes,
+      weeks: updatedWeeks,
+    };
+
+    if (lessonName && student.lessons && student.lessons[lessonName]) {
+      updateFields[`lessons.${lessonName}.quizDegree`] = null;
+    }
+
     // Update student document
     const updateResult = await db.collection('students').updateOne(
       { id: student_id },
-      { $set: { 
-        online_quizzes: updatedQuizzes,
-        weeks: updatedWeeks
-      } }
+      { $set: updateFields }
     );
 
     if (updateResult.matchedCount === 0) {
@@ -114,4 +138,3 @@ export default async function handler(req, res) {
     }
   }
 }
-

@@ -145,6 +145,32 @@ export default async function handler(req, res) {
         (a, b) => (asstOrder.get(a._id.toString()) ?? 0) - (asstOrder.get(b._id.toString()) ?? 0)
       );
 
+      let session_video_type = doc.session_video_type ?? null;
+      let session_video_id = doc.session_video_id ?? null;
+      if (!session_video_type && !session_video_id && doc.yt_session_link) {
+        const yt = String(doc.yt_session_link).trim();
+        const ytMatch = yt.match(
+          /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/
+        );
+        if (ytMatch?.[1]) {
+          session_video_type = 'youtube';
+          session_video_id = ytMatch[1];
+        } else if (yt) {
+          session_video_type = 'youtube';
+          session_video_id = yt;
+        }
+      }
+
+      const contact_people = Array.isArray(doc.contact_people)
+        ? doc.contact_people
+            .map((p, i) => ({
+              id: String(p?.id || `person_${i}`),
+              name: String(p?.name || '').trim(),
+              phone: String(p?.phone || '').trim(),
+            }))
+            .filter((p) => p.name && p.phone)
+        : [];
+
       const payload = {
         page_state: pageLive,
         teacher_picture: doc.teacher_picture ?? null,
@@ -154,8 +180,11 @@ export default async function handler(req, res) {
         students_teached: doc.students_teached ?? null,
         years_of_experience: doc.years_of_experience ?? null,
         yt_session_link: doc.yt_session_link ?? null,
+        session_video_type,
+        session_video_id,
         dates_of_session_ids: centerIds.map((id) => id.toString()),
         contact_assistant_ids: assistantIds.map((id) => id.toString()),
+        contact_people,
         links: doc.links ?? null,
         students_testimonials: doc.students_testimonials ?? null,
         outro_text: doc.outro_text ?? null,
@@ -237,6 +266,32 @@ export default async function handler(req, res) {
         updates.yt_session_link =
           v === null || v === '' || v === undefined ? null : String(v).trim();
       }
+      if ('session_video_type' in body || 'session_video_id' in body) {
+        const typeRaw =
+          'session_video_type' in body ? body.session_video_type : undefined;
+        const idRaw = 'session_video_id' in body ? body.session_video_id : undefined;
+        const type =
+          typeRaw === null || typeRaw === '' || typeRaw === undefined
+            ? null
+            : String(typeRaw).trim().toLowerCase();
+        const id =
+          idRaw === null || idRaw === '' || idRaw === undefined
+            ? null
+            : String(idRaw).trim();
+
+        if (!type || !id) {
+          updates.session_video_type = null;
+          updates.session_video_id = null;
+          updates.yt_session_link = null;
+        } else if (!['youtube', 'r2', 'zoom'].includes(type)) {
+          return res.status(400).json({ error: 'Invalid session_video_type' });
+        } else {
+          updates.session_video_type = type;
+          updates.session_video_id = id;
+          updates.yt_session_link =
+            type === 'youtube' ? `https://www.youtube.com/watch?v=${id}` : null;
+        }
+      }
       if ('dates_of_sessions' in body) {
         const ids = toObjectIds(body.dates_of_sessions);
         updates.dates_of_sessions = ids.length ? ids : null;
@@ -244,6 +299,20 @@ export default async function handler(req, res) {
       if ('contact_assistants' in body) {
         const ids = toObjectIds(body.contact_assistants);
         updates.contact_assistants = ids.length ? ids : null;
+      }
+      if ('contact_people' in body) {
+        if (!body.contact_people || !Array.isArray(body.contact_people)) {
+          updates.contact_people = null;
+        } else {
+          updates.contact_people = body.contact_people
+            .map((p, i) => ({
+              id: String(p?.id || `person_${Date.now()}_${i}`),
+              name: String(p?.name || '').trim(),
+              phone: String(p?.phone || '').replace(/[^0-9]/g, ''),
+            }))
+            .filter((p) => p.name && p.phone);
+          if (updates.contact_people.length === 0) updates.contact_people = null;
+        }
       }
       if ('links' in body) {
         if (!body.links || !Array.isArray(body.links)) {

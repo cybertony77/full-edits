@@ -5,6 +5,7 @@ import CourseTypeSelect from './CourseTypeSelect';
 import CenterSelect from './CenterSelect';
 import AccountStateSelect from './AccountStateSelect';
 import ImportExistingOnlineItemModal from './ImportExistingOnlineItemModal';
+import AllowDownloadingRadio from './AllowDownloadingRadio';
 
 export default function MaterialForm({
   mode = 'add',
@@ -24,6 +25,7 @@ export default function MaterialForm({
     comment: initialData?.comment || '',
     pdf_file_name: initialData?.pdf_file_name || '',
     pdf_url: initialData?.pdf_url || '',
+    allow_downloading: initialData?.allow_downloading !== false && initialData?.allow_downloading !== 'false',
   });
   const [errors, setErrors] = useState({});
   const [courseOpen, setCourseOpen] = useState(false);
@@ -56,34 +58,38 @@ export default function MaterialForm({
     return Object.keys(next).length === 0;
   };
 
+  const clearFieldError = (field) => {
+    setErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const handleUpload = async (file) => {
     if (!file) return;
     if (file.type !== 'application/pdf') return setPdfUploadError('Only PDF files are allowed');
-    if (file.size > 20 * 1024 * 1024) return setPdfUploadError('File size exceeds 20MB limit');
+    if (file.size > 200 * 1024 * 1024) return setPdfUploadError('File size exceeds 200MB limit');
     setPdfUploadError('');
     setPdfUploading(true);
     setPdfProgress(0);
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // Use R2 (not Cloudinary) — Cloudinary free plan caps raw files at 10 MB
+      const { uploadToR2Direct } = await import('../lib/r2DirectUpload');
+      const result = await uploadToR2Direct(file, {
+        prefix: 'pdfs/material',
+        onProgress: (percent) => setPdfProgress(percent),
       });
-      setPdfProgress(30);
-      const apiClient = (await import('../lib/axios')).default;
-      const response = await apiClient.post(
-        '/api/upload/pdf-file',
-        { file: base64, fileType: file.type, folder: 'material' },
-        { onUploadProgress: (p) => p.total && setPdfProgress(30 + Math.round((p.loaded / p.total) * 70)) }
-      );
-      if (response.data.success) {
-        setFormData((prev) => ({ ...prev, pdf_url: response.data.url }));
-        setErrors((prev) => ({ ...prev, pdf_url: undefined }));
+      if (result?.url) {
+        setFormData((prev) => ({ ...prev, pdf_url: result.url }));
+        clearFieldError('pdf_url');
         setPdfProgress(100);
+      } else {
+        throw new Error('Upload failed');
       }
     } catch (err) {
-      setPdfUploadError(err.response?.data?.error || 'Failed to upload PDF');
+      setPdfUploadError(err.response?.data?.error || err.message || 'Failed to upload PDF');
     } finally {
       setPdfUploading(false);
     }
@@ -103,6 +109,7 @@ export default function MaterialForm({
           comment: formData.comment.trim() || '',
           pdf_file_name: formData.pdf_file_name.trim(),
           pdf_url: formData.pdf_url.trim(),
+          allow_downloading: formData.allow_downloading !== false,
         });
       }}
     >
@@ -118,7 +125,18 @@ export default function MaterialForm({
 
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Material Course <span style={{ color: 'red' }}>*</span></label>
-        <CourseSelect selectedGrade={formData.course} onGradeChange={(v) => setFormData((p) => ({ ...p, course: v }))} showAllOption={true} required={true} isOpen={courseOpen} onToggle={() => { setCourseOpen(!courseOpen); setCourseTypeOpen(false); setCenterOpen(false); }} onClose={() => setCourseOpen(false)} />
+        <CourseSelect
+          selectedGrade={formData.course}
+          onGradeChange={(v) => {
+            setFormData((p) => ({ ...p, course: v }));
+            if (v.trim()) clearFieldError('course');
+          }}
+          showAllOption={true}
+          required={true}
+          isOpen={courseOpen}
+          onToggle={() => { setCourseOpen(!courseOpen); setCourseTypeOpen(false); setCenterOpen(false); }}
+          onClose={() => setCourseOpen(false)}
+        />
         {errors.course && <div style={{ color: '#dc3545', fontSize: '.875rem', marginTop: 4 }}>{errors.course}</div>}
       </div>
       <div style={{ marginBottom: 20 }}>
@@ -132,7 +150,16 @@ export default function MaterialForm({
       <AccountStateSelect value={formData.state} onChange={(v) => setFormData((p) => ({ ...p, state: v || 'Activated' }))} label="Material State" placeholder="Select Material State" required={true} />
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Material Name <span style={{ color: 'red' }}>*</span></label>
-        <input value={formData.material_name} onChange={(e) => setFormData((p) => ({ ...p, material_name: e.target.value }))} placeholder="Enter Material Name" style={{ width: '100%', padding: '12px 16px', border: errors.material_name ? '2px solid #dc3545' : '2px solid #e9ecef', borderRadius: 10, fontSize: '1rem' }} />
+        <input
+          value={formData.material_name}
+          onChange={(e) => {
+            const v = e.target.value;
+            setFormData((p) => ({ ...p, material_name: v }));
+            if (v.trim()) clearFieldError('material_name');
+          }}
+          placeholder="Enter Material Name"
+          style={{ width: '100%', padding: '12px 16px', border: errors.material_name ? '2px solid #dc3545' : '2px solid #e9ecef', borderRadius: 10, fontSize: '1rem' }}
+        />
         {errors.material_name && <div style={{ color: '#dc3545', fontSize: '.875rem', marginTop: 4 }}>{errors.material_name}</div>}
       </div>
       <div style={{ marginBottom: 20 }}>
@@ -147,8 +174,22 @@ export default function MaterialForm({
         <div style={{ padding: 20, border: '2px solid #e9ecef', borderRadius: 12, backgroundColor: '#f8f9fa' }}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>File Name <span style={{ color: 'red' }}>*</span></label>
-            <input value={formData.pdf_file_name} onChange={(e) => setFormData((p) => ({ ...p, pdf_file_name: e.target.value }))} placeholder="Enter PDF File Name" style={{ width: '100%', padding: '12px 16px', border: errors.pdf_file_name ? '2px solid #dc3545' : '2px solid #e9ecef', borderRadius: 10, fontSize: '1rem' }} />
+            <input
+              value={formData.pdf_file_name}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFormData((p) => ({ ...p, pdf_file_name: v }));
+                if (v.trim()) clearFieldError('pdf_file_name');
+              }}
+              placeholder="Enter PDF File Name"
+              style={{ width: '100%', padding: '12px 16px', border: errors.pdf_file_name ? '2px solid #dc3545' : '2px solid #e9ecef', borderRadius: 10, fontSize: '1rem' }}
+            />
             {errors.pdf_file_name && <div style={{ color: '#dc3545', fontSize: '.875rem', marginTop: 4 }}>{errors.pdf_file_name}</div>}
+            <AllowDownloadingRadio
+              name="allow_downloading_material"
+              value={formData.allow_downloading !== false}
+              onChange={(v) => setFormData((p) => ({ ...p, allow_downloading: v }))}
+            />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Upload PDF <span style={{ color: 'red' }}>*</span></label>
@@ -156,7 +197,7 @@ export default function MaterialForm({
               <div onClick={() => pdfFileInputRef.current?.click()} style={{ border: errors.pdf_url ? '2px dashed #dc3545' : '2px dashed #ccc', borderRadius: 8, padding: '32px 20px', textAlign: 'center', cursor: 'pointer', backgroundColor: '#fff' }}>
                 <div style={{ fontSize: '2rem', marginBottom: 8, color: '#999' }}>+</div>
                 <div style={{ color: '#666', fontSize: '.95rem' }}>Click to select a PDF file</div>
-                <div style={{ color: '#999', fontSize: '.8rem', marginTop: 4 }}>PDF (max 20MB)</div>
+                <div style={{ color: '#999', fontSize: '.8rem', marginTop: 4 }}>PDF (max 200MB)</div>
               </div>
             )}
             {pdfUploading && (
@@ -212,7 +253,9 @@ export default function MaterialForm({
             comment: selected.comment || '',
             pdf_file_name: selected.pdf_file_name || '',
             pdf_url: selected.pdf_url || '',
+            allow_downloading: selected.allow_downloading !== false && selected.allow_downloading !== 'false',
           });
+          setErrors({});
           setImportApplyLoading(false);
           setImportSelectedId('');
         }}

@@ -155,6 +155,7 @@ export default async function handler(req, res) {
           if (hw.homework_type === 'pdf') {
             sanitized.pdf_file_name = hw.pdf_file_name || '';
             sanitized.pdf_url = hw.pdf_url || '';
+            sanitized.allow_downloading = hw.allow_downloading !== false && hw.allow_downloading !== 'false';
           }
 
           // Add questions if applicable (only for questions type)

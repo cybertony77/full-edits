@@ -222,22 +222,30 @@ export default function Payment() {
         console.log('✅ Payment saved successfully:', result);
         setSaveMessage("✅ Payment saved successfully");
         setError("");
-        // Optimistically update local student state for instant UI feedback
-        setStudent((prev) => prev ? {
-          ...prev,
-          payment: {
-            numberOfSessions: sessions,
-            cost: costValue,
-            paymentComment: paymentComment.trim() || null,
-            date: studentData?.payment?.date || null
-          }
-        } : prev);
-        // Force refetch to sync with DB
+
+        const savedPayment = {
+          numberOfSessions: sessions,
+          cost: costValue,
+          paymentComment: paymentComment.trim() || null,
+          // Prefer API date (Egypt/Cairo). Fall back only if missing.
+          date: result?.data?.date || null,
+        };
+
+        setStudent((prev) => (prev ? { ...prev, payment: savedPayment } : prev));
+
+        // Force refetch so Last Payment Date stays in sync with DB
         if (refetchStudent) {
-          try { await refetchStudent(); } catch {}
+          try {
+            const refreshed = await refetchStudent();
+            const fresh = refreshed?.data;
+            if (fresh?.payment) {
+              setStudent((prev) => (prev ? { ...prev, payment: fresh.payment } : prev));
+            }
+          } catch (err) {
+            console.error('Failed to refetch student after payment save:', err);
+          }
         }
-        
-        // Clear success message after 5 seconds
+
         setTimeout(() => setSaveMessage(""), 5000);
       },
       onError: (error) => {
@@ -329,13 +337,33 @@ export default function Payment() {
         console.log('✅ Payment cleared successfully:', result);
         setSaveMessage("✅ Payment data cleared successfully");
         setError("");
-        
-        // Force refetch to sync with DB
+
+        setStudent((prev) =>
+          prev
+            ? {
+                ...prev,
+                payment: {
+                  numberOfSessions: null,
+                  cost: null,
+                  paymentComment: null,
+                  date: null,
+                },
+              }
+            : prev
+        );
+
         if (refetchStudent) {
-          try { await refetchStudent(); } catch {}
+          try {
+            const refreshed = await refetchStudent();
+            const fresh = refreshed?.data;
+            if (fresh) {
+              setStudent(fresh);
+            }
+          } catch (err) {
+            console.error('Failed to refetch student after payment clear:', err);
+          }
         }
-        
-        // Clear success message after 3 seconds
+
         setTimeout(() => setSaveMessage(""), 3000);
       } else {
         const errorData = await response.json();

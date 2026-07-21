@@ -34,7 +34,26 @@ const envConfig = loadEnvConfig();
 const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'topphysics_secret';
 const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'topphysics';
-const PAYMENT_SYSTEM_ENABLED = envConfig.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
+
+function isPaymentSystemEnabled() {
+  // Re-read env each request so toggling SYSTEM_PAYMENT_SYSTEM applies without restart
+  const live = loadEnvConfig();
+  return live.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
+}
+
+function normalizePayment(payment) {
+  const src = Array.isArray(payment) ? payment[0] : payment;
+  if (!src || typeof src !== 'object') {
+    return { numberOfSessions: 0, cost: null, paymentComment: null, date: null };
+  }
+  const sessions = Number(src.numberOfSessions);
+  return {
+    numberOfSessions: Number.isFinite(sessions) ? sessions : 0,
+    cost: src.cost ?? null,
+    paymentComment: src.paymentComment ?? null,
+    date: src.date ?? null,
+  };
+}
 
 console.log('🔗 Using Mongo URI:', MONGO_URI);
 
@@ -113,7 +132,7 @@ export default async function handler(req, res) {
             lastAttendanceCenter: null,
             attendanceDate: null,
             hwDone: false,
-            quizDegree: "No Quiz",
+            quizDegree: null,
             comment: null,
             message_state: false,
             homework_degree: null,
@@ -128,7 +147,7 @@ export default async function handler(req, res) {
           lastAttendanceCenter: null,
           attendanceDate: null,
           hwDone: false,
-          quizDegree: "No Quiz",
+          quizDegree: null,
           comment: null,
           message_state: false,
           homework_degree: null,
@@ -138,10 +157,23 @@ export default async function handler(req, res) {
     };
 
     await ensureLessonExists();
-    
+
+    const PAYMENT_SYSTEM_ENABLED = isPaymentSystemEnabled();
+    const payment = normalizePayment(student.payment);
+    // Keep payment as a proper object in DB (never an array / missing)
+    if (!student.payment || typeof student.payment !== 'object' || Array.isArray(student.payment)) {
+      await db.collection('students').updateOne(
+        { id: student_id },
+        { $set: { payment } }
+      );
+      student.payment = payment;
+    } else {
+      student.payment = { ...student.payment, numberOfSessions: payment.numberOfSessions };
+    }
+
     if (attended) {
       // Check if student has available sessions or if this lesson is already paid (only if payment system is enabled)
-      const currentSessions = student.payment?.numberOfSessions || 0;
+      const currentSessions = payment.numberOfSessions;
       const isLessonPaid = student.lessons && student.lessons[lessonName] && student.lessons[lessonName].paid === true;
       
       if (PAYMENT_SYSTEM_ENABLED && currentSessions <= 0 && !isLessonPaid) {
@@ -149,31 +181,42 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No available sessions' });
       }
       
-      // Compute attendance date in DD/MM/YYYY format using local timezone
+      // Compute attendance date in DD/MM/YYYY format using Egypt timezone
       const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const year = String(now.getFullYear());
-      const attendanceDateOnly = `${day}/${month}/${year}`;
+      const egyptParts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Africa/Cairo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).formatToParts(now);
+      const getPart = (type) => egyptParts.find((p) => p.type === type)?.value || '';
+      const attendanceDateOnly = `${getPart('day')}/${getPart('month')}/${getPart('year')}`;
 
-      // Mark as attended and set paid to true
+      // Mark as attended
       const updateQuery = {
         [`lessons.${lessonName}.attended`]: true,
         [`lessons.${lessonName}.lastAttendance`]: lastAttendance || null,
         [`lessons.${lessonName}.lastAttendanceCenter`]: lastAttendanceCenter || null,
         [`lessons.${lessonName}.attendanceDate`]: attendanceDateOnly,
-        [`lessons.${lessonName}.paid`]: true
       };
-      
-      // Only decrement sessions if payment system is enabled and lesson wasn't already paid
-      if (PAYMENT_SYSTEM_ENABLED && !isLessonPaid && currentSessions > 0) {
-        updateQuery['payment.numberOfSessions'] = currentSessions - 1;
+
+      let sessionDelta = 0;
+      if (PAYMENT_SYSTEM_ENABLED) {
+        // Mark lesson paid and consume one session (unless already paid for this lesson)
+        updateQuery[`lessons.${lessonName}.paid`] = true;
+        if (!isLessonPaid && currentSessions > 0) {
+          sessionDelta = -1;
+        }
       }
       
-      console.log('🔧 Updating database with query:', updateQuery);
+      console.log('🔧 Updating database with query:', updateQuery, 'sessionDelta:', sessionDelta);
+      const updateDoc = sessionDelta !== 0
+        ? { $set: updateQuery, $inc: { 'payment.numberOfSessions': sessionDelta } }
+        : { $set: updateQuery };
+
       const result = await db.collection('students').updateOne(
         { id: student_id },
-        { $set: updateQuery }
+        updateDoc
       );
       
       console.log('🔧 Database update result:', result);
@@ -182,7 +225,9 @@ export default async function handler(req, res) {
         console.log('❌ Failed to update student:', student_id);
         return res.status(404).json({ error: 'Student not found' });
       }
-      console.log('✅ Student marked as attended for lesson', lessonName, 'and sessions decremented to', currentSessions - 1);
+
+      const nextSessions = currentSessions + sessionDelta;
+      console.log('✅ Student marked as attended for lesson', lessonName, 'sessions:', nextSessions);
       
       // Create simplified history record (only studentId and lesson)
       const historyRecord = {
@@ -193,11 +238,17 @@ export default async function handler(req, res) {
       console.log('📝 Creating simplified history record:', historyRecord);
       const historyResult = await db.collection('history').insertOne(historyRecord);
       console.log('✅ History record created with ID:', historyResult.insertedId);
+
+      return res.json({
+        success: true,
+        payment: { ...payment, numberOfSessions: nextSessions },
+        sessionDelta,
+      });
       
     } else {
       // Mark as not attended (unattend)
       // Also reset hw and quiz since student didn't attend
-      const currentSessions = student.payment?.numberOfSessions || 0;
+      const currentSessions = payment.numberOfSessions;
       const wasLessonPaid = student.lessons && student.lessons[lessonName] && student.lessons[lessonName].paid === true;
       
       const updateQuery = {
@@ -212,22 +263,29 @@ export default async function handler(req, res) {
         [`lessons.${lessonName}.homework_degree`]: null,
         [`lessons.${lessonName}.paid`]: false
       };
-      
-      // Only increment sessions back if payment system is enabled and the lesson was paid (meaning it consumed a session)
+
+      let sessionDelta = 0;
+      // Restore one session if payment is on and this lesson had consumed a session
       if (PAYMENT_SYSTEM_ENABLED && wasLessonPaid) {
-        updateQuery['payment.numberOfSessions'] = currentSessions + 1;
+        sessionDelta = 1;
       }
+
+      const updateDoc = sessionDelta !== 0
+        ? { $set: updateQuery, $inc: { 'payment.numberOfSessions': sessionDelta } }
+        : { $set: updateQuery };
       
       const result = await db.collection('students').updateOne(
         { id: student_id },
-        { $set: updateQuery }
+        updateDoc
       );
       
       if (result.matchedCount === 0) {
         console.log('❌ Failed to update student:', student_id);
         return res.status(404).json({ error: 'Student not found' });
       }
-      console.log('✅ Student marked as not attended for lesson', lessonName, 'and sessions incremented to', currentSessions + 1);
+
+      const nextSessions = currentSessions + sessionDelta;
+      console.log('✅ Student marked as not attended for lesson', lessonName, 'sessions:', nextSessions);
       
       // Remove simplified history record for this student and lesson
       const historyDeleteResult = await db.collection('history').deleteMany({
@@ -235,9 +293,13 @@ export default async function handler(req, res) {
         lesson: lessonName
       });
       console.log('🗑️ Removed', historyDeleteResult.deletedCount, 'history records');
+
+      return res.json({
+        success: true,
+        payment: { ...payment, numberOfSessions: nextSessions },
+        sessionDelta,
+      });
     }
-    
-    res.json({ success: true });
   } catch (error) {
     console.error('❌ Error in attend endpoint:', error);
     if (error.message.includes('Unauthorized') || error.message.includes('Invalid token')) {

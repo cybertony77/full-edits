@@ -18,16 +18,27 @@ import {
   Title,
 } from '@mantine/core';
 import { Carousel } from '@mantine/carousel';
-import { IconCheck, IconX } from '@tabler/icons-react';
+import { IconCheck, IconTrash, IconX } from '@tabler/icons-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import TitleBar from '../components/Title';
 import CourseSelect from '../components/CourseSelect';
 import MarketingPageLoader from '../components/MarketingPageLoader';
+import FullPageActionLoader from '../components/FullPageActionLoader';
 import MarketingMultiSelect from '../components/MarketingMultiSelect';
+import VideoInput from '../components/VideoInput';
+import R2VideoPlayer from '../components/R2VideoPlayer';
+import ZoomVideoPlayer from '../components/ZoomVideoPlayer';
+import YoutubeEmbedWithProgress from '../components/YoutubeEmbedWithProgress';
 import { useProfile } from '../lib/api/auth';
 import { useSystemConfig } from '../lib/api/system';
 import apiClient from '../lib/axios';
+import {
+  formatPhoneForDB,
+  validateEgyptPhone,
+  handleEgyptPhoneKeyDown,
+} from '../lib/phoneUtils';
+import { extractZoomMeetingId } from '../lib/zoomUtils';
 import {
   buildCenterScheduleRows,
   formatTeached,
@@ -41,6 +52,110 @@ import mp from '../styles/marketing_page.module.css';
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '500', '600'] });
 const caveat = Caveat({ subsets: ['latin'], weight: ['400', '600', '700'] });
 const lora = Lora({ subsets: ['latin'], weight: ['400', '500', '600'] });
+
+function extractYouTubeId(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return null;
+  if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+  const match = raw.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/
+  );
+  return match?.[1] || null;
+}
+
+function emptySessionVideo() {
+  return {
+    video_name: '',
+    youtube_url: '',
+    video_source: 'youtube',
+    r2_key: '',
+    zoom_meeting_id: '',
+    upload_file_name: '',
+    upload_progress: 0,
+    upload_status: 'idle',
+  };
+}
+
+function sessionVideoFromServer(json) {
+  const base = emptySessionVideo();
+  const type = (json?.session_video_type || '').toLowerCase();
+  const id = String(json?.session_video_id || '').trim();
+
+  if (type === 'r2' && id) {
+    return {
+      ...base,
+      video_source: 'r2',
+      r2_key: id,
+      upload_status: 'done',
+      upload_progress: 100,
+    };
+  }
+  if (type === 'zoom' && id) {
+    return { ...base, video_source: 'zoom', zoom_meeting_id: id };
+  }
+  if (type === 'youtube' && id) {
+    const ytId = extractYouTubeId(id) || id;
+    return {
+      ...base,
+      video_source: 'youtube',
+      youtube_url: `https://www.youtube.com/watch?v=${ytId}`,
+    };
+  }
+  if (json?.yt_session_link) {
+    return {
+      ...base,
+      video_source: 'youtube',
+      youtube_url: String(json.yt_session_link),
+    };
+  }
+  return base;
+}
+
+function resolveSessionPlayback(videoOrData) {
+  if (!videoOrData) return null;
+
+  if (videoOrData.video_source || videoOrData.youtube_url || videoOrData.r2_key || videoOrData.zoom_meeting_id) {
+    if (videoOrData.r2_key && String(videoOrData.r2_key).trim()) {
+      return { type: 'r2', id: String(videoOrData.r2_key).trim() };
+    }
+    if (videoOrData.zoom_meeting_id && String(videoOrData.zoom_meeting_id).trim()) {
+      const meetingId = extractZoomMeetingId(videoOrData.zoom_meeting_id);
+      if (meetingId) return { type: 'zoom', id: meetingId };
+    }
+    if (videoOrData.youtube_url && String(videoOrData.youtube_url).trim()) {
+      const ytId = extractYouTubeId(videoOrData.youtube_url);
+      if (ytId) return { type: 'youtube', id: ytId };
+      const embed = toYoutubeEmbed(videoOrData.youtube_url);
+      if (embed) {
+        const m = embed.match(/embed\/([A-Za-z0-9_-]{6,})/);
+        if (m?.[1]) return { type: 'youtube', id: m[1] };
+      }
+    }
+    return null;
+  }
+
+  const type = (videoOrData.session_video_type || '').toLowerCase();
+  const id = String(videoOrData.session_video_id || '').trim();
+  if (type && id && ['youtube', 'r2', 'zoom'].includes(type)) {
+    if (type === 'youtube') {
+      const ytId = extractYouTubeId(id) || id;
+      return { type: 'youtube', id: ytId };
+    }
+    return { type, id };
+  }
+  if (videoOrData.yt_session_link) {
+    const ytId = extractYouTubeId(videoOrData.yt_session_link);
+    if (ytId) return { type: 'youtube', id: ytId };
+  }
+  return null;
+}
+
+function serializeSessionVideo(video) {
+  const playback = resolveSessionPlayback(video);
+  return playback
+    ? { session_video_type: playback.type, session_video_id: playback.id }
+    : { session_video_type: '', session_video_id: '' };
+}
 
 function ScheduleLocationCell({ row }) {
   const centerName = (row.center || '').trim();
@@ -196,9 +311,19 @@ function buildBaselineSnapshot(json) {
       json.years_of_experience === null || json.years_of_experience === undefined
         ? ''
         : String(json.years_of_experience),
-    yt_session_link: json.yt_session_link || '',
+    ...serializeSessionVideo(
+      json.sessionVideo ||
+        sessionVideoFromServer(json)
+    ),
     centerIds: [...(json.dates_of_session_ids || [])].sort(),
     assistantIds: [...(json.contact_assistant_ids || [])].sort(),
+    contactPeople: (json.contact_people || [])
+      .map((p) => ({
+        id: p.id || '',
+        name: p.name || '',
+        phone: String(p.phone || '').replace(/[^0-9]/g, ''),
+      }))
+      .sort((a, b) => String(a.id).localeCompare(String(b.id))),
     links,
     testimonials,
     outro_text: json.outro_text || '',
@@ -206,30 +331,28 @@ function buildBaselineSnapshot(json) {
   });
 }
 
-function useInViewOnce(ref, onVisible) {
-  const done = useRef(false);
+function AnimatedInteger({ value, formatter, enabled = true }) {
+  const [n, setN] = useState(0);
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  const [started, setStarted] = useState(false);
+
   useEffect(() => {
     const el = ref.current;
-    if (!el || done.current) return;
+    if (!el) return undefined;
     const io = new IntersectionObserver(
       ([e]) => {
-        if (e.isIntersecting && !done.current) {
-          done.current = true;
-          onVisible();
-        }
+        if (e.isIntersecting) setInView(true);
       },
       { threshold: 0.25 }
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [ref, onVisible]);
-}
+  }, []);
 
-function AnimatedInteger({ value, formatter }) {
-  const [n, setN] = useState(0);
-  const ref = useRef(null);
-  const [started, setStarted] = useState(false);
-  useInViewOnce(ref, () => setStarted(true));
+  useEffect(() => {
+    if (enabled && inView) setStarted(true);
+  }, [enabled, inView]);
 
   useEffect(() => {
     if (!started || value === null || value === undefined || Number.isNaN(Number(value))) return;
@@ -279,6 +402,7 @@ export default function MarketingPage() {
   }, [user?.role, router]);
 
   const [loading, setLoading] = useState(true);
+  const [minLoaderElapsed, setMinLoaderElapsed] = useState(false);
   const [hidePageLoader, setHidePageLoader] = useState(false);
   const [confirmHideOpen, setConfirmHideOpen] = useState(false);
   const [formBaseline, setFormBaseline] = useState('');
@@ -297,9 +421,15 @@ export default function MarketingPage() {
   const [testimonialCourseOpen, setTestimonialCourseOpen] = useState({});
   const [studentsTeached, setStudentsTeached] = useState('');
   const [yearsExperience, setYearsExperience] = useState('');
-  const [ytLink, setYtLink] = useState('');
+  const [sessionVideo, setSessionVideo] = useState(emptySessionVideo);
+  const [sessionVideoErrors, setSessionVideoErrors] = useState({});
   const [centerIds, setCenterIds] = useState([]);
   const [assistantIds, setAssistantIds] = useState([]);
+  const [contactPeople, setContactPeople] = useState([]);
+  const [contactFormOpen, setContactFormOpen] = useState(false);
+  const [contactFormName, setContactFormName] = useState('');
+  const [contactFormPhone, setContactFormPhone] = useState('');
+  const [contactFormError, setContactFormError] = useState(null);
   const [links, setLinks] = useState([{ name: '', link: '', phone: '' }]);
   const [testimonials, setTestimonials] = useState([
     { name: '', course: '', text: '', score: '' },
@@ -313,6 +443,7 @@ export default function MarketingPage() {
 
   const lastServerHashRef = useRef('');
   const hasFormChangesRef = useRef(false);
+  const pageStateBusyRef = useRef(false);
   const testimonialAutoTimerRef = useRef(null);
   const testimonialResumeTimerRef = useRef(null);
   const testimonialPausedRef = useRef(false);
@@ -346,9 +477,19 @@ export default function MarketingPage() {
         ? ''
         : String(json.years_of_experience)
     );
-    setYtLink(json.yt_session_link || '');
+    setSessionVideo(sessionVideoFromServer(json));
+    setSessionVideoErrors({});
     setCenterIds(json.dates_of_session_ids || []);
     setAssistantIds(json.contact_assistant_ids || []);
+    setContactPeople(
+      Array.isArray(json.contact_people)
+        ? json.contact_people.map((p, i) => ({
+            id: String(p.id || `person_${i}`),
+            name: String(p.name || '').trim(),
+            phone: String(p.phone || '').replace(/[^0-9]/g, ''),
+          }))
+        : []
+    );
     const L = json.links?.length ? json.links : [{ name: '', link: '', phone: '' }];
     setLinks(
       L.map((row) => {
@@ -380,7 +521,7 @@ export default function MarketingPage() {
       try {
         const res = await fetch('/api/marketing_page', { credentials: 'include' });
         if (res.status === 404) {
-          router.replace(`/404?path=${encodeURIComponent('/marketing_page')}`);
+          router.replace(`/404?path=${encodeURIComponent('/welcome')}`);
           return;
         }
         const json = await res.json();
@@ -396,7 +537,7 @@ export default function MarketingPage() {
           forceFormSync || (json.canEdit && !hasFormChangesRef.current);
 
         if (json.canEdit) {
-          if (shouldSyncForm) {
+          if (shouldSyncForm && !pageStateBusyRef.current) {
             if (forceFormSync) teacherImageDraftRef.current = false;
             applyFormFromServer(json);
           }
@@ -408,12 +549,12 @@ export default function MarketingPage() {
               setOptions({ centers: [], centersDetail: [], staff: [] });
             }
           }
-        } else if (shouldSyncForm) {
+        } else if (shouldSyncForm && !pageStateBusyRef.current) {
           applyFormFromServer(json);
         }
       } catch {
         if (!silent) {
-          router.replace(`/404?path=${encodeURIComponent('/marketing_page')}`);
+          router.replace(`/404?path=${encodeURIComponent('/welcome')}`);
         }
       } finally {
         if (!silent) setLoading(false);
@@ -426,6 +567,12 @@ export default function MarketingPage() {
     fetchMarketingPage({ forceFormSync: true });
   }, [fetchMarketingPage]);
 
+  // Keep the welcome loader visible for at least 2s
+  useEffect(() => {
+    const timer = setTimeout(() => setMinLoaderElapsed(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
       fetchMarketingPage({ silent: true });
@@ -433,14 +580,17 @@ export default function MarketingPage() {
     return () => clearInterval(interval);
   }, [fetchMarketingPage]);
 
+  const canEdit = data?.canEdit;
+  const isAssistant = user?.role === 'assistant';
+  const dataReady = !loading && !!data;
+  const showWelcomeLoader = !dataReady || !minLoaderElapsed;
+  const welcomeReady = !showWelcomeLoader;
+
   useEffect(() => {
     if (!teacherPicError) return;
     const t = setTimeout(() => setTeacherPicError(''), 6000);
     return () => clearTimeout(t);
   }, [teacherPicError]);
-
-  const canEdit = data?.canEdit;
-  const isAssistant = user?.role === 'assistant';
 
   const teacherPreviewBeforeUploadRef = useRef(null);
 
@@ -554,7 +704,7 @@ export default function MarketingPage() {
   }, [pauseTestimonialAutoplay, scheduleTestimonialResume]);
 
   useEffect(() => {
-    if (!embla || canEdit || viewTestimonialCount === 0) {
+    if (!welcomeReady || !embla || canEdit || viewTestimonialCount === 0) {
       clearTestimonialTimers();
       return undefined;
     }
@@ -596,6 +746,7 @@ export default function MarketingPage() {
       clearTestimonialTimers();
     };
   }, [
+    welcomeReady,
     embla,
     canEdit,
     viewTestimonialCount,
@@ -625,9 +776,16 @@ export default function MarketingPage() {
         teacher_description: teacherDescription,
         students_teached: studentsTeached,
         years_of_experience: yearsExperience,
-        yt_session_link: ytLink,
+        ...serializeSessionVideo(sessionVideo),
         centerIds: [...centerIds].sort(),
         assistantIds: [...assistantIds].sort(),
+        contactPeople: contactPeople
+          .map((p) => ({
+            id: p.id || '',
+            name: p.name || '',
+            phone: String(p.phone || '').replace(/[^0-9]/g, ''),
+          }))
+          .sort((a, b) => String(a.id).localeCompare(String(b.id))),
         links,
         testimonials,
         outro_text: outroText,
@@ -640,9 +798,10 @@ export default function MarketingPage() {
       teacherDescription,
       studentsTeached,
       yearsExperience,
-      ytLink,
+      sessionVideo,
       centerIds,
       assistantIds,
+      contactPeople,
       links,
       testimonials,
       outroText,
@@ -657,30 +816,62 @@ export default function MarketingPage() {
   }, [hasFormChanges]);
 
   const publishPage = async () => {
-    setPageStateChecked(true);
+    pageStateBusyRef.current = true;
+    setHidePageLoader(true);
+    let succeeded = false;
     try {
       await apiClient.patch('/api/marketing_page', { page_state: true });
-      await fetchMarketingPage({ silent: true, forceFormSync: true });
+      succeeded = true;
     } catch {
-      setPageStateChecked(false);
+      succeeded = false;
+    } finally {
+      window.setTimeout(async () => {
+        if (succeeded) {
+          setPageStateChecked(true);
+          pageStateBusyRef.current = false;
+          try {
+            await fetchMarketingPage({ silent: true, forceFormSync: true });
+          } catch {
+            /* keep UI state */
+          }
+        } else {
+          pageStateBusyRef.current = false;
+        }
+        setHidePageLoader(false);
+      }, 4000);
     }
   };
 
   const confirmHidePage = async () => {
     setConfirmHideOpen(false);
+    pageStateBusyRef.current = true;
     setHidePageLoader(true);
-    setPageStateChecked(false);
+    let succeeded = false;
     try {
       await apiClient.patch('/api/marketing_page', { page_state: false });
-      await fetchMarketingPage({ silent: true, forceFormSync: true });
+      succeeded = true;
     } catch {
-      setPageStateChecked(true);
+      succeeded = false;
     } finally {
-      window.setTimeout(() => setHidePageLoader(false), 4000);
+      window.setTimeout(async () => {
+        if (succeeded) {
+          setPageStateChecked(false);
+          pageStateBusyRef.current = false;
+          try {
+            await fetchMarketingPage({ silent: true, forceFormSync: true });
+          } catch {
+            /* keep UI state */
+          }
+        } else {
+          pageStateBusyRef.current = false;
+        }
+        setHidePageLoader(false);
+      }, 4000);
     }
   };
 
   const handlePageStateToggle = (nextChecked) => {
+    if (saving || hidePageLoader || pageStateBusyRef.current) return;
     if (nextChecked) {
       publishPage();
       return;
@@ -688,6 +879,114 @@ export default function MarketingPage() {
     if (pageStateChecked) {
       setConfirmHideOpen(true);
     }
+  };
+
+  const updateSessionVideo = useCallback((patchFields) => {
+    setSessionVideo((prev) => ({ ...prev, ...patchFields }));
+  }, []);
+
+  const handleSessionVideoNameChange = useCallback((_index, name) => {
+    updateSessionVideo({ video_name: name });
+  }, [updateSessionVideo]);
+
+  const handleSessionYouTubeUrlChange = useCallback((_index, url) => {
+    updateSessionVideo({ youtube_url: url, video_source: 'youtube', r2_key: '', zoom_meeting_id: '' });
+    setSessionVideoErrors((prev) => {
+      const next = { ...prev };
+      delete next.video_0_youtube_url;
+      return next;
+    });
+  }, [updateSessionVideo]);
+
+  const handleSessionClearYouTubeUrl = useCallback(() => {
+    updateSessionVideo({ youtube_url: '' });
+  }, [updateSessionVideo]);
+
+  const handleSessionZoomMeetingIdChange = useCallback((_index, meetingId) => {
+    updateSessionVideo({
+      zoom_meeting_id: meetingId,
+      video_source: 'zoom',
+      youtube_url: '',
+      r2_key: '',
+    });
+    setSessionVideoErrors((prev) => {
+      const next = { ...prev };
+      delete next.video_0_zoom_meeting_id;
+      return next;
+    });
+  }, [updateSessionVideo]);
+
+  const handleSessionClearZoomMeetingId = useCallback(() => {
+    updateSessionVideo({ zoom_meeting_id: '' });
+  }, [updateSessionVideo]);
+
+  const handleSessionR2Upload = useCallback((_index, r2Key, fileName) => {
+    updateSessionVideo({
+      r2_key: r2Key,
+      video_source: r2Key ? 'r2' : 'youtube',
+      youtube_url: '',
+      zoom_meeting_id: '',
+      upload_file_name: fileName || '',
+      upload_status: r2Key ? 'done' : 'idle',
+      upload_progress: r2Key ? 100 : 0,
+    });
+  }, [updateSessionVideo]);
+
+  const handleSessionClearR2Upload = useCallback(() => {
+    updateSessionVideo({
+      r2_key: '',
+      upload_file_name: '',
+      upload_status: 'idle',
+      upload_progress: 0,
+    });
+  }, [updateSessionVideo]);
+
+  const handleSessionVideoSourceChange = useCallback((_index, source) => {
+    updateSessionVideo({ video_source: source });
+  }, [updateSessionVideo]);
+
+  const openContactForm = () => {
+    setContactFormName('');
+    setContactFormPhone('');
+    setContactFormError(null);
+    setContactFormOpen(true);
+  };
+
+  const closeContactForm = () => {
+    setContactFormOpen(false);
+    setContactFormName('');
+    setContactFormPhone('');
+    setContactFormError(null);
+  };
+
+  const saveContactForm = () => {
+    const name = contactFormName.trim();
+    const phoneDigits = formatPhoneForDB(contactFormPhone);
+    if (!name) {
+      setContactFormError({ field: 'name', message: 'Name is required' });
+      return;
+    }
+    if (!phoneDigits || phoneDigits.length <= 2) {
+      setContactFormError({ field: 'phone', message: 'Valid phone number is required' });
+      return;
+    }
+    setContactPeople((prev) => [
+      ...prev,
+      {
+        id: `person_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        phone: phoneDigits,
+      },
+    ]);
+    closeContactForm();
+  };
+
+  const removeContactRow = (row) => {
+    if (row.kind === 'staff') {
+      setAssistantIds((prev) => prev.filter((id) => id !== row._id));
+      return;
+    }
+    setContactPeople((prev) => prev.filter((p) => p.id !== row._id));
   };
 
   const saveContent = async () => {
@@ -705,6 +1004,8 @@ export default function MarketingPage() {
     }
 
     setLinksError('');
+
+    const sessionPlayback = resolveSessionPlayback(sessionVideo);
 
     const linksPayload = links
       .map((row) => {
@@ -737,9 +1038,17 @@ export default function MarketingPage() {
       teacher_description: teacherDescription.trim() || null,
       students_teached: studentsTeached === '' ? null : Number(studentsTeached),
       years_of_experience: yearsExperience === '' ? null : Number(yearsExperience),
-      yt_session_link: ytLink.trim() || null,
+      session_video_type: sessionPlayback?.type || null,
+      session_video_id: sessionPlayback?.id || null,
       dates_of_sessions: centerIds,
       contact_assistants: assistantIds,
+      contact_people: contactPeople
+        .map((p) => ({
+          id: p.id,
+          name: (p.name || '').trim(),
+          phone: formatPhoneForDB(p.phone || ''),
+        }))
+        .filter((p) => p.name && p.phone),
       links: linksPayload.length ? linksPayload : null,
       students_testimonials: testimonialsPayload.length ? testimonialsPayload : null,
       outro_text: outroText.trim() || null,
@@ -749,7 +1058,7 @@ export default function MarketingPage() {
 
   const marketingPageUrl = useMemo(() => {
     if (typeof window === 'undefined') return '';
-    return `${window.location.origin}/marketing_page`;
+    return `${window.location.origin}/welcome`;
   }, []);
 
   const copyMarketingPageLink = () => {
@@ -781,26 +1090,45 @@ export default function MarketingPage() {
           name: s.name || s.label,
           phone: s.phone || '',
           role: s.role || '',
+          kind: 'staff',
         };
       })
       .filter(Boolean);
   }, [canEdit, data?.assistants, assistantIds, options.staff]);
 
+  const previewContactPeople = useMemo(() => {
+    if (!canEdit) return data?.contact_people || [];
+    return contactPeople;
+  }, [canEdit, data?.contact_people, contactPeople]);
+
   const scheduleRows = canEdit ? previewScheduleRows : data?.schedule_rows || [];
-  const contactAssistants = canEdit ? previewAssistants : data?.assistants || [];
 
-  const embedUrl = useMemo(() => toYoutubeEmbed(canEdit ? ytLink : data?.yt_session_link), [
-    canEdit,
-    ytLink,
-    data?.yt_session_link,
-  ]);
+  const contactRows = useMemo(() => {
+    const staffRows = (canEdit ? previewAssistants : data?.assistants || []).map((a) => ({
+      _id: a._id,
+      name: a.name,
+      phone: a.phone || '',
+      kind: 'staff',
+    }));
+    const peopleRows = (canEdit ? previewContactPeople : data?.contact_people || []).map((p) => ({
+      _id: p.id || p._id,
+      name: p.name,
+      phone: p.phone || '',
+      kind: 'custom',
+    }));
+    return [...staffRows, ...peopleRows];
+  }, [canEdit, previewAssistants, previewContactPeople, data?.assistants, data?.contact_people]);
 
-  if (loading || !data) {
-    return <MarketingPageLoader label="Loading page" sub="Preparing marketing content…" />;
-  }
+  const sessionPlayback = useMemo(
+    () => (canEdit ? resolveSessionPlayback(sessionVideo) : resolveSessionPlayback(data)),
+    [canEdit, sessionVideo, data]
+  );
 
-  if (hidePageLoader) {
-    return <MarketingPageLoader label="Updating page" sub="Hiding marketing page…" />;
+  const showUploadTab =
+    systemConfig?.cloudflare_r2 === true || systemConfig?.cloudflare_r2 === 'true';
+
+  if (!dataReady) {
+    return <MarketingPageLoader active label="Welcome" />;
   }
 
   const viewTestimonials = (data.students_testimonials || []).filter(
@@ -815,15 +1143,22 @@ export default function MarketingPage() {
     data.years_of_experience != null;
 
   return (
-    <Box
-      className={mp.marketingPageRoot}
-      style={{
-        minHeight: '100vh',
-        color: '#e7ecf3',
-        paddingBottom: 48,
-      }}
-    >
-      {!canEdit && !isAssistant && (
+    <>
+      <MarketingPageLoader active={showWelcomeLoader} label="Welcome" />
+      <FullPageActionLoader
+        active={hidePageLoader}
+        label="Updating"
+        sub="Updating page visibility. This may take a moment."
+      />
+      <Box
+        className={mp.marketingPageRoot}
+        style={{
+          minHeight: '100vh',
+          color: '#e7ecf3',
+          paddingBottom: 48,
+        }}
+      >
+      {!user && (
         <Box component="header" className={mp.publicHeader} py="sm" px="md">
           <Group
             className={mp.publicHeaderInner}
@@ -912,11 +1247,14 @@ export default function MarketingPage() {
                       : 'Page is hidden from visitors.'}
                   </Text>
                 </div>
-                <div className={mp.pageStateSwitchWrap}>
+                <div
+                  className={mp.pageStateSwitchWrap}
+                  style={hidePageLoader ? { pointerEvents: 'none' } : undefined}
+                >
                   <Switch
                     className={mp.pageStateSwitch}
                     checked={pageStateChecked}
-                    onChange={(e) => handlePageStateToggle(e.currentTarget.checked)}
+                    onChange={() => handlePageStateToggle(!pageStateChecked)}
                     color="teal"
                     size="lg"
                     disabled={saving}
@@ -1218,6 +1556,7 @@ export default function MarketingPage() {
                             <AnimatedInteger
                               value={data.students_teached}
                               formatter={(n) => formatTeached(n)}
+                              enabled={welcomeReady}
                             />
                           </Title>
                           <Text fw={700} c="gray.1">
@@ -1240,7 +1579,11 @@ export default function MarketingPage() {
                       ) : (
                         <>
                           <Title order={2} c="orange.4" style={{ fontSize: 'clamp(2rem, 6vw, 3rem)' }}>
-                            <AnimatedInteger value={data.years_of_experience} formatter={formatYears} />
+                            <AnimatedInteger
+                              value={data.years_of_experience}
+                              formatter={formatYears}
+                              enabled={welcomeReady}
+                            />
                           </Title>
                           <Text fw={700} c="gray.1">
                             Years of experience
@@ -1502,42 +1845,42 @@ export default function MarketingPage() {
         )}
 
         {/* Section 3 — Free Session */}
-        {(embedUrl || canEdit) && (
+        {(sessionPlayback || canEdit) && (
           <Paper radius="xl" p="lg" className={`${mp.darkSection} ${mp.section} ${mp.youtubeSection}`}>
             <Title order={3} mb="md" className={mp.darkSectionTitle}>
               Free Session
             </Title>
             {canEdit && (
-              <div className={`form-group ${mp.editForm} ${mp.editFormHero}`}>
-                <label className="form-label">YouTube URL</label>
-                <input
-                  className="form-input"
-                  value={ytLink}
-                  onChange={(e) => setYtLink(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  style={{marginBottom: '15px'}}
+              <div className={`${mp.editForm} ${mp.editFormHero} ${mp.sessionVideoEdit}`}>
+                <VideoInput
+                  index={0}
+                  video={sessionVideo}
+                  onVideoNameChange={handleSessionVideoNameChange}
+                  onYouTubeUrlChange={handleSessionYouTubeUrlChange}
+                  onZoomMeetingIdChange={handleSessionZoomMeetingIdChange}
+                  onClearYouTubeUrl={handleSessionClearYouTubeUrl}
+                  onClearZoomMeetingId={handleSessionClearZoomMeetingId}
+                  onR2Upload={handleSessionR2Upload}
+                  onClearR2Upload={handleSessionClearR2Upload}
+                  onVideoSourceChange={handleSessionVideoSourceChange}
+                  onRemove={() => {}}
+                  canRemove={false}
+                  errors={sessionVideoErrors}
+                  showUploadTab={showUploadTab}
+                  hideTitle
+                  hideVideoName
                 />
               </div>
             )}
-            {embedUrl && (
-              <Box className="video-player-wrapper" style={{ borderRadius: 12, overflow: 'hidden' }}>
-                <Box
-                  style={{
-                    position: 'relative',
-                    paddingBottom: '56.25%',
-                    height: 0,
-                    overflow: 'hidden',
-                    background: '#000',
-                  }}
-                >
-                  <iframe
-                    title="Free session video"
-                    src={embedUrl}
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                    allowFullScreen
-                  />
-                </Box>
+            {sessionPlayback && (
+              <Box className="video-player-wrapper" style={{ borderRadius: 12, overflow: 'hidden', marginTop: canEdit ? 16 : 0 }}>
+                {sessionPlayback.type === 'r2' ? (
+                  <R2VideoPlayer r2Key={sessionPlayback.id} hideWatermark />
+                ) : sessionPlayback.type === 'zoom' ? (
+                  <ZoomVideoPlayer meetingId={sessionPlayback.id} hideWatermark />
+                ) : (
+                  <YoutubeEmbedWithProgress youtubeVideoId={sessionPlayback.id} hideWatermark />
+                )}
               </Box>
             )}
           </Paper>
@@ -1551,12 +1894,13 @@ export default function MarketingPage() {
             </Title>
             {canEdit && (
               <MarketingMultiSelect
-                label="Centers on this page"
+                label="Centers dates & locations to show"
                 options={options.centers || []}
                 value={centerIds}
                 onChange={setCenterIds}
                 placeholder="Select centers…"
                 onDark
+                showChips
               />
             )}
             {scheduleRows.length > 0 && (
@@ -1591,7 +1935,7 @@ export default function MarketingPage() {
         )}
 
         {/* Section 5 — Contact Us */}
-        {((contactAssistants.length > 0) || canEdit) && (
+        {((contactRows.length > 0) || canEdit) && (
           <Paper radius="xl" p="lg" className={`${mp.darkSection} ${mp.section} ${mp.contactSection}`}>
             <Title order={3} mb="md" className={mp.darkSectionTitle}>
               Contact Us
@@ -1608,7 +1952,7 @@ export default function MarketingPage() {
                 />
               </Box>
             )}
-            {contactAssistants.length > 0 && (
+            {contactRows.length > 0 && (
               <ScrollArea h={320} type="auto">
                 <Table striped highlightOnHover withTableBorder className={mp.premiumTable}>
                   <Table.Thead>
@@ -1616,14 +1960,15 @@ export default function MarketingPage() {
                       <Table.Th>Name</Table.Th>
                       <Table.Th>Phone No.</Table.Th>
                       <Table.Th>Send WhatsApp</Table.Th>
+                      {canEdit ? <Table.Th>Remove</Table.Th> : null}
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {contactAssistants.map((a) => {
+                    {contactRows.map((a) => {
                       const phoneNumber = formatPhoneForWhatsApp(a.phone);
                       const whatsappUrl = phoneNumber ? `https://wa.me/${phoneNumber}` : '';
                       return (
-                        <Table.Tr key={a._id}>
+                        <Table.Tr key={`${a.kind}-${a._id}`}>
                           <Table.Td style={{ fontWeight: 600 }}>
                             {a.name}
                           </Table.Td>
@@ -1648,12 +1993,33 @@ export default function MarketingPage() {
                               Send
                             </Button>
                           </Table.Td>
+                          {canEdit ? (
+                            <Table.Td>
+                              <button
+                                type="button"
+                                className={mp.contactTrashBtn}
+                                onClick={() => removeContactRow(a)}
+                                aria-label={`Remove ${a.name}`}
+                                title="Remove"
+                              >
+                                <IconTrash size={18} />
+                              </button>
+                            </Table.Td>
+                          ) : null}
                         </Table.Tr>
                       );
                     })}
                   </Table.Tbody>
                 </Table>
               </ScrollArea>
+            )}
+            {canEdit && (
+              <div className={mp.contactAddRow}>
+                <button type="button" className={mp.btnAdd} onClick={openContactForm}>
+                  <Image src="/plus.svg" alt="" width={18} height={18} />
+                  Add
+                </button>
+              </div>
             )}
           </Paper>
         )}
@@ -1825,7 +2191,79 @@ export default function MarketingPage() {
           </div>
         </div>
       )}
-    </Box>
+
+      {contactFormOpen && (
+        <div
+          className={mp.contactModalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeContactForm();
+          }}
+        >
+          <div className={mp.contactModalCard} onClick={(e) => e.stopPropagation()}>
+            <h3 className={mp.contactModalTitle}>Add Contact</h3>
+            <p className={mp.contactModalDesc}>Add a person to the Contact Us list.</p>
+            <div className={mp.contactModalField}>
+              <label className={mp.contactModalLabel} htmlFor="welcome-contact-name">
+                Name
+              </label>
+              <input
+                id="welcome-contact-name"
+                className={`${mp.contactModalInput} ${
+                  contactFormError?.field === 'name' ? mp.contactModalInputError : ''
+                }`}
+                value={contactFormName}
+                onChange={(e) => {
+                  setContactFormName(e.target.value);
+                  if (contactFormError) setContactFormError(null);
+                }}
+                placeholder="Enter name"
+                autoComplete="off"
+              />
+              {contactFormError?.field === 'name' ? (
+                <p className={mp.contactModalErrorText}>{contactFormError.message}</p>
+              ) : null}
+            </div>
+            <div className={mp.contactModalField}>
+              <label className={mp.contactModalLabel}>Phone number</label>
+              <div
+                className={`${mp.contactModalPhone} ${
+                  contactFormError?.field === 'phone' ? mp.contactModalPhoneError : ''
+                }`}
+              >
+                <PhoneInput
+                  country="eg"
+                  enableSearch
+                  value={contactFormPhone || ''}
+                  onChange={(value) => {
+                    const validation = validateEgyptPhone(value);
+                    setContactFormPhone(validation.value);
+                    if (contactFormError) setContactFormError(null);
+                  }}
+                  onKeyDown={(e) => handleEgyptPhoneKeyDown(e, contactFormPhone)}
+                  containerClass="phone-container"
+                  inputClass="phone-input"
+                  buttonClass="phone-flag-btn"
+                  dropdownClass="phone-dropdown"
+                  placeholder="Enter Phone Number"
+                />
+              </div>
+              {contactFormError?.field === 'phone' ? (
+                <p className={mp.contactModalErrorText}>{contactFormError.message}</p>
+              ) : null}
+            </div>
+            <div className={mp.contactModalActions}>
+              <button type="button" className={mp.btnSave} onClick={saveContactForm}>
+                Save
+              </button>
+              <button type="button" className={mp.contactCancelBtn} onClick={closeContactForm}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </Box>
+    </>
   );
 }
 

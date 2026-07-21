@@ -21,9 +21,8 @@ export default function ZoomRecordingSelect({ selectedValue, onSelect }) {
       const response = await fetchRecordings(currentToken);
       return response.data;
     },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
     enabled: isOpen,
     retry: 2,
     retryDelay: (attempt) => Math.min(1500 * 2 ** attempt, 8000),
@@ -45,17 +44,12 @@ export default function ZoomRecordingSelect({ selectedValue, onSelect }) {
   };
 
   const showPagination = hasPrev || hasNext;
-  const selectedMeeting = meetings.find((meeting) => {
-    const proxyId =
-      meeting.zoom_proxy_id ||
-      meeting.zoom_direct_video_url ||
-      meeting.uuid ||
-      '';
-    return (
-      selectedValue === proxyId ||
+  const selectedMeeting = meetings.find(
+    (meeting) =>
+      selectedValue === meeting.zoom_proxy_id ||
+      selectedValue === meeting.zoom_direct_video_url ||
       selectedValue === meeting.uuid
-    );
-  });
+  );
   const triggerLabel = selectedMeeting
     ? `Date : ${selectedMeeting.created_at_formated || '-'}, Duration : ${selectedMeeting.duration_furmated || '-'}`
     : 'Select Zoom recording';

@@ -86,12 +86,9 @@ export default function HwChart({ lessons, chartData, chartLoading }) {
           })
           .filter(Boolean)
       : [];
-    // API-driven chart (center/course filtered on server) — includes empty array; do not fall back to raw lessons
-    if (chartData !== undefined && chartData !== null) {
-      if (!Array.isArray(chartData) || chartData.length === 0) {
-        return lessonsFallback;
-      }
-      return chartData
+    // Prefer API chart data; if empty / all zero, fall back to lesson homework_degree
+    if (chartData !== undefined && chartData !== null && Array.isArray(chartData) && chartData.length > 0) {
+      const fromApi = chartData
         .map((item) => {
           const percentage = item.percentage || 0;
           const result = item.result || '0 / 0';
@@ -102,9 +99,9 @@ export default function HwChart({ lessons, chartData, chartLoading }) {
           };
         })
         .filter(item => item.degree > 0 || item.originalDegree !== '0 / 0');
+      if (fromApi.length > 0) return fromApi;
     }
 
-    // Legacy: lessons prop only when chartData not supplied
     return lessonsFallback;
   }, [lessons, chartData, chartLoading]);
   const minChartWidth = Math.max(data.length * 70, 320);

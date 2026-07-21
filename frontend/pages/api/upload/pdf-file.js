@@ -2,16 +2,27 @@ import { getCloudinary } from '../../../lib/cloudinaryConfig';
 
 const cloudinary = getCloudinary();
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_BASE64_SIZE = MAX_FILE_SIZE * 1.4;
-const ALLOWED_FOLDERS = ['HW-PDFs', 'Quizs-PDFs', 'MockExams-PDFs', 'material'];
-const CLOUDINARY_TIMEOUT_MS = 300000; // 5 minutes
+// Fallback server-side PDF upload (prefer browser → Cloudinary direct upload
+// via `/api/upload/sign` + `uploadToCloudinaryDirect` for large files).
+// Material: 200 MB · Homework / Quizzes / Mock exams: 100 MB
+const MAX_BY_FOLDER = {
+  material: 200 * 1024 * 1024,
+  'HW-PDFs': 100 * 1024 * 1024,
+  'Quizs-PDFs': 100 * 1024 * 1024,
+  'MockExams-PDFs': 100 * 1024 * 1024,
+};
+const ALLOWED_FOLDERS = Object.keys(MAX_BY_FOLDER);
+const CLOUDINARY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_RETRY_COUNT = 2;
 
 async function uploadPdfWithRetry(file, options) {
   let lastError = null;
   for (let attempt = 0; attempt <= MAX_RETRY_COUNT; attempt += 1) {
     try {
+      // upload_large uses chunked upload on the server for big files
+      if (typeof cloudinary.uploader.upload_large === 'function') {
+        return await cloudinary.uploader.upload_large(file, options);
+      }
       return await cloudinary.uploader.upload(file, options);
     } catch (error) {
       lastError = error;
@@ -28,6 +39,21 @@ async function uploadPdfWithRetry(file, options) {
 }
 
 export default async function handler(req, res) {
+  // Allow browser preflight if this route is ever called cross-origin
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -47,11 +73,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid upload folder.' });
     }
 
+    const maxBytes = MAX_BY_FOLDER[folder];
+    const maxMb = Math.round(maxBytes / (1024 * 1024));
+    const maxBase64 = maxBytes * 1.4;
+
     const base64Data = file.includes(',') ? file.split(',')[1] : file;
     const fileSize = Buffer.byteLength(base64Data, 'base64');
 
-    if (fileSize > MAX_BASE64_SIZE) {
-      return res.status(400).json({ error: 'Max PDF file size is 20 MB.' });
+    if (fileSize > maxBase64) {
+      return res.status(400).json({ error: `Max PDF file size is ${maxMb} MB.` });
     }
 
     const uploadResult = await uploadPdfWithRetry(file, {
@@ -60,6 +90,7 @@ export default async function handler(req, res) {
       type: 'upload',
       overwrite: false,
       timeout: CLOUDINARY_TIMEOUT_MS,
+      chunk_size: 6 * 1024 * 1024,
     });
 
     return res.status(200).json({
@@ -84,8 +115,8 @@ export default async function handler(req, res) {
 export const config = {
   api: {
     bodyParser: {
-      // 20MB binary PDF may exceed 30MB once base64 + JSON overhead are added.
-      sizeLimit: '40mb',
+      // Material PDFs up to 200MB → ~280MB base64; prefer direct upload for large files.
+      sizeLimit: '300mb',
     },
     responseLimit: false,
   },

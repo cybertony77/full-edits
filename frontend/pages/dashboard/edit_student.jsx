@@ -36,6 +36,7 @@ export default function EditStudent() {
   const [genderDropdownOpen, setGenderDropdownOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]); // Store multiple search results
   const [showSearchResults, setShowSearchResults] = useState(false); // Show/hide search results
+  const [hasExistingEmail, setHasExistingEmail] = useState(false); // Show email field only if users.email exists
 
   // React Query hooks
   const { data: allStudents } = useStudents();
@@ -66,9 +67,12 @@ export default function EditStudent() {
   useEffect(() => {
     if (student && !originalStudent) {
       console.log('🔍 Student data received from API:', student);
+      const existingEmail = (student.email && String(student.email).trim()) || '';
+      setHasExistingEmail(!!existingEmail);
       const studentData = {
         name: student.name || "",
         age: student.age || "",
+        email: existingEmail,
         gender: student.gender || "",
         grade: student.grade || "", // Actual grade (e.g. "1st Secondary")
         course: student.course || "", // Course (EST/SAT/ACT)
@@ -127,6 +131,7 @@ export default function EditStudent() {
     setError("");
     setSuccess(false);
     setOriginalStudent(null);
+    setHasExistingEmail(false);
     setSearchResults([]);
     setShowSearchResults(false);
     
@@ -200,6 +205,7 @@ export default function EditStudent() {
     if (!value.trim()) {
       setFormData({});
       setOriginalStudent(null);
+      setHasExistingEmail(false);
       setError("");
       setSuccess(false);
       setSearchResults([]);
@@ -240,6 +246,13 @@ export default function EditStudent() {
         }
         return;
       }
+      // Email: include when changed (validated on submit)
+      if (key === 'email') {
+        if (formData[key] !== originalStudent[key]) {
+          changes[key] = formData[key];
+        }
+        return;
+      }
       // Only include fields that have actually changed and are not undefined/null/empty
       if (formData[key] !== originalStudent[key] &&
           formData[key] !== undefined &&
@@ -270,6 +283,21 @@ export default function EditStudent() {
     }
     
     const changedFields = getChangedFields();
+
+    // Validate email if it was changed (field only shown when student already has one)
+    if (Object.prototype.hasOwnProperty.call(changedFields, 'email')) {
+      const nextEmail = typeof changedFields.email === 'string' ? changedFields.email.trim() : '';
+      if (!nextEmail) {
+        setError("Email cannot be empty");
+        return;
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(nextEmail)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+      changedFields.email = nextEmail;
+    }
     
     // Validate phone numbers if they were changed
     if (changedFields.phone) {
@@ -337,7 +365,7 @@ export default function EditStudent() {
           setOriginalStudent({ ...formData });
         },
         onError: (err) => {
-          setError("Failed to edit student.");
+          setError(err?.response?.data?.error || "Failed to edit student.");
         }
       }
     );
@@ -718,6 +746,20 @@ export default function EditStudent() {
                 onChange={handleChange}
               />
             </div>
+            {hasExistingEmail && (
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  className="form-input"
+                  name="email"
+                  type="email"
+                  placeholder="Enter student's email"
+                  value={formData.email || ''}
+                  onChange={handleChange}
+                  autoComplete="off"
+                />
+              </div>
+            )}
             <div className="form-group">
               <label>Gender <span style={{color: 'red'}}>*</span></label>
               <GenderSelect

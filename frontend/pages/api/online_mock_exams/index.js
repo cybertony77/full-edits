@@ -94,7 +94,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { lesson_name, timer, questions, lesson, course, courseType, center, mock_exam_type, deadline_type, deadline_date, deadline_time, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state } = req.body;
+      const { lesson_name, timer, questions, lesson, course, courseType, center, mock_exam_type, deadline_type, deadline_date, deadline_time, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state, allow_downloading } = req.body;
 
       const effectiveType = mock_exam_type || 'questions';
 
@@ -216,6 +216,7 @@ export default async function handler(req, res) {
       if (effectiveType === 'pdf') {
         mockExamDoc.pdf_file_name = pdf_file_name.trim();
         mockExamDoc.pdf_url = pdf_url.trim();
+        mockExamDoc.allow_downloading = allow_downloading === false || allow_downloading === 'false' ? false : true;
       } else {
         mockExamDoc.questions = questions.map(q => {
           const hasText = q.answer_texts && q.answer_texts.length > 0 && q.answer_texts.some(text => text && text.trim() !== '');
@@ -250,7 +251,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'PUT') {
       const { id } = req.query;
-      const { lesson_name, timer, questions, lesson, course, courseType, center, mock_exam_type, deadline_type, deadline_date, deadline_time, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state } = req.body;
+      const { lesson_name, timer, questions, lesson, course, courseType, center, mock_exam_type, deadline_type, deadline_date, deadline_time, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state, allow_downloading } = req.body;
 
       const effectiveType = mock_exam_type || 'questions';
 
@@ -381,6 +382,7 @@ export default async function handler(req, res) {
       if (effectiveType === 'pdf') {
         updateData.pdf_file_name = pdf_file_name.trim();
         updateData.pdf_url = pdf_url.trim();
+        updateData.allow_downloading = allow_downloading === false || allow_downloading === 'false' ? false : true;
         unsetFields = { questions: '' };
       } else {
         updateData.questions = questions.map(q => {
@@ -403,7 +405,7 @@ export default async function handler(req, res) {
             question_explanation: q.question_explanation || ''
           };
         });
-        unsetFields = { pdf_file_name: '', pdf_url: '' };
+        unsetFields = { pdf_file_name: '', pdf_url: '', allow_downloading: '' };
       }
 
       const updateQuery = { 

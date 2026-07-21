@@ -48,14 +48,18 @@ export default function ForgotPassword() {
   const router = useRouter();
   const { id, sig } = router.query;
   const [form, setForm] = useState({ newPassword: "", confirmPassword: "" });
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetFailed, setResetFailed] = useState(false);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
+
+  const allFieldsFilled =
+    form.newPassword.trim().length > 0 && form.confirmPassword.trim().length > 0;
 
   // Verify HMAC signature
   useEffect(() => {
@@ -114,19 +118,26 @@ export default function ForgotPassword() {
   }, [error]);
 
   useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess(false);
-        router.push('/');
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, router]);
+    if (!resetSuccess) return;
+    const timer = setTimeout(() => {
+      router.push('/');
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [resetSuccess, router]);
+
+  useEffect(() => {
+    if (!resetFailed) return;
+    const timer = setTimeout(() => {
+      setResetFailed(false);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [resetFailed]);
 
   const handleChange = (e) => {
     const newValue = e.target.value;
     setForm({ ...form, [e.target.name]: newValue });
     setError("");
+    setResetFailed(false);
     
     // Save password to sessionStorage when user types
     if (typeof window !== 'undefined') {
@@ -142,8 +153,10 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (resetSuccess || resetFailed) return;
     setError("");
-    setSuccess(false);
+    setResetSuccess(false);
+    setResetFailed(false);
 
     // Validation
     if (!form.newPassword || !form.confirmPassword) {
@@ -170,13 +183,14 @@ export default function ForgotPassword() {
         sig: sig
       });
 
-      setSuccess(true);
+      setIsSubmitting(false);
+      setResetSuccess(true);
       setForm({ newPassword: "", confirmPassword: "" });
       // Keep password in sessionStorage for login page
     } catch (err) {
       setError(err.response?.data?.error || "❌ Failed to reset password");
-    } finally {
       setIsSubmitting(false);
+      setResetFailed(true);
     }
   };
 
@@ -275,36 +289,144 @@ export default function ForgotPassword() {
           .submit-btn {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #87CEEB 0%, #B0E0E6 100%);
+            background: linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 1.1rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(135, 206, 235, 0.3);
+            transition:
+              background 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.35s ease;
+            box-shadow: 0 8px 24px rgba(135, 206, 235, 0.3);
             margin-top: 8px;
+            overflow: hidden;
+            position: relative;
+            isolation: isolate;
           }
-          .submit-btn:hover:not(:disabled) {
+          .submit-btn.ready {
+            background: linear-gradient(90deg, #5F6DFE 0%, #6A82FB 100%);
+            box-shadow: 0 8px 24px rgba(95, 109, 254, 0.35);
+          }
+          .submit-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+              linear-gradient(105deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 42%),
+              linear-gradient(90deg, #22a84a 0%, #2ecc71 52%, #1fbf8f 100%);
+            transform: scaleX(0);
+            transform-origin: left center;
+            transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1;
+            pointer-events: none;
+          }
+          .submit-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+              linear-gradient(105deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 42%),
+              linear-gradient(90deg, #dc3545 0%, #e74c3c 55%, #c0392b 100%);
+            transform: scaleX(0);
+            transform-origin: left center;
+            transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1;
+            pointer-events: none;
+          }
+          .submit-btn:hover:not(:disabled):not(.success):not(.error):not(.loading) {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(135, 206, 235, 0.4);
+            box-shadow: 0 10px 28px rgba(95, 109, 254, 0.4);
           }
-          .submit-btn:disabled {
-            opacity: 0.7;
+          .submit-btn:disabled:not(.success):not(.error):not(.loading) {
+            opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-            box-shadow: 0 2px 8px rgba(135, 206, 235, 0.2);
           }
-          .success-message {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            border-radius: 10px;
-            padding: 16px;
-            margin-top: 16px;
-            text-align: center;
-            font-weight: 600;
-            box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+          .submit-btn.loading {
+            opacity: 1;
+            cursor: wait;
+            background: linear-gradient(90deg, #6c757d 0%, #868e96 100%);
+            box-shadow: 0 8px 26px rgba(108, 117, 125, 0.32);
+          }
+          .submit-btn.success {
+            opacity: 1;
+            cursor: default;
+            box-shadow: 0 12px 32px rgba(40, 167, 69, 0.38);
+          }
+          .submit-btn.success::before {
+            transform: scaleX(1);
+          }
+          .submit-btn.error {
+            opacity: 1;
+            cursor: default;
+            box-shadow: 0 12px 32px rgba(220, 53, 69, 0.35);
+          }
+          .submit-btn.error::after {
+            transform: scaleX(1);
+          }
+          .submit-btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 28px;
+            position: relative;
+            z-index: 2;
+          }
+          .submit-btn.success .submit-btn-content,
+          .submit-btn.error .submit-btn-content {
+            animation: resetContentSlide 0.7s 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+          }
+          .submit-btn-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.28);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: resetSpin 0.85s linear infinite;
+          }
+          .submit-btn-check,
+          .submit-btn-x {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            animation: resetCheckPop 0.55s 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+          }
+          .submit-btn-check svg,
+          .submit-btn-x svg {
+            width: 15px;
+            height: 15px;
+            stroke: #fff;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 28;
+            stroke-dashoffset: 28;
+            animation: resetCheckDraw 0.55s 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          }
+          @keyframes resetContentSlide {
+            from { opacity: 0; transform: translateX(-36px); filter: blur(2px); }
+            to { opacity: 1; transform: translateX(0); filter: blur(0); }
+          }
+          @keyframes resetCheckPop {
+            from { opacity: 0; transform: translateX(-14px) scale(0.7); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+          }
+          @keyframes resetCheckDraw {
+            to { stroke-dashoffset: 0; }
+          }
+          @keyframes resetSpin {
+            to { transform: rotate(360deg); }
           }
           .error-message {
             background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
@@ -502,14 +624,41 @@ export default function ForgotPassword() {
             </div>
             <button 
               type="submit" 
-              className="submit-btn" 
-              disabled={isSubmitting || !form.newPassword || !form.confirmPassword}
+              className={`submit-btn ${allFieldsFilled && !isSubmitting && !resetSuccess && !resetFailed ? 'ready' : ''} ${isSubmitting ? 'loading' : ''} ${resetSuccess ? 'success' : ''} ${resetFailed ? 'error' : ''}`}
+              disabled={resetSuccess || resetFailed || isSubmitting || !allFieldsFilled}
             >
-              {isSubmitting ? "Resetting Password..." : "Reset Password"}
+              <span className="submit-btn-content">
+                {resetSuccess ? (
+                  <>
+                    <span className="submit-btn-check" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                    <span>Password Reset</span>
+                  </>
+                ) : resetFailed ? (
+                  <>
+                    <span className="submit-btn-x" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </span>
+                    <span>Reset Failed</span>
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <span className="submit-btn-spinner" aria-hidden="true" />
+                    <span>Resetting Password...</span>
+                  </>
+                ) : (
+                  <span>Reset Password</span>
+                )}
+              </span>
             </button>
           </form>
-          {success && <div className="success-message">✅ Password reset successfully!</div>}
-          {error && <div className="error-message">{error}</div>}
+          {error && !resetSuccess && <div className="error-message">{error}</div>}
           <NeedHelp />
         </div>
       </div>

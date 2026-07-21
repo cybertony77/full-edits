@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
     const onlineHomeworks = student.online_homeworks || [];
     
-    // Find the homework to get the week number
+    // Find the homework to get the week / lesson context
     const homeworkToReset = onlineHomeworks.find(
       hw => hw.homework_id === homework_id
     );
@@ -89,13 +89,38 @@ export default async function handler(req, res) {
       });
     }
 
+    // Resolve lesson name so we can clear lessons[].hwDone / homework_degree
+    let lessonName =
+      (homeworkToReset && homeworkToReset.lesson) ||
+      null;
+
+    if (!lessonName) {
+      try {
+        const homeworkDoc = await db.collection('homeworks').findOne({
+          _id: new ObjectId(homework_id),
+        });
+        if (homeworkDoc?.lesson) {
+          lessonName = homeworkDoc.lesson;
+        }
+      } catch (err) {
+        console.error('Error fetching homework document for reset:', err);
+      }
+    }
+
+    const updateFields = {
+      online_homeworks: updatedHomeworks,
+      weeks: updatedWeeks,
+    };
+
+    if (lessonName && student.lessons && student.lessons[lessonName]) {
+      updateFields[`lessons.${lessonName}.hwDone`] = false;
+      updateFields[`lessons.${lessonName}.homework_degree`] = null;
+    }
+
     // Update student document
     const updateResult = await db.collection('students').updateOne(
       { id: student_id },
-      { $set: { 
-        online_homeworks: updatedHomeworks,
-        weeks: updatedWeeks
-      } }
+      { $set: updateFields }
     );
 
     if (updateResult.matchedCount === 0) {
@@ -115,4 +140,3 @@ export default async function handler(req, res) {
     }
   }
 }
-

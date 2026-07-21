@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       // Create new homework
-      const { lesson_name, timer, questions, lesson, course, courseType, center, homework_type, deadline_type, deadline_date, deadline_time, book_name, from_page, to_page, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state } = req.body;
+      const { lesson_name, timer, questions, lesson, course, courseType, center, homework_type, deadline_type, deadline_date, deadline_time, book_name, from_page, to_page, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state, allow_downloading } = req.body;
 
       if (!lesson_name || lesson_name.trim() === '') {
         return res.status(400).json({ error: '❌ Lesson name is required' });
@@ -231,6 +231,7 @@ export default async function handler(req, res) {
       if (homework_type === 'pdf') {
         homework.pdf_file_name = pdf_file_name.trim();
         homework.pdf_url = pdf_url.trim();
+        homework.allow_downloading = allow_downloading === false || allow_downloading === 'false' ? false : true;
       } else if (homework_type === 'pages_from_book') {
         homework.book_name = book_name.trim();
         homework.from_page = parseInt(from_page);
@@ -271,7 +272,7 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       // Update homework
       const { id } = req.query;
-      const { lesson_name, timer, questions, lesson, course, courseType, center, homework_type, deadline_type, deadline_date, deadline_time, book_name, from_page, to_page, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state } = req.body;
+      const { lesson_name, timer, questions, lesson, course, courseType, center, homework_type, deadline_type, deadline_date, deadline_time, book_name, from_page, to_page, shuffle_questions_and_answers, show_details_after_submitting, comment, pdf_file_name, pdf_url, state, allow_downloading } = req.body;
 
       if (!id) {
         return res.status(400).json({ error: '❌ Homework ID is required' });
@@ -415,12 +416,13 @@ export default async function handler(req, res) {
       if (homework_type === 'pdf') {
         updateData.pdf_file_name = pdf_file_name.trim();
         updateData.pdf_url = pdf_url.trim();
+        updateData.allow_downloading = allow_downloading === false || allow_downloading === 'false' ? false : true;
         updateData.$unset = { questions: '', book_name: '', from_page: '', to_page: '' };
       } else if (homework_type === 'pages_from_book') {
         updateData.book_name = book_name.trim();
         updateData.from_page = parseInt(from_page);
         updateData.to_page = parseInt(to_page);
-        updateData.$unset = { questions: '', pdf_file_name: '', pdf_url: '' };
+        updateData.$unset = { questions: '', pdf_file_name: '', pdf_url: '', allow_downloading: '' };
       } else if (homework_type === 'questions') {
         updateData.questions = questions.map(q => {
           const hasText = q.answer_texts && q.answer_texts.length > 0 && q.answer_texts.some(text => text && text.trim() !== '');
@@ -449,7 +451,8 @@ export default async function handler(req, res) {
           from_page: '',
           to_page: '',
           pdf_file_name: '',
-          pdf_url: ''
+          pdf_url: '',
+          allow_downloading: ''
         };
       }
 

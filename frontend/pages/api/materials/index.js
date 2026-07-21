@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { course, courseType, center, material_name, comment, pdf_file_name, pdf_url, state } = req.body;
+      const { course, courseType, center, material_name, comment, pdf_file_name, pdf_url, state, allow_downloading } = req.body;
       if (!course || !String(course).trim()) return res.status(400).json({ error: '❌ Material course is required' });
       if (!material_name || !String(material_name).trim()) return res.status(400).json({ error: '❌ Material name is required' });
       if (!pdf_file_name || !String(pdf_file_name).trim()) return res.status(400).json({ error: '❌ PDF file name is required' });
@@ -78,6 +78,7 @@ export default async function handler(req, res) {
         comment: comment && String(comment).trim() ? String(comment).trim() : null,
         pdf_file_name: String(pdf_file_name).trim(),
         pdf_url: String(pdf_url).trim(),
+        allow_downloading: allow_downloading === false || allow_downloading === 'false' ? false : true,
         state: state === 'Deactivated' ? 'Deactivated' : 'Activated',
         date: new Date().toISOString(),
       };
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'PUT') {
       const { id } = req.query;
-      const { course, courseType, center, material_name, comment, pdf_file_name, pdf_url, state } = req.body;
+      const { course, courseType, center, material_name, comment, pdf_file_name, pdf_url, state, allow_downloading } = req.body;
       if (!id) return res.status(400).json({ error: '❌ Material ID is required' });
       if (!course || !String(course).trim()) return res.status(400).json({ error: '❌ Material course is required' });
       if (!material_name || !String(material_name).trim()) return res.status(400).json({ error: '❌ Material name is required' });
@@ -121,6 +122,7 @@ export default async function handler(req, res) {
             comment: comment && String(comment).trim() ? String(comment).trim() : null,
             pdf_file_name: String(pdf_file_name).trim(),
             pdf_url: String(pdf_url).trim(),
+            allow_downloading: allow_downloading === false || allow_downloading === 'false' ? false : true,
             state: state === 'Deactivated' ? 'Deactivated' : 'Activated',
           },
         }

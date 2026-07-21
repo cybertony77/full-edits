@@ -155,6 +155,7 @@ export default function StudentInfo() {
   const systemName = systemConfig?.name || '';
   const isScoringEnabled = systemConfig?.scoring_system === true || systemConfig?.scoring_system === 'true';
   const isPaymentSystemEnabled = systemConfig?.payment_system === true || systemConfig?.payment_system === 'true';
+  const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
 
   // Get all students for name-based search (only if authenticated)
   const { data: allStudents } = useStudents({}, { 
@@ -211,7 +212,7 @@ export default function StudentInfo() {
         return { chartData: [] };
       }
     },
-    enabled: !!(mockExamStudentId && (hasAuthToken || isValidSignature)),
+    enabled: !!(isMockExamsEnabled && mockExamStudentId && (hasAuthToken || isValidSignature)),
     staleTime: 30 * 1000,
   });
 
@@ -956,9 +957,8 @@ export default function StudentInfo() {
         {currentStudent && !studentDeleted && (
           <div className="info-container">
             <div className="student-details">
-              {/* Profile Picture Preview - Read Only - Full Row - Only show if authenticated */}
-              {hasAuthToken && (
-                <div className="detail-item" style={{ 
+              {/* Profile Picture Preview - Read Only - Full Row (auth + public signed links) */}
+              <div className="detail-item" style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
                   alignItems: 'center', 
@@ -1054,7 +1054,6 @@ export default function StudentInfo() {
                   </div>
                 )}
               </div>
-              )}
 
               {/* Only show Student ID if user doesn't have token */}
               {!hasAuthToken && (
@@ -1334,6 +1333,7 @@ export default function StudentInfo() {
             )}
             
             {/* Mock Exam Results Section */}
+            {isMockExamsEnabled && (
             <div style={{ marginTop: '30px' }}>
               <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#495057', marginBottom: '20px', textAlign: 'center', borderBottom: '2px solid #1FA8DC', paddingBottom: '10px' }}>
                 Mock Exam Results
@@ -1378,6 +1378,7 @@ export default function StudentInfo() {
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
         

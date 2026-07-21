@@ -566,7 +566,7 @@ export default function DeleteStudentAccount() {
         )}
         {deleted && (
           <div className="success-message" style={{ textAlign: "center", padding: "40px 20px" }}>
-            <div style={{ fontSize: "4rem", marginBottom: "20px" }}>✅</div>
+            <div style={{ fontSize: "4rem" }}><Image src="/success-mark3.svg" alt="Success" width={80} height={80} /></div>
             <h2 style={{ color: "#28a745", marginBottom: "16px" }}>Student Account Deleted Successfully!</h2>
             <p style={{ color: "#6c757d", marginBottom: "24px" }}>
               Student account for ID <strong>{studentId}</strong> has been deleted from the users collection and a new VAC code has been regenerated.

@@ -16,6 +16,7 @@ export default function MyInfo() {
   const { data: systemConfig } = useSystemConfig();
   const isScoringEnabled = systemConfig?.scoring_system === true || systemConfig?.scoring_system === 'true';
   const isPaymentSystemEnabled = systemConfig?.payment_system === true || systemConfig?.payment_system === 'true';
+  const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
   
   const containerRef = useRef(null);
   const [error, setError] = useState("");
@@ -107,7 +108,7 @@ export default function MyInfo() {
         return { chartData: [] };
       }
     },
-    enabled: !!studentId,
+    enabled: !!(isMockExamsEnabled && studentId),
     staleTime: 30 * 1000,
   });
 
@@ -282,9 +283,9 @@ export default function MyInfo() {
       return;
     }
 
-    // Validate file size (5 MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Sorry, Max profile picture size is 5 MB, Please try another picture');
+    // Validate file size (10 MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Sorry, Max profile picture size is 10 MB, Please try another picture');
       return;
     }
 
@@ -753,7 +754,7 @@ export default function MyInfo() {
                   style={{ display: 'none' }}
                 />
                 <small style={{ color: '#6c757d', fontSize: '0.85rem', textAlign: 'center', marginTop: '4px' }}>
-                  Max size: 5 MB. Formats: JPEG, PNG, GIF, WEBP
+                  Max size: 10 MB. Formats: JPEG, PNG, GIF, WEBP
                 </small>
               </div>
 

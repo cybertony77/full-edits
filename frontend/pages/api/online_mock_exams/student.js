@@ -147,6 +147,7 @@ export default async function handler(req, res) {
           if (me.mock_exam_type === 'pdf') {
             sanitized.pdf_file_name = me.pdf_file_name || '';
             sanitized.pdf_url = me.pdf_url || '';
+            sanitized.allow_downloading = me.allow_downloading !== false && me.allow_downloading !== 'false';
           }
 
           if (me.mock_exam_type !== 'pdf' && me.questions && Array.isArray(me.questions)) {

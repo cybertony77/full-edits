@@ -22,6 +22,7 @@ import {
   reindexDragOverAfterQuestionRemoved,
 } from '../../../../lib/onlineItemQuestionFormHelpers';
 import DeadlineTimeRow from '../../../../components/DeadlineTimeRow';
+import AllowDownloadingRadio from '../../../../components/AllowDownloadingRadio';
 import {
   isDeadlineStrictlyInFutureEgypt,
   normalizeDeadlineTimeField,
@@ -49,6 +50,7 @@ export default function EditHomework() {
     show_details_after_submitting: false,
     pdf_file_name: '',
     pdf_url: '',
+    allow_downloading: true,
     questions: [{
       _clientKey: newQuestionClientKey(),
       question_text: '',
@@ -219,6 +221,7 @@ export default function EditHomework() {
         show_details_after_submitting: homeworkData.show_details_after_submitting === true || homeworkData.show_details_after_submitting === 'true' ? true : false,
         pdf_file_name: homeworkData.pdf_file_name || '',
         pdf_url: homeworkData.pdf_url || '',
+        allow_downloading: homeworkData.allow_downloading !== false && homeworkData.allow_downloading !== 'false',
         questions: homeworkType === 'questions' && homeworkData.questions && Array.isArray(homeworkData.questions)
           ? homeworkData.questions.map(q => ({
               _clientKey: q._id ? String(q._id) : newQuestionClientKey(),
@@ -913,6 +916,7 @@ export default function EditHomework() {
     if (formData.homework_type === 'pdf') {
       submitData.pdf_file_name = formData.pdf_file_name.trim();
       submitData.pdf_url = formData.pdf_url.trim();
+      submitData.allow_downloading = formData.allow_downloading !== false;
     } else if (formData.homework_type === 'pages_from_book') {
       submitData.book_name = formData.book_name.trim();
       submitData.from_page = parseInt(formData.from_page);
@@ -1375,6 +1379,11 @@ export default function EditHomework() {
                         {errors.pdf_file_name}
                       </div>
                     )}
+                    <AllowDownloadingRadio
+                      name="allow_downloading_hw_edit"
+                      value={formData.allow_downloading !== false}
+                      onChange={(v) => setFormData({ ...formData, allow_downloading: v })}
+                    />
                   </div>
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', textAlign: 'left' }}>
@@ -1398,7 +1407,7 @@ export default function EditHomework() {
                       >
                         <div style={{ fontSize: '2rem', marginBottom: '8px', color: '#999' }}>+</div>
                         <div style={{ color: '#666', fontSize: '0.95rem' }}>Click to select a PDF file</div>
-                        <div style={{ color: '#999', fontSize: '0.8rem', marginTop: '4px' }}>PDF (max 20MB)</div>
+                        <div style={{ color: '#999', fontSize: '0.8rem', marginTop: '4px' }}>PDF (max 100MB)</div>
                       </div>
                     )}
 
@@ -1462,29 +1471,28 @@ export default function EditHomework() {
                         const file = e.target.files[0];
                         if (!file) return;
                         if (file.type !== 'application/pdf') { setPdfUploadError('Only PDF files are allowed'); return; }
-                        if (file.size > 20 * 1024 * 1024) { setPdfUploadError('File size exceeds 20MB limit'); return; }
+                        if (file.size > 100 * 1024 * 1024) { setPdfUploadError('File size exceeds 100MB limit'); return; }
                         setPdfUploadError('');
                         setPdfUploading(true);
                         setPdfUploadProgress(0);
                         try {
-                          const reader = new FileReader();
-                          reader.onprogress = (evt) => { if (evt.lengthComputable) setPdfUploadProgress(Math.round((evt.loaded / evt.total) * 30)); };
-                          reader.onload = async () => {
-                            setPdfUploadProgress(30);
-                            try {
-                              const response = await apiClient.post('/api/upload/pdf-file', {
-                                file: reader.result, fileType: file.type, folder: 'HW-PDFs'
-                              }, { onUploadProgress: (p) => { if (p.total) setPdfUploadProgress(30 + Math.round((p.loaded / p.total) * 70)); } });
-                              if (response.data.success) {
-                                setPdfUploadProgress(100);
-                                setFormData(prev => ({ ...prev, pdf_url: response.data.url }));
-                                setErrors(prev => { const n = { ...prev }; delete n.pdf_url; return n; });
-                              }
-                            } catch (err) { setPdfUploadError(err.response?.data?.error || 'Failed to upload PDF'); }
-                            finally { setPdfUploading(false); }
-                          };
-                          reader.readAsDataURL(file);
-                        } catch (err) { setPdfUploadError('Failed to read file'); setPdfUploading(false); }
+                          const { uploadToR2Direct } = await import('../../../../lib/r2DirectUpload');
+                          const result = await uploadToR2Direct(file, {
+                            prefix: 'pdfs/HW-PDFs',
+                            onProgress: (percent) => setPdfUploadProgress(percent),
+                          });
+                          if (result?.url) {
+                            setPdfUploadProgress(100);
+                            setFormData(prev => ({ ...prev, pdf_url: result.url }));
+                            setErrors(prev => { const n = { ...prev }; delete n.pdf_url; return n; });
+                          } else {
+                            throw new Error('Upload failed');
+                          }
+                        } catch (err) {
+                          setPdfUploadError(err.response?.data?.error || err.message || 'Failed to upload PDF');
+                        } finally {
+                          setPdfUploading(false);
+                        }
                       }}
                     />
 

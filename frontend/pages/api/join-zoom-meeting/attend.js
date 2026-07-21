@@ -1,7 +1,7 @@
 import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
-import { authMiddleware } from '../../../lib/authMiddleware';
+import { authMiddleware, isAuthError } from '../../../lib/authMiddleware';
 
 function loadEnvConfig() {
   try {
@@ -32,15 +32,38 @@ function loadEnvConfig() {
 const envConfig = loadEnvConfig();
 const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI;
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME;
-const PAYMENT_SYSTEM_ENABLED = envConfig.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
 const SCORING_SYSTEM_ENABLED = envConfig.SYSTEM_SCORING_SYSTEM === 'true' || process.env.SYSTEM_SCORING_SYSTEM === 'true';
 
-// Format date as DD/MM/YYYY
-function formatDate(date) {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = String(date.getFullYear());
-  return `${day}/${month}/${year}`;
+function isPaymentSystemEnabled() {
+  const live = loadEnvConfig();
+  return live.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
+}
+
+function normalizePayment(payment) {
+  const src = Array.isArray(payment) ? payment[0] : payment;
+  if (!src || typeof src !== 'object') {
+    return { numberOfSessions: 0, cost: null, paymentComment: null, date: null };
+  }
+  const sessions = Number(src.numberOfSessions);
+  return {
+    numberOfSessions: Number.isFinite(sessions) ? sessions : 0,
+    cost: src.cost ?? null,
+    paymentComment: src.paymentComment ?? null,
+    date: src.date ?? null,
+  };
+}
+
+// Format date as DD/MM/YYYY in Egypt/Cairo timezone
+function formatDateEgypt(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Cairo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('day')}/${get('month')}/${get('year')}`;
 }
 
 export default async function handler(req, res) {
@@ -99,11 +122,31 @@ export default async function handler(req, res) {
 
     // Build attendance data (same schema as scan page / online sessions)
     const now = new Date();
-    const attendanceDateOnly = formatDate(now);
+    const attendanceDateOnly = formatDateEgypt(now);
     const attendanceString = `${attendanceDateOnly} in Online`;
 
+    const PAYMENT_SYSTEM_ENABLED = isPaymentSystemEnabled();
+    const payment = normalizePayment(student.payment);
+    if (!student.payment || typeof student.payment !== 'object' || Array.isArray(student.payment)) {
+      await db.collection('students').updateOne(
+        { id: parseInt(studentId) },
+        { $set: { payment } }
+      );
+      student.payment = payment;
+    }
+
+    const isLessonPaid = lessonData && lessonData.paid === true;
+    const currentSessions = payment.numberOfSessions;
+
+    if (PAYMENT_SYSTEM_ENABLED && currentSessions <= 0 && !isLessonPaid) {
+      return res.status(400).json({
+        error: 'No available sessions',
+        message: 'Sorry, this account has used all available sessions. Please pay again to continue.',
+      });
+    }
+
     const updateQuery = {};
-    let sessionDeducted = false;
+    let sessionDelta = 0;
 
     if (lessonData) {
       // Lesson exists but not attended - update it
@@ -111,7 +154,6 @@ export default async function handler(req, res) {
       updateQuery[`lessons.${lesson}.lastAttendance`] = attendanceString;
       updateQuery[`lessons.${lesson}.lastAttendanceCenter`] = 'Online';
       updateQuery[`lessons.${lesson}.attendanceDate`] = attendanceDateOnly;
-      updateQuery[`lessons.${lesson}.paid`] = true;
     } else {
       // Lesson doesn't exist - create it with full schema
       updateQuery[`lessons.${lesson}`] = {
@@ -125,25 +167,32 @@ export default async function handler(req, res) {
         comment: null,
         message_state: false,
         homework_degree: null,
-        paid: true
+        paid: false,
       };
     }
 
-    // Deduct session if payment system enabled, lesson wasn't already paid, and sessions > 0
-    const isLessonPaid = lessonData && lessonData.paid === true;
-    if (PAYMENT_SYSTEM_ENABLED && !isLessonPaid) {
-      const currentSessions = student.payment?.numberOfSessions || 0;
-      if (currentSessions > 0) {
-        updateQuery['payment.numberOfSessions'] = currentSessions - 1;
-        sessionDeducted = true;
+    if (PAYMENT_SYSTEM_ENABLED) {
+      if (lessonData) {
+        updateQuery[`lessons.${lesson}.paid`] = true;
+      } else {
+        updateQuery[`lessons.${lesson}`].paid = true;
+      }
+      if (!isLessonPaid && currentSessions > 0) {
+        sessionDelta = -1;
       }
     }
+
+    const updateDoc = sessionDelta !== 0
+      ? { $set: updateQuery, $inc: { 'payment.numberOfSessions': sessionDelta } }
+      : { $set: updateQuery };
 
     // Apply the update
     await db.collection('students').updateOne(
       { id: parseInt(studentId) },
-      { $set: updateQuery }
+      updateDoc
     );
+
+    const sessionDeducted = sessionDelta === -1;
 
     // Add to history collection (same as scan page / online session attendance)
     try {
@@ -245,9 +294,17 @@ export default async function handler(req, res) {
       success: true,
       message: 'Attendance recorded successfully',
       alreadyAttended: false,
-      sessionDeducted
+      sessionDeducted,
+      payment: {
+        ...payment,
+        numberOfSessions: currentSessions + sessionDelta,
+      },
+      sessionDelta,
     });
   } catch (error) {
+    if (isAuthError(error)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     console.error('Error in zoom meeting attend API:', error);
     return res.status(500).json({ error: 'Internal server error', details: error.message });
   } finally {

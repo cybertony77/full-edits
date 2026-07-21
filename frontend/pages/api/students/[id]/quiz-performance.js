@@ -184,10 +184,6 @@ export default async function handler(req, res) {
       return courseMatch && courseTypeMatch && centerMatch;
     });
 
-    const allowedLessonNamesFromQuizzes = new Set(
-      filteredQuizzes.map((qz) => qz.lesson).filter(Boolean)
-    );
-
     // Group all quizzes by lesson - show result directly from DB (no aggregation)
     // If multiple quizzes in same lesson, prioritize completed ones
     const lessonDataMap = {};
@@ -228,37 +224,35 @@ export default async function handler(req, res) {
       }
     });
 
-    // ALSO add lessons data that don't have corresponding quizzes in the database
-    // This ensures all lessons with quizDegree are shown in the chart
+    // Always include lessons with a recorded quizDegree (scan/manual/legacy),
+    // even when there is no matching activated quiz for course/center.
     Object.keys(lessons).forEach(lessonName => {
       const lessonData = lessons[lessonName];
-      if (lessonData && lessonData.quizDegree) {
-        if (!allowedLessonNamesFromQuizzes.has(lessonName)) {
-          return;
-        }
-        // Check if this lesson already has data from filteredQuizzes
-        if (!lessonDataMap[lessonName]) {
-          // Parse quizDegree format like "50 / 100"
-          const quizDegreeStr = String(lessonData.quizDegree).trim();
-          const match = quizDegreeStr.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
-          
-          if (match) {
-            const obtained = parseFloat(match[1]);
-            const total = parseFloat(match[2]);
-            const percentage = total > 0 ? Math.round((obtained / total) * 100) : 0;
-            
-            lessonDataMap[lessonName] = {
-              lesson_name: lessonName,
-              percentage: percentage,
-              result: quizDegreeStr
-            };
-          }
-        }
+      if (!lessonData || !lessonData.quizDegree) return;
+
+      const quizDegreeStr = String(lessonData.quizDegree).trim();
+      // Skip non-numeric placeholders like "No Quiz" / "Didn't Attend The Quiz"
+      const match = quizDegreeStr.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+      if (!match) return;
+
+      const obtained = parseFloat(match[1]);
+      const total = parseFloat(match[2]);
+      const percentage = total > 0 ? Math.round((obtained / total) * 100) : 0;
+      const existing = lessonDataMap[lessonName];
+      const existingEmpty = !existing || existing.percentage === 0 || existing.result === '0 / 0';
+
+      if (existingEmpty) {
+        lessonDataMap[lessonName] = {
+          lesson_name: lessonName,
+          percentage,
+          result: quizDegreeStr
+        };
       }
     });
 
-    // Convert to array and sort by lesson name
+    // Convert to array, keep only lessons with real results, sort by lesson name
     const chartData = Object.values(lessonDataMap)
+      .filter((item) => item.percentage > 0 || (item.result && item.result !== '0 / 0'))
       .sort((a, b) => a.lesson_name.localeCompare(b.lesson_name));
 
     // Always return success with chartData (empty array if no data)

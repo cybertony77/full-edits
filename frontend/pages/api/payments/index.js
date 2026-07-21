@@ -171,6 +171,7 @@ export default async function handler(req, res) {
         numberOfSessions: paymentData.numberOfSessions,
         cost: paymentData.cost,
         paymentComment: paymentData.paymentComment,
+        date: paymentData.date,
         operation: isClearOperation ? 'clear' : 'save'
       }
     });

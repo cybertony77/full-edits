@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Title from '../../../../components/Title';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../lib/axios';
+import { downloadFileUrl } from '../../../../lib/downloadFileUrl';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import CourseSelect from '../../../../components/CourseSelect';
@@ -639,7 +640,7 @@ export default function Homeworks() {
                     )}
                     {homework.homework_type === 'pdf' && homework.pdf_url && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); fetch(homework.pdf_url).then(r => r.blob()).then(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${homework.pdf_file_name || 'file'}.pdf`; a.click(); URL.revokeObjectURL(a.href); }); }}
+                        onClick={(e) => { e.stopPropagation(); downloadFileUrl(homework.pdf_url, `${homework.pdf_file_name || 'file'}.pdf`).catch((err) => alert(err.message || 'Download failed')); }}
                         className="hw-action-btn"
                         style={{ padding: '8px 16px', backgroundColor: '#32b750', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       >

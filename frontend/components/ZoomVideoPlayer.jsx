@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import VideoWatermarkOverlay from './VideoWatermarkOverlay';
 import { buildZoomVideoProxyPath } from '../lib/zoomUtils';
 
@@ -8,15 +8,24 @@ export default function ZoomVideoPlayer({
   onComplete,
   videoId,
   watermarkText,
+  hideWatermark = false,
 }) {
   const hasMilestoneRef = useRef(false);
   const hasCompleteRef = useRef(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  const retryCountRef = useRef(0);
+
+  useEffect(() => {
+    retryCountRef.current = 0;
+    setRetryNonce(0);
+    hasMilestoneRef.current = false;
+    hasCompleteRef.current = false;
+  }, [meetingId]);
 
   const src = useMemo(() => {
     const base = buildZoomVideoProxyPath(meetingId);
     if (!base) return '';
-    // Cache-bust query param so browsers never reuse an expired segment response
+    // Cache-bust so browsers never reuse an expired Range/segment response
     return retryNonce ? `${base}?_=${retryNonce}` : base;
   }, [meetingId, retryNonce]);
 
@@ -37,7 +46,11 @@ export default function ZoomVideoPlayer({
   };
 
   const handleVideoError = () => {
-    setRetryNonce((n) => n + 1);
+    // Server re-resolves a fresh Zoom download_url on each request;
+    // retry once so mid-playback expiry does not require a full reload.
+    if (retryCountRef.current >= 2) return;
+    retryCountRef.current += 1;
+    setRetryNonce(Date.now());
   };
 
   if (!meetingId) {
@@ -86,7 +99,7 @@ export default function ZoomVideoPlayer({
         onTimeUpdate={handleTimeUpdate}
         onError={handleVideoError}
       />
-      <VideoWatermarkOverlay text={watermarkText} />
+      {!hideWatermark ? <VideoWatermarkOverlay text={watermarkText} /> : null}
     </div>
   );
 }

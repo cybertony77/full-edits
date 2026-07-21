@@ -29,10 +29,12 @@ export default function SignUp() {
     profile_picture: null
   });
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [signupFailed, setSignupFailed] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -57,15 +59,32 @@ export default function SignUp() {
     }
   }, [error]);
 
+  // After success button animation, redirect to login
   useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess('');
-        router.push('/');
-      }, 6000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, router]);
+    if (!signupSuccess) return;
+    const timer = setTimeout(() => {
+      router.push('/');
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [signupSuccess, router]);
+
+  // After error button animation, return to normal Sign Up
+  useEffect(() => {
+    if (!signupFailed) return;
+    const timer = setTimeout(() => {
+      setSignupFailed(false);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [signupFailed]);
+
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,15 +107,22 @@ export default function SignUp() {
       } else {
         sessionStorage.removeItem('student_password');
       }
+      // Re-validate confirm password mismatch when password changes
+      if (fieldErrors.confirmPassword && form.confirmPassword && value === form.confirmPassword) {
+        clearFieldError('confirmPassword');
+      }
     } else {
       setForm({ ...form, [name]: value });
     }
+    clearFieldError(name);
     setError('');
   };
 
   const handleVACChange = (e, index) => {
     const rawValue = e.target.value;
     const sanitized = rawValue.replace(/[^a-zA-Z0-9]/g, '');
+    clearFieldError('vac');
+    setError('');
 
     const newVac = [...form.vac];
 
@@ -148,6 +174,7 @@ export default function SignUp() {
       newVac[startIdx + i] = sanitized[i];
     }
     setForm({ ...form, vac: newVac });
+    clearFieldError('vac');
     setError('');
     const lastIndex = Math.min(startIdx + sanitized.length - 1, 6);
     vacInputRefs.current[lastIndex]?.focus();
@@ -189,9 +216,9 @@ export default function SignUp() {
       return;
     }
 
-    // Validate file size (5 MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('❌ Sorry, Max profile picture size is 5 MB, Please try another picture');
+    // Validate file size (10 MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('❌ Sorry, Max profile picture size is 10 MB, Please try another picture');
       return;
     }
 
@@ -272,50 +299,65 @@ export default function SignUp() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (signupSuccess || signupFailed) return;
     setError('');
-    setSuccess('');
+    setSignupSuccess(false);
+    setSignupFailed(false);
 
-    // Validation
-    if (!form.id || !form.password || !form.confirmPassword) {
-      setError('❌ All fields are required');
-      return;
+    const nextErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!form.id || String(form.id).trim() === '') {
+      nextErrors.id = 'Student ID is required';
     }
 
     if (!form.email || form.email.trim() === '') {
-      setError('❌ Email is required');
+      nextErrors.email = 'Email is required';
+    } else if (!emailRegex.test(form.email.trim())) {
+      nextErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!form.password) {
+      nextErrors.password = 'Password is required';
+    } else if (form.password.length < 8) {
+      nextErrors.password = 'Password must be at least 8 characters';
+    }
+
+    if (!form.confirmPassword) {
+      nextErrors.confirmPassword = 'Please confirm your password';
+    } else if (form.password && form.password !== form.confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    if (form.vac.some((char) => !char)) {
+      nextErrors.vac = 'Please enter the complete verification code';
+    } else if (!vacChecking) {
+      if (!vacCheck || !vacCheck.exists) {
+        nextErrors.vac = 'ID not found — check your student ID';
+      } else if (vacCheck.activated) {
+        nextErrors.vac = 'This account is already registered';
+      } else if (!vacCheck.valid) {
+        nextErrors.vac = 'Verification code is incorrect';
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      setError('❌ Please fill in all required fields correctly');
+      const firstKey = Object.keys(nextErrors)[0];
+      if (firstKey === 'vac') {
+        const firstEmpty = form.vac.findIndex((c) => !c);
+        vacInputRefs.current[firstEmpty >= 0 ? firstEmpty : 0]?.focus();
+      } else {
+        const el = document.querySelector(`[name="${firstKey}"]`);
+        el?.focus();
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
 
-    // Basic email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email.trim())) {
-      setError('❌ Please enter a valid email address');
-      return;
-    }
-
-    if (form.vac.some(char => !char)) {
-      setError('❌ Please enter the complete verification account code');
-      return;
-    }
-
-    if (form.password.length < 8) {
-      setError('❌ Password must be at least 8 characters');
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError('❌ Password and confirm password do not match');
-      return;
-    }
-
-    // Check VAC validity
-    if (!vacCheck || !vacCheck.valid) {
-      setError('❌ Invalid verification code. Please check your account ID and code.');
-      return;
-    }
-
-    if (vacCheck.activated) {
-      setError('❌ This verification code has already been used');
+    if (vacChecking) {
+      setError('❌ Please wait for verification code check to finish');
       return;
     }
 
@@ -324,6 +366,8 @@ export default function SignUp() {
       setError('❌ Please wait for image upload to complete');
       return;
     }
+
+    setFieldErrors({});
 
     // Submit sign up
     setIsSubmitting(true);
@@ -345,18 +389,15 @@ export default function SignUp() {
       }
 
       console.log('Signup data being sent:', { ...signupData, password: '***' });
-      const response = await apiClient.post('/api/auth/signup', signupData);
+      await apiClient.post('/api/auth/signup', signupData);
 
-      setSuccess('✅ Account created successfully!');
-      // Wait 2 seconds before redirecting to login page
-      setTimeout(() => {
-        router.push('/');
-      },2000);
+      setIsSubmitting(false);
+      setSignupSuccess(true);
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Failed to create account';
       setError(`❌ ${errorMessage}`);
-    } finally {
       setIsSubmitting(false);
+      setSignupFailed(true);
     }
   };
 
@@ -389,7 +430,7 @@ export default function SignUp() {
           left: 0;
           right: 0;
           height: 4px;
-          background: linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);
+          background: var(--system-page-bg);
           background-size: 200% 100%;
           animation: gradientShift 3s ease infinite;
         }
@@ -450,7 +491,31 @@ export default function SignUp() {
         }
         .form-input.error-border {
           border-color: #dc3545 !important;
-          box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+          box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.12) !important;
+          background: #fff8f8 !important;
+        }
+        .form-input.error-border:focus {
+          border-color: #dc3545 !important;
+          box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.16) !important;
+          transform: none;
+        }
+        .field-error {
+          margin-top: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #a11f2e;
+          font-size: 0.82rem;
+          font-weight: 600;
+          animation: vacFeedbackIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .field-error-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+          flex-shrink: 0;
+          box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
         }
         .vac-inputs-container {
           display: flex;
@@ -467,38 +532,132 @@ export default function SignUp() {
           border-radius: 10px;
           background: #f8f9fa;
           color: #333;
-          transition: all 0.3s ease;
+          transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, transform 0.25s ease;
           box-shadow: 0 2px 6px rgba(135, 206, 235, 0.2);
           outline: none;
         }
         .vac-input:focus {
           outline: none;
-          border-color: #1FA8DC;
-          box-shadow: 0 0 0 4px rgba(31, 168, 220, 0.2);
-          background: #ffffff;
+          border-color: #1FA8DC !important;
+          box-shadow: 0 0 0 4px rgba(31, 168, 220, 0.2) !important;
+          background: #ffffff !important;
           transform: scale(1.05);
         }
         .vac-input.error-border {
           border-color: #dc3545 !important;
-          box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
+          box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.12) !important;
+          background: #fff8f8 !important;
         }
         .vac-input.error-border:focus {
           border-color: #dc3545 !important;
-          box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+          box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.16) !important;
+          background: #fff8f8 !important;
+          transform: scale(1.05);
+        }
+        .vac-input.valid-border {
+          border-color: #28a745 !important;
+          box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.15) !important;
+          background: #f4fff7 !important;
+        }
+        .vac-input.valid-border:focus {
+          border-color: #28a745 !important;
+          box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2) !important;
+          background: #f4fff7 !important;
         }
         .vac-feedback {
-          margin-top: 8px;
-          font-size: 0.85rem;
+          margin-top: 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+          border-radius: 12px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          line-height: 1.35;
+          border: 1px solid transparent;
+          backdrop-filter: blur(8px);
+          animation: vacFeedbackIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .vac-feedback-icon {
+          flex-shrink: 0;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1rem;
+        }
+        .vac-feedback-text {
+          flex: 1;
+          min-width: 0;
+        }
+        .vac-feedback-title {
+          display: block;
+          font-size: 0.92rem;
+          font-weight: 700;
+        }
+        .vac-feedback-sub {
+          display: block;
+          margin-top: 2px;
+          font-size: 0.78rem;
           font-weight: 500;
+          opacity: 0.85;
         }
         .vac-feedback.checking {
-          color: #17a2b8;
+          color: #0b6e99;
+          background: linear-gradient(135deg, rgba(31, 168, 220, 0.12) 0%, rgba(135, 206, 235, 0.18) 100%);
+          border-color: rgba(31, 168, 220, 0.28);
+          box-shadow: 0 8px 24px rgba(31, 168, 220, 0.12);
+        }
+        .vac-feedback.checking .vac-feedback-icon {
+          background: linear-gradient(135deg, #1FA8DC 0%, #5F6DFE 100%);
+          color: #fff;
+          box-shadow: 0 4px 12px rgba(31, 168, 220, 0.35);
         }
         .vac-feedback.valid {
-          color: #28a745;
+          color: #0f7a3a;
+          background: linear-gradient(135deg, rgba(40, 167, 69, 0.12) 0%, rgba(46, 204, 113, 0.16) 100%);
+          border-color: rgba(40, 167, 69, 0.28);
+          box-shadow: 0 8px 24px rgba(40, 167, 69, 0.12);
+        }
+        .vac-feedback.valid .vac-feedback-icon {
+          background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+          color: #fff;
+          box-shadow: 0 4px 12px rgba(40, 167, 69, 0.35);
         }
         .vac-feedback.invalid {
-          color: #dc3545;
+          color: #a11f2e;
+          background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(255, 107, 129, 0.14) 100%);
+          border-color: rgba(220, 53, 69, 0.28);
+          box-shadow: 0 8px 24px rgba(220, 53, 69, 0.1);
+        }
+        .vac-feedback.invalid .vac-feedback-icon {
+          background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+          color: #fff;
+          box-shadow: 0 4px 12px rgba(220, 53, 69, 0.35);
+        }
+        .vac-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.35);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: vacSpin 0.75s linear infinite;
+        }
+        @keyframes vacSpin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes vacFeedbackIn {
+          from {
+            opacity: 0;
+            transform: translateY(6px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
         .input-wrapper {
           position: relative;
@@ -513,19 +672,173 @@ export default function SignUp() {
           font-size: 1.1rem;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition:
+            background 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+            transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.35s ease;
           box-shadow: 0 8px 24px rgba(95, 109, 254, 0.3);
+          overflow: hidden;
+          position: relative;
+          isolation: isolate;
         }
-        .signup-btn:hover {
+        /* Error wipe (left → right) */
+        .signup-btn::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(105deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 42%),
+            linear-gradient(90deg, #dc3545 0%, #e74c3c 55%, #c0392b 100%);
+          transform: scaleX(0);
+          transform-origin: left center;
+          transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+          z-index: 1;
+          pointer-events: none;
+        }
+        /* Success wipe (left → right) */
+        .signup-btn::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(105deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 42%),
+            linear-gradient(90deg, #22a84a 0%, #2ecc71 52%, #1fbf8f 100%);
+          transform: scaleX(0);
+          transform-origin: left center;
+          transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+          z-index: 1;
+          pointer-events: none;
+        }
+        .signup-btn:hover:not(:disabled):not(.success):not(.error):not(.loading) {
           transform: translateY(-3px);
           box-shadow: 0 12px 32px rgba(95, 109, 254, 0.4);
         }
-        .signup-btn:active {
+        .signup-btn:active:not(:disabled):not(.success):not(.error):not(.loading) {
           transform: translateY(-1px);
         }
-        .signup-btn:disabled {
+        .signup-btn:disabled:not(.success):not(.error):not(.loading) {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+        .signup-btn.loading {
+          opacity: 1;
+          cursor: wait;
+          background: linear-gradient(90deg, #6c757d 0%, #868e96 100%);
+          box-shadow: 0 8px 26px rgba(108, 117, 125, 0.32);
+        }
+        .signup-btn.success {
+          opacity: 1;
+          cursor: default;
+          box-shadow: 0 12px 32px rgba(40, 167, 69, 0.38);
+        }
+        .signup-btn.success::before {
+          transform: scaleX(1);
+        }
+        .signup-btn.success:hover {
+          box-shadow: 0 12px 32px rgba(40, 167, 69, 0.38);
+        }
+        .signup-btn.error {
+          opacity: 1;
+          cursor: default;
+          box-shadow: 0 12px 32px rgba(220, 53, 69, 0.35);
+        }
+        .signup-btn.error::after {
+          transform: scaleX(1);
+        }
+        .signup-btn.error:hover {
+          box-shadow: 0 12px 32px rgba(220, 53, 69, 0.35);
+        }
+        .signup-btn-content {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          min-height: 28px;
+          position: relative;
+          z-index: 2;
+        }
+        .signup-btn.loading .signup-btn-content {
+          animation: signupLabelFade 0.35s ease both;
+        }
+        .signup-btn.success .signup-btn-content,
+        .signup-btn.error .signup-btn-content {
+          animation: signupContentSlide 0.7s 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .signup-btn-spinner {
+          width: 20px;
+          height: 20px;
+          border: 2.5px solid rgba(255, 255, 255, 0.28);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: signupSpinSmooth 0.85s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+          flex-shrink: 0;
+        }
+        .signup-btn-check,
+        .signup-btn-x {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.22);
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          animation: signupCheckPop 0.55s 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .signup-btn-check svg,
+        .signup-btn-x svg {
+          width: 15px;
+          height: 15px;
+          stroke: #fff;
+          stroke-width: 3;
+          fill: none;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-dasharray: 28;
+          stroke-dashoffset: 28;
+          animation: signupCheckDraw 0.55s 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        .signup-btn-success-text,
+        .signup-btn-error-text {
+          letter-spacing: 0.02em;
+        }
+        @keyframes signupLabelFade {
+          from {
+            opacity: 0.65;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes signupContentSlide {
+          from {
+            opacity: 0;
+            transform: translateX(-36px);
+            filter: blur(2px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+            filter: blur(0);
+          }
+        }
+        @keyframes signupCheckPop {
+          from {
+            opacity: 0;
+            transform: translateX(-14px) scale(0.7);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+          }
+        }
+        @keyframes signupCheckDraw {
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes signupSpinSmooth {
+          to { transform: rotate(360deg); }
         }
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -559,7 +872,7 @@ export default function SignUp() {
           <p className="subtitle">Create new student account</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           {/* Profile Picture Upload */}
           <div className="form-group">
             <label className="form-label">Profile Picture</label>
@@ -738,7 +1051,7 @@ export default function SignUp() {
                 style={{ display: 'none' }}
               />
               <small style={{ color: '#6c757d', fontSize: '0.85rem', textAlign: 'center', marginTop: '4px' }}>
-                Max size: 5 MB. Formats: JPEG, PNG, GIF, WEBP
+                Max size: 10 MB. Formats: JPEG, PNG, GIF, WEBP
               </small>
             </div>
           </div>
@@ -746,7 +1059,7 @@ export default function SignUp() {
           <div className="form-group">
             <label className="form-label">ID <span style={{color: 'red'}}>*</span></label>
             <input
-              className="form-input"
+              className={`form-input ${fieldErrors.id ? 'error-border' : ''}`}
               name="id"
               type="text"
               placeholder="Enter your ID"
@@ -757,35 +1070,47 @@ export default function SignUp() {
                   e.preventDefault();
                 }
               }}
-              required
+              aria-invalid={!!fieldErrors.id}
             />
+            {fieldErrors.id && (
+              <div className="field-error">
+                <span className="field-error-dot" aria-hidden="true" />
+                {fieldErrors.id}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">Email <span style={{color: 'red'}}>*</span></label>
             <input
-              className="form-input"
+              className={`form-input ${fieldErrors.email ? 'error-border' : ''}`}
               name="email"
               type="email"
               placeholder="Enter your email"
               value={form.email}
               onChange={handleChange}
-              required
+              aria-invalid={!!fieldErrors.email}
             />
+            {fieldErrors.email && (
+              <div className="field-error">
+                <span className="field-error-dot" aria-hidden="true" />
+                {fieldErrors.email}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">Password <span style={{color: 'red'}}>*</span></label>
             <div className="input-wrapper">
               <input
-                className="form-input"
+                className={`form-input ${fieldErrors.password ? 'error-border' : ''}`}
                 name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password (min 8 characters)"
                 value={form.password}
                 onChange={handleChange}
                 style={{ paddingRight: '50px' }}
-                required
+                aria-invalid={!!fieldErrors.password}
               />
               <button
                 type="button"
@@ -812,20 +1137,26 @@ export default function SignUp() {
                 />
               </button>
             </div>
+            {fieldErrors.password && (
+              <div className="field-error">
+                <span className="field-error-dot" aria-hidden="true" />
+                {fieldErrors.password}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">Confirm Password <span style={{color: 'red'}}>*</span></label>
             <div className="input-wrapper">
               <input
-                className="form-input"
+                className={`form-input ${fieldErrors.confirmPassword ? 'error-border' : ''}`}
                 name="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm your password"
                 value={form.confirmPassword}
                 onChange={handleChange}
                 style={{ paddingRight: '50px' }}
-                required
+                aria-invalid={!!fieldErrors.confirmPassword}
               />
               <button
                 type="button"
@@ -852,17 +1183,27 @@ export default function SignUp() {
                 />
               </button>
             </div>
+            {fieldErrors.confirmPassword && (
+              <div className="field-error">
+                <span className="field-error-dot" aria-hidden="true" />
+                {fieldErrors.confirmPassword}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">Verification Account Code (VAC) <span style={{color: 'red'}}>*</span></label>
             <div className="vac-inputs-container">
-              {form.vac.map((char, index) => (
+              {form.vac.map((char, index) => {
+                const vacComplete = form.id && form.vac.join('').length === 7;
+                const vacInvalid = (!!fieldErrors.vac) || (!vacChecking && vacCheck && !vacCheck.valid && vacComplete);
+                const vacValid = !fieldErrors.vac && !vacChecking && vacCheck && vacCheck.valid && !vacCheck.activated && vacComplete;
+                return (
                 <input
                   key={index}
                   ref={(el) => (vacInputRefs.current[index] = el)}
                   name={`vac-${index}`}
-                  className={`vac-input ${!vacChecking && vacCheck && !vacCheck.valid && form.id && form.vac.join('').length === 7 ? 'error-border' : ''}`}
+                  className={`vac-input ${vacInvalid ? 'error-border' : ''} ${vacValid ? 'valid-border' : ''}`}
                   type="text"
                   autoComplete="one-time-code"
                   inputMode="text"
@@ -872,58 +1213,86 @@ export default function SignUp() {
                   onChange={(e) => handleVACChange(e, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   onPaste={(e) => handleVACPaste(e, index)}
-                  onFocus={(e) => {
-                    if (!e.target.classList.contains('error-border')) {
-                      e.target.style.borderColor = '#1FA8DC';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(31, 168, 220, 0.2)';
-                      e.target.style.backgroundColor = '#ffffff';
-                      e.target.style.transform = 'scale(1.05)';
-                    }
-                  }}
-                  onBlur={(e) => {
-                    const hasError = !vacChecking && vacCheck && !vacCheck.valid && form.id && form.vac.join('').length === 7;
-                    e.target.style.borderColor = hasError ? '#dc3545' : '#87CEEB';
-                    e.target.style.boxShadow = hasError ? '0 0 0 2px rgba(220, 53, 69, 0.1)' : '0 2px 6px rgba(135, 206, 235, 0.2)';
-                    e.target.style.backgroundColor = '#f8f9fa';
-                    e.target.style.transform = 'scale(1)';
-                  }}
-                  required
+                  aria-invalid={!!fieldErrors.vac}
                 />
-              ))}
+              );})}
             </div>
+            {fieldErrors.vac && (
+              <div className="vac-feedback invalid">
+                <span className="vac-feedback-icon" aria-hidden="true">✕</span>
+                <span className="vac-feedback-text">
+                  <span className="vac-feedback-title">{fieldErrors.vac}</span>
+                  <span className="vac-feedback-sub">
+                    {fieldErrors.vac.toLowerCase().includes('already')
+                      ? 'This ID is already registered. Please sign in instead.'
+                      : fieldErrors.vac.toLowerCase().includes('complete')
+                      ? 'Enter all 7 characters of your VAC code'
+                      : fieldErrors.vac.toLowerCase().includes('not found')
+                      ? 'Make sure your student ID is correct'
+                      : 'Double-check your VAC and try again'}
+                  </span>
+                </span>
+              </div>
+            )}
             {/* VAC validation feedback */}
-            {form.id && form.vac.join('').length === 7 && (
+            {!fieldErrors.vac && form.id && form.vac.join('').length === 7 && (
               <div>
                 {vacChecking && (
                   <div className="vac-feedback checking">
-                    🔍 Checking verification code...
+                    <span className="vac-feedback-icon" aria-hidden="true">
+                      <span className="vac-spinner" />
+                    </span>
+                    <span className="vac-feedback-text">
+                      <span className="vac-feedback-title">Verifying your code</span>
+                      <span className="vac-feedback-sub">Please wait while we confirm your VAC</span>
+                    </span>
                   </div>
                 )}
                 {!vacChecking && vacCheck && (
                   <>
                     {vacCheck.activated && vacCheck.valid && (
                       <div className="vac-feedback invalid">
-                        ❌ This account is already exists
+                        <span className="vac-feedback-icon" aria-hidden="true">✕</span>
+                        <span className="vac-feedback-text">
+                          <span className="vac-feedback-title">Account already exists</span>
+                          <span className="vac-feedback-sub">This ID is already registered. Please sign in instead.</span>
+                        </span>
                       </div>
                     )}
                     {vacCheck.activated && !vacCheck.valid && (
                       <div className="vac-feedback invalid">
-                        ❌ Verification account code is incorrect
+                        <span className="vac-feedback-icon" aria-hidden="true">✕</span>
+                        <span className="vac-feedback-text">
+                          <span className="vac-feedback-title">Incorrect verification code</span>
+                          <span className="vac-feedback-sub">Double-check your VAC and try again</span>
+                        </span>
                       </div>
                     )}
                     {!vacCheck.activated && vacCheck.valid && (
                       <div className="vac-feedback valid">
-                        ✅ Verification code is valid
+                        <span className="vac-feedback-icon" aria-hidden="true">✓</span>
+                        <span className="vac-feedback-text">
+                          <span className="vac-feedback-title">Verification code is valid</span>
+                          <span className="vac-feedback-sub">You’re all set — continue creating your account</span>
+                        </span>
                       </div>
                     )}
                     {!vacCheck.activated && !vacCheck.valid && vacCheck.exists && (
                       <div className="vac-feedback invalid">
-                        ❌ Verification account code is incorrect
+                        <span className="vac-feedback-icon" aria-hidden="true">✕</span>
+                        <span className="vac-feedback-text">
+                          <span className="vac-feedback-title">Incorrect verification code</span>
+                          <span className="vac-feedback-sub">Double-check your VAC and try again</span>
+                        </span>
                       </div>
                     )}
                     {!vacCheck.exists && (
                       <div className="vac-feedback invalid">
-                        ❌ ID not found
+                        <span className="vac-feedback-icon" aria-hidden="true">✕</span>
+                        <span className="vac-feedback-text">
+                          <span className="vac-feedback-title">ID not found</span>
+                          <span className="vac-feedback-sub">Make sure your student ID is correct</span>
+                        </span>
                       </div>
                     )}
                   </>
@@ -932,8 +1301,8 @@ export default function SignUp() {
             )}
           </div>
 
-          {/* Error and Success Messages */}
-          {error && (
+          {/* Error Message */}
+          {error && !signupSuccess && (
             <div style={{
               marginBottom: '16px',
               background: 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)',
@@ -949,42 +1318,40 @@ export default function SignUp() {
             </div>
           )}
 
-          {success && (
-            <div style={{
-              marginBottom: '16px',
-              background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-              color: 'white',
-              borderRadius: '10px',
-              padding: '16px 24px',
-              boxShadow: '0 4px 16px rgba(40, 167, 69, 0.3)',
-              textAlign: 'center',
-              fontWeight: 600,
-              fontSize: '1rem'
-            }}>
-              {success}
-            </div>
-          )}
-
           <button 
             type="submit" 
-            className="signup-btn"
-            disabled={vacChecking || (vacCheck && !vacCheck.valid) || isSubmitting}
+            className={`signup-btn ${isSubmitting ? 'loading' : ''} ${signupSuccess ? 'success' : ''} ${signupFailed ? 'error' : ''}`}
+            disabled={signupSuccess || signupFailed || isSubmitting || vacChecking || (vacCheck && !vacCheck.valid)}
           >
-            {isSubmitting ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '3px solid rgba(255, 255, 255, 0.3)',
-                  borderTop: '3px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>
-                <span>Creating Account...</span>
-              </div>
-            ) : (
-              'Sign Up'
-            )}
+            <span className="signup-btn-content">
+              {signupSuccess ? (
+                <>
+                  <span className="signup-btn-check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                  <span className="signup-btn-success-text">Account Created</span>
+                </>
+              ) : signupFailed ? (
+                <>
+                  <span className="signup-btn-x" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </span>
+                  <span className="signup-btn-error-text">Creation Failed</span>
+                </>
+              ) : isSubmitting ? (
+                <>
+                  <span className="signup-btn-spinner" aria-hidden="true" />
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                <span>Sign Up</span>
+              )}
+            </span>
           </button>
         </form>
 

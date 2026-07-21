@@ -12,6 +12,20 @@ import {
 const PRESIGN_PUT_EXPIRES_SEC = 6 * 60 * 60; // 6 hours
 
 export default async function handler(req, res) {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -20,20 +34,31 @@ export default async function handler(req, res) {
     const cfg = getR2Config();
     assertR2Config(cfg);
 
-    const corsSetup = await ensureR2CorsForBrowserUploads(cfg);
+    const corsSetup = await ensureR2CorsForBrowserUploads(cfg, req.headers.origin || '');
 
-    const { fileName, contentType } = req.body;
+    const { fileName, contentType, prefix: prefixRaw } = req.body;
 
     if (!fileName) {
       return res.status(400).json({ error: 'fileName is required' });
     }
 
+    const ALLOWED_PREFIXES = new Set([
+      'videos',
+      'pdfs/material',
+      'pdfs/HW-PDFs',
+      'pdfs/Quizs-PDFs',
+      'pdfs/MockExams-PDFs',
+    ]);
+    const prefix =
+      typeof prefixRaw === 'string' && ALLOWED_PREFIXES.has(prefixRaw.trim())
+        ? prefixRaw.trim()
+        : 'videos';
+
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 10);
-    // Base name only — object keys live under `videos/` in the bucket
     const baseName = path.basename(String(fileName).replace(/\\/g, '/'));
-    const sanitizedName = baseName.replace(/[^a-zA-Z0-9._-]/g, '_') || 'video.bin';
-    const key = `videos/${timestamp}_${randomStr}_${sanitizedName}`;
+    const sanitizedName = baseName.replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload.bin';
+    const key = `${prefix}/${timestamp}_${randomStr}_${sanitizedName}`;
 
     const contentTypeHeader =
       typeof contentType === 'string' && contentType.trim() !== ''

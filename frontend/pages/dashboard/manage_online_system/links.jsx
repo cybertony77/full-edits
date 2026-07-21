@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useProfile } from '../../../lib/api/auth';
 import Title from '../../../components/Title';
-import MarketingPageLoader from '../../../components/MarketingPageLoader';
 import LinkFormModal from '../../../components/LinkFormModal';
 import LinksGridView from '../../../components/LinksGridView';
 import apiClient from '../../../lib/axios';
@@ -23,6 +22,75 @@ const BACK_BTN = {
   fontWeight: 600,
   fontSize: 15,
 };
+
+/** Same preloader as `_app.js` (logo + spinner), not the welcome MarketingPageLoader. */
+function AppPreloader() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        background: 'var(--system-page-bg)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        animation: 'fadeIn 0.3s ease-in-out',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            animation: 'pulse 2s ease-in-out infinite',
+          }}
+        >
+          <Image
+            src="/logo.png"
+            alt="Logo"
+            width={150}
+            height={150}
+            style={{ borderRadius: '50%', background: 'transparent' }}
+          />
+        </div>
+        <div
+          style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid rgba(255, 255, 255, 0.3)',
+            borderTop: '4px solid #1FA8DC',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+      </div>
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function ManageLinksPage() {
   const { data: profile, isLoading } = useProfile();
@@ -126,9 +194,7 @@ export default function ManageLinksPage() {
   }, [editIndex, items]);
 
   if (isLoading || loading) {
-    return (
-      <MarketingPageLoader label="Loading links" sub="Fetching your social media links" />
-    );
+    return <AppPreloader />;
   }
 
   if (accessDenied || !profile || !allowedRoles.includes(profile.role)) {

@@ -184,10 +184,6 @@ export default async function handler(req, res) {
       return courseMatch && courseTypeMatch && centerMatch;
     });
 
-    const allowedLessonNamesFromHomeworks = new Set(
-      filteredHomeworks.map((hw) => hw.lesson).filter(Boolean)
-    );
-
     // Group all homeworks by lesson - show result directly from DB (no aggregation)
     // If multiple homeworks in same lesson, prioritize completed ones
     const lessonDataMap = {};
@@ -228,37 +224,35 @@ export default async function handler(req, res) {
       }
     });
 
-    // ALSO add lessons data that don't have corresponding homeworks in the database
-    // This ensures all lessons with homework_degree are shown in the chart
+    // Always include lessons with a recorded homework_degree (scan/manual/legacy),
+    // even when there is no matching activated "questions" homework for course/center.
     Object.keys(lessons).forEach(lessonName => {
       const lessonData = lessons[lessonName];
-      if (lessonData && lessonData.homework_degree) {
-        if (!allowedLessonNamesFromHomeworks.has(lessonName)) {
-          return;
-        }
-        // Check if this lesson already has data from filteredHomeworks
-        if (!lessonDataMap[lessonName]) {
-          // Parse homework_degree format like "50 / 120"
-          const hwDegreeStr = String(lessonData.homework_degree).trim();
-          const match = hwDegreeStr.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
-          
-          if (match) {
-            const obtained = parseFloat(match[1]);
-            const total = parseFloat(match[2]);
-            const percentage = total > 0 ? Math.round((obtained / total) * 100) : 0;
-            
-            lessonDataMap[lessonName] = {
-              lesson_name: lessonName,
-              percentage: percentage,
-              result: hwDegreeStr
-            };
-          }
-        }
+      if (!lessonData || !lessonData.homework_degree) return;
+
+      const hwDegreeStr = String(lessonData.homework_degree).trim();
+      const match = hwDegreeStr.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+      if (!match) return;
+
+      const obtained = parseFloat(match[1]);
+      const total = parseFloat(match[2]);
+      const percentage = total > 0 ? Math.round((obtained / total) * 100) : 0;
+      const existing = lessonDataMap[lessonName];
+      const existingEmpty = !existing || existing.percentage === 0 || existing.result === '0 / 0';
+
+      // Prefer an existing completed online result; otherwise use lesson.homework_degree
+      if (existingEmpty) {
+        lessonDataMap[lessonName] = {
+          lesson_name: lessonName,
+          percentage,
+          result: hwDegreeStr
+        };
       }
     });
 
-    // Convert to array and sort by lesson name
+    // Convert to array, keep only lessons with real results, sort by lesson name
     const chartData = Object.values(lessonDataMap)
+      .filter((item) => item.percentage > 0 || (item.result && item.result !== '0 / 0'))
       .sort((a, b) => a.lesson_name.localeCompare(b.lesson_name));
 
     // Always return success with chartData (empty array if no data)

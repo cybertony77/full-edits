@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
@@ -85,10 +85,24 @@ export default async function handler(req, res) {
       online_mock_exams: updatedMockExams
     };
 
+    // Resolve lesson ("Exam 1", etc.) from saved result or mock_exams document
+    let lesson = mockExamToReset?.lesson || null;
+    if (!lesson) {
+      try {
+        const mockExamDoc = await db.collection('mock_exams').findOne({
+          _id: new ObjectId(mock_exam_id),
+        });
+        if (mockExamDoc?.lesson) {
+          lesson = mockExamDoc.lesson;
+        }
+      } catch (err) {
+        console.error('Error fetching mock exam document for reset:', err);
+      }
+    }
+
     // Also reset in mockExams array if lesson field exists
-    if (mockExamToReset && mockExamToReset.lesson) {
-      const lesson = mockExamToReset.lesson;
-      const examMatch = lesson.match(/Exam\s+(\d+)/i);
+    if (lesson) {
+      const examMatch = String(lesson).match(/Exam\s+(\d+)/i);
       if (examMatch) {
         const examIndex = parseInt(examMatch[1], 10) - 1; // "Exam 1" → index 0
         if (examIndex >= 0 && examIndex < 50) {

@@ -1,7 +1,7 @@
 import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
-import { authMiddleware } from '../../../lib/authMiddleware';
+import { authMiddleware, isAuthError } from '../../../lib/authMiddleware';
 
 function loadEnvConfig() {
   try {
@@ -47,27 +47,45 @@ function getCairoNowMinutes() {
     const hourPart = parts.find((p) => p.type === 'hour');
     const minutePart = parts.find((p) => p.type === 'minute');
 
-    const hours = hourPart ? parseInt(hourPart.value, 10) : 0;
+    // Some engines return "24" for midnight with hour12:false — normalize to 0–23
+    let hours = hourPart ? parseInt(hourPart.value, 10) : 0;
     const minutes = minutePart ? parseInt(minutePart.value, 10) : 0;
+    if (hours === 24) hours = 0;
 
     if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
     return hours * 60 + minutes;
   } catch {
-    // Fallback to server local time if Cairo timezone formatting fails.
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
+    // Last resort: derive Cairo time via toLocaleString
+    try {
+      const cairo = new Date(
+        new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })
+      );
+      return cairo.getHours() * 60 + cairo.getMinutes();
+    } catch {
+      return null;
+    }
   }
 }
 
-// Convert stored time object (hours, minutes, AM/PM) into minutes since midnight (Cairo local day)
+function hasTimeFields(timeObj) {
+  if (!timeObj || typeof timeObj !== 'object') return false;
+  const hours = String(timeObj.hours ?? '').trim();
+  const minutes = String(timeObj.minutes ?? '').trim();
+  const period = String(timeObj.period ?? '').trim().toUpperCase();
+  // minutes "00" must count as set (truthy checks would incorrectly fail for number 0)
+  return hours !== '' && minutes !== '' && (period === 'AM' || period === 'PM');
+}
+
+// Convert stored time object (hours, minutes, AM/PM) into minutes since midnight (Egypt wall-clock)
 function timeObjToMinutes(timeObj) {
-  if (!timeObj || !timeObj.hours || !timeObj.minutes || !timeObj.period) return null;
+  if (!hasTimeFields(timeObj)) return null;
 
   let hours = parseInt(timeObj.hours, 10);
   const minutes = parseInt(timeObj.minutes, 10);
   const period = String(timeObj.period || '').toUpperCase();
 
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null;
 
   // Convert to 24-hour format
   if (period === 'PM' && hours !== 12) hours += 12;
@@ -87,7 +105,7 @@ export default async function handler(req, res) {
     try {
       user = await authMiddleware(req);
     } catch (authError) {
-      if (authError?.message === 'No token provided' || authError?.name === 'JsonWebTokenError') {
+      if (isAuthError(authError)) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
       throw authError;
@@ -155,39 +173,23 @@ export default async function handler(req, res) {
 
     // Check deadline (Egypt/Cairo): if deadline exists and deadline <= now, hide
     // BUT if the student already attended this lesson, don't hide (they may need to rejoin)
-    if (
-      !studentAlreadyAttended &&
-      meeting.deadline &&
-      meeting.deadline.hours &&
-      meeting.deadline.minutes &&
-      meeting.deadline.period
-    ) {
+    if (!studentAlreadyAttended && hasTimeFields(meeting.deadline)) {
       const deadlineMinutes = timeObjToMinutes(meeting.deadline);
       if (deadlineMinutes !== null && deadlineMinutes <= nowMinutes) {
         return res.status(200).json({ success: true, meeting: null });
       }
     }
 
-    // Check start date (Egypt/Cairo): if start date exists and start > now, hide
-    if (
-      meeting.dateOfStart &&
-      meeting.dateOfStart.hours &&
-      meeting.dateOfStart.minutes &&
-      meeting.dateOfStart.period
-    ) {
+    // Check start time (Egypt/Cairo): if start exists and start > now, hide
+    if (hasTimeFields(meeting.dateOfStart)) {
       const startMinutes = timeObjToMinutes(meeting.dateOfStart);
       if (startMinutes !== null && startMinutes > nowMinutes) {
         return res.status(200).json({ success: true, meeting: null });
       }
     }
 
-    // Check end date (Egypt/Cairo): if end date exists and end < now, hide
-    if (
-      meeting.dateOfEnd &&
-      meeting.dateOfEnd.hours &&
-      meeting.dateOfEnd.minutes &&
-      meeting.dateOfEnd.period
-    ) {
+    // Check end time (Egypt/Cairo): if end exists and end < now, hide
+    if (hasTimeFields(meeting.dateOfEnd)) {
       const endMinutes = timeObjToMinutes(meeting.dateOfEnd);
       if (endMinutes !== null && endMinutes < nowMinutes) {
         return res.status(200).json({ success: true, meeting: null });

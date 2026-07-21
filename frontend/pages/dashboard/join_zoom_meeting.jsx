@@ -862,14 +862,14 @@ export default function JoinZoomMeeting() {
                   </div>
                   <div>
                     <div className="schedule-section-title">Meeting Settings</div>
-                    <div className="schedule-section-desc">Optional time restrictions for this meeting</div>
+                    <div className="schedule-section-desc">Optional time restrictions (Egypt / Cairo time)</div>
                   </div>
                 </div>
 
                 <div className="schedule-item">
                   <div className="schedule-item-label">
                     <span className="schedule-dot" style={{ background: '#f59e0b' }}></span>
-                    Deadline for Joining
+                    Deadline for Joining (Egypt time)
                   </div>
                   <TimeInput value={newDeadline} onChange={setNewDeadline} label="Deadline" accentColor="#f59e0b" />
                 </div>
@@ -877,7 +877,7 @@ export default function JoinZoomMeeting() {
                 <div className="schedule-item">
                   <div className="schedule-item-label">
                     <span className="schedule-dot" style={{ background: '#10b981' }}></span>
-                    Date of Start
+                    Date of Start (Egypt time)
                   </div>
                   <TimeInput value={newDateOfStart} onChange={setNewDateOfStart} label="Start" accentColor="#10b981" />
                 </div>
@@ -885,7 +885,7 @@ export default function JoinZoomMeeting() {
                 <div className="schedule-item">
                   <div className="schedule-item-label">
                     <span className="schedule-dot" style={{ background: '#ef4444' }}></span>
-                    Date of End
+                    Date of End (Egypt time)
                   </div>
                   <TimeInput value={newDateOfEnd} onChange={setNewDateOfEnd} label="End" accentColor="#ef4444" />
                 </div>
@@ -1024,14 +1024,14 @@ export default function JoinZoomMeeting() {
                   </div>
                   <div>
                     <div className="schedule-section-title">Meeting Settings</div>
-                    <div className="schedule-section-desc">Optional time restrictions for this meeting</div>
+                    <div className="schedule-section-desc">Optional time restrictions (Egypt / Cairo time)</div>
                   </div>
                 </div>
 
                 <div className="schedule-item">
                   <div className="schedule-item-label">
                     <span className="schedule-dot" style={{ background: '#f59e0b' }}></span>
-                    Deadline for Joining
+                    Deadline for Joining (Egypt time)
                   </div>
                   <TimeInput value={editDeadline} onChange={setEditDeadline} label="Deadline" accentColor="#f59e0b" />
                 </div>
@@ -1039,7 +1039,7 @@ export default function JoinZoomMeeting() {
                 <div className="schedule-item">
                   <div className="schedule-item-label">
                     <span className="schedule-dot" style={{ background: '#10b981' }}></span>
-                    Date of Start
+                    Date of Start (Egypt time)
                   </div>
                   <TimeInput value={editDateOfStart} onChange={setEditDateOfStart} label="Start" accentColor="#10b981" />
                 </div>
@@ -1047,7 +1047,7 @@ export default function JoinZoomMeeting() {
                 <div className="schedule-item">
                   <div className="schedule-item-label">
                     <span className="schedule-dot" style={{ background: '#ef4444' }}></span>
-                    Date of End
+                    Date of End (Egypt time)
                   </div>
                   <TimeInput value={editDateOfEnd} onChange={setEditDateOfEnd} label="End" accentColor="#ef4444" />
                 </div>

@@ -19,6 +19,7 @@ export default function Login() {
   const [otpError, setOtpError] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [devToolsDetected, setDevToolsDetected] = useState(false);
   const [userRole, setUserRole] = useState(null);
@@ -525,16 +526,20 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // OTP verified, redirect to forgot password page with HMAC signature
+        const sig = data.sig;
+        const target = `/forgot_password?id=${encodeURIComponent(assistant_id.trim())}&sig=${encodeURIComponent(sig)}`;
+        setIsVerifyingOtp(false);
+        setOtpVerified(true);
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         setOtpPopupOpen(false);
-        const sig = data.sig; // HMAC signature from server
-        router.push(`/forgot_password?id=${encodeURIComponent(assistant_id.trim())}&sig=${encodeURIComponent(sig)}`);
+        setOtpVerified(false);
+        router.push(target);
       } else {
         setOtpError(data.error || 'Invalid OTP');
+        setIsVerifyingOtp(false);
       }
     } catch (error) {
       setOtpError('Failed to verify OTP. Please try again.');
-    } finally {
       setIsVerifyingOtp(false);
     }
   };
@@ -644,7 +649,7 @@ export default function Login() {
       alignItems: 'center', 
       justifyContent: 'center', 
       padding: '20px 5px 20px 5px',
-      background: 'linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);',
+      background: 'var(--system-page-bg)',
     }}>
         <style jsx>{`
           .login-container {
@@ -666,7 +671,7 @@ export default function Login() {
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);
+            background: var(--system-page-bg);
             background-size: 200% 100%;
             animation: gradientShift 3s ease infinite;
           }
@@ -830,24 +835,214 @@ export default function Login() {
             border-radius: 10px;
             background: #f8f9fa;
             color: #333;
-            transition: all 0.3s ease;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, transform 0.25s ease;
             box-shadow: 0 2px 6px rgba(135, 206, 235, 0.2);
             outline: none;
           }
           .vac-input:focus {
             outline: none;
-            border-color: #1FA8DC;
-            box-shadow: 0 0 0 4px rgba(31, 168, 220, 0.2);
-            background: #ffffff;
+            border-color: #1FA8DC !important;
+            box-shadow: 0 0 0 4px rgba(31, 168, 220, 0.2) !important;
+            background: #ffffff !important;
             transform: scale(1.05);
           }
           .vac-input.error-border {
             border-color: #dc3545 !important;
-            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.1) !important;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.12) !important;
+            background: #fff8f8 !important;
           }
           .vac-input.error-border:focus {
             border-color: #dc3545 !important;
-            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.16) !important;
+            background: #fff8f8 !important;
+            transform: scale(1.05);
+          }
+          .otp-feedback {
+            margin-top: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            line-height: 1.35;
+            border: 1px solid transparent;
+            text-align: left;
+            animation: otpFeedbackIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          .otp-feedback-icon {
+            flex-shrink: 0;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            color: #fff;
+          }
+          .otp-feedback-text {
+            flex: 1;
+            min-width: 0;
+          }
+          .otp-feedback-title {
+            display: block;
+            font-size: 0.92rem;
+            font-weight: 700;
+          }
+          .otp-feedback-sub {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            opacity: 0.85;
+          }
+          .otp-feedback.invalid {
+            color: #a11f2e;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(255, 107, 129, 0.14) 100%);
+            border-color: rgba(220, 53, 69, 0.28);
+            box-shadow: 0 8px 24px rgba(220, 53, 69, 0.1);
+          }
+          .otp-feedback.invalid .otp-feedback-icon {
+            background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.35);
+          }
+          .otp-feedback.checking {
+            color: #0b6e99;
+            background: linear-gradient(135deg, rgba(31, 168, 220, 0.12) 0%, rgba(135, 206, 235, 0.18) 100%);
+            border-color: rgba(31, 168, 220, 0.28);
+            box-shadow: 0 8px 24px rgba(31, 168, 220, 0.12);
+          }
+          .otp-feedback.checking .otp-feedback-icon {
+            background: linear-gradient(135deg, #1FA8DC 0%, #5F6DFE 100%);
+            box-shadow: 0 4px 12px rgba(31, 168, 220, 0.35);
+          }
+          .otp-feedback-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: otpSpin 0.75s linear infinite;
+          }
+          .otp-feedback.valid {
+            color: #0f7a3a;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.12) 0%, rgba(46, 204, 113, 0.16) 100%);
+            border-color: rgba(40, 167, 69, 0.28);
+            box-shadow: 0 8px 24px rgba(40, 167, 69, 0.12);
+          }
+          .otp-feedback.valid .otp-feedback-icon {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.35);
+          }
+          .otp-verify-btn {
+            padding: 12px 24px;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.45s ease, box-shadow 0.45s ease, opacity 0.3s ease;
+            box-shadow: 0 4px 14px rgba(40, 167, 69, 0.3);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 160px;
+            overflow: hidden;
+            position: relative;
+            isolation: isolate;
+          }
+          .otp-verify-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+              linear-gradient(105deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 42%),
+              linear-gradient(90deg, #22a84a 0%, #2ecc71 52%, #1fbf8f 100%);
+            transform: scaleX(0);
+            transform-origin: left center;
+            transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 0;
+            pointer-events: none;
+          }
+          .otp-verify-btn:disabled:not(.success):not(.loading) {
+            opacity: 0.55;
+            cursor: not-allowed;
+            box-shadow: none;
+          }
+          .otp-verify-btn.loading {
+            opacity: 1;
+            cursor: wait;
+            background: linear-gradient(90deg, #6c757d 0%, #868e96 100%);
+            box-shadow: 0 4px 14px rgba(108, 117, 125, 0.28);
+          }
+          .otp-verify-btn.success {
+            opacity: 1;
+            cursor: default;
+            box-shadow: 0 8px 22px rgba(40, 167, 69, 0.38);
+          }
+          .otp-verify-btn.success::before {
+            transform: scaleX(1);
+          }
+          .otp-verify-btn-content {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+          }
+          .otp-verify-btn.success .otp-verify-btn-content {
+            animation: otpSuccessSlide 0.55s 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+          }
+          .otp-verify-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255, 255, 255, 0.28);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: otpSpin 0.85s linear infinite;
+          }
+          .otp-verify-check {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.22);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          }
+          .otp-verify-check svg {
+            width: 13px;
+            height: 13px;
+            stroke: #fff;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 24;
+            stroke-dashoffset: 24;
+            animation: otpCheckDraw 0.45s 0.35s ease forwards;
+          }
+          @keyframes otpFeedbackIn {
+            from { opacity: 0; transform: translateY(6px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes otpSuccessSlide {
+            from { opacity: 0; transform: translateX(-18px); }
+            to { opacity: 1; transform: translateX(0); }
+          }
+          @keyframes otpCheckDraw {
+            to { stroke-dashoffset: 0; }
+          }
+          @keyframes otpSpin {
+            to { transform: rotate(360deg); }
           }
           
           /* OTP Modal Responsive Styles */
@@ -1023,25 +1218,39 @@ export default function Login() {
 
             {/* Show redirect message */}
             {redirectMessage && (
-              <div style={{
-                background: 'linear-gradient(135deg, #17a2b8 0%, #20c997 100%)',
-                color: 'white',
-                borderRadius: 8,
-                padding: '12px 16px',
-                margin: '16px 0 0 0',
-                fontWeight: 600,
-                boxShadow: '0 2px 8px rgba(23, 162, 184, 0.15)',
-                textAlign: 'center',
-                fontSize: '1rem',
-                maxWidth: 400,
-                marginLeft: 'auto',
-                marginRight: 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8
-              }}>
-                <span style={{ fontSize: 20 }}>🔒</span> {redirectMessage}
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #17a2b8 0%, #20c997 100%)',
+                  color: 'white',
+                  borderRadius: 8,
+                  padding: '12px 16px',
+                  margin: '16px 0 0 0',
+                  fontWeight: 600,
+                  boxShadow: '0 2px 8px rgba(23, 162, 184, 0.15)',
+                  textAlign: 'center',
+                  fontSize: '0.95rem',
+                  width: '100%',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  gap: 8,
+                  overflow: 'hidden',
+                }}
+              >
+                <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1.3 }}>🔒</span>
+                <span
+                  style={{
+                    minWidth: 0,
+                    flex: 1,
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {redirectMessage}
+                </span>
               </div>
             )}
 
@@ -1247,6 +1456,7 @@ export default function Login() {
             setOtpPopupOpen(false);
             setOtp(['', '', '', '', '', '', '', '']);
             setOtpError('');
+            setOtpVerified(false);
           }}
           title={null}
           centered
@@ -1303,33 +1513,42 @@ export default function Login() {
                   onKeyDown={(e) => handleOtpKeyDown(e, index)}
                   onPaste={(e) => handleOtpPaste(e, index)}
                   className={otpError ? 'vac-input error-border' : 'vac-input'}
-                  onFocus={(e) => {
-                    if (!e.target.classList.contains('error-border')) {
-                      e.target.style.borderColor = '#1FA8DC';
-                      e.target.style.boxShadow = '0 0 0 4px rgba(31, 168, 220, 0.2)';
-                      e.target.style.backgroundColor = '#ffffff';
-                      e.target.style.transform = 'scale(1.05)';
-                    }
-                  }}
-                  onBlur={(e) => {
-                    const hasError = otpError && otpError.trim() !== '';
-                    e.target.style.borderColor = hasError ? '#dc3545' : '#87CEEB';
-                    e.target.style.boxShadow = hasError ? '0 0 0 2px rgba(220, 53, 69, 0.1)' : '0 2px 6px rgba(135, 206, 235, 0.2)';
-                    e.target.style.backgroundColor = '#f8f9fa';
-                    e.target.style.transform = 'scale(1)';
-                  }}
                 />
               ))}
             </div>
-            {otpError && (
-              <div style={{
-                color: '#dc3545',
-                fontSize: '0.9rem',
-                textAlign: 'center',
-                marginTop: '8px',
-                fontWeight: '500'
-              }}>
-                {otpError}
+            {isVerifyingOtp && !otpVerified && (
+              <div className="otp-feedback checking">
+                <span className="otp-feedback-icon" aria-hidden="true">
+                  <span className="otp-feedback-spinner" />
+                </span>
+                <span className="otp-feedback-text">
+                  <span className="otp-feedback-title">Verifying your code</span>
+                  <span className="otp-feedback-sub">Please wait while we confirm your OTP</span>
+                </span>
+              </div>
+            )}
+            {otpVerified && (
+              <div className="otp-feedback valid">
+                <span className="otp-feedback-icon" aria-hidden="true">✓</span>
+                <span className="otp-feedback-text">
+                  <span className="otp-feedback-title">OTP verified successfully</span>
+                  <span className="otp-feedback-sub">Redirecting you to reset your password…</span>
+                </span>
+              </div>
+            )}
+            {!isVerifyingOtp && !otpVerified && otpError && (
+              <div className="otp-feedback invalid">
+                <span className="otp-feedback-icon" aria-hidden="true">✕</span>
+                <span className="otp-feedback-text">
+                  <span className="otp-feedback-title">{otpError}</span>
+                  <span className="otp-feedback-sub">
+                    {otpError.toLowerCase().includes('complete')
+                      ? 'Enter all 8 digits of your OTP code'
+                      : otpError.toLowerCase().includes('expired')
+                      ? 'Request a new code and try again'
+                      : 'Double-check the code from your email and try again'}
+                  </span>
+                </span>
               </div>
             )}
             <div className="otp-resend-container" style={{ textAlign: 'center', marginTop: '16px' }}>
@@ -1373,36 +1592,44 @@ export default function Login() {
             </div>
           </div>
 
-          <div style={{
+          <div className="otp-buttons-container" style={{
             display: 'flex',
             gap: '12px',
             justifyContent: 'center'
           }}>
             <button
+              className={`otp-verify-btn ${isVerifyingOtp ? 'loading' : ''} ${otpVerified ? 'success' : ''}`}
               onClick={handleVerifyOtp}
-              disabled={isVerifyingOtp || otp.join('').length !== 8}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: (isVerifyingOtp || otp.join('').length !== 8) ? 'not-allowed' : 'pointer',
-                opacity: (isVerifyingOtp || otp.join('').length !== 8) ? 0.6 : 1,
-                transition: 'all 0.2s ease'
-              }}
+              disabled={otpVerified || isVerifyingOtp || otp.join('').length !== 8}
             >
-              {isVerifyingOtp ? 'Verifying...' : 'Verify'}
+              <span className="otp-verify-btn-content">
+                {otpVerified ? (
+                  <>
+                    <span className="otp-verify-check" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                    <span>Verified</span>
+                  </>
+                ) : isVerifyingOtp ? (
+                  <>
+                    <span className="otp-verify-spinner" aria-hidden="true" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <span>Verify</span>
+                )}
+              </span>
             </button>
             <button
               onClick={() => {
                 setOtpPopupOpen(false);
                 setOtp(['', '', '', '', '', '', '', '']);
                 setOtpError('');
+                setOtpVerified(false);
               }}
-              disabled={isVerifyingOtp}
+              disabled={isVerifyingOtp || otpVerified}
               style={{
                 padding: '12px 24px',
                 backgroundColor: '#dc3545',

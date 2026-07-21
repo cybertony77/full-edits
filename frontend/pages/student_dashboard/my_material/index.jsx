@@ -6,8 +6,10 @@ import Title from '../../../components/Title';
 import NeedHelp from '../../../components/NeedHelp';
 const PdfViewerModal = dynamic(() => import('../../../components/PdfViewerModal'), { ssr: false });
 import apiClient from '../../../lib/axios';
+import { downloadFileUrl } from '../../../lib/downloadFileUrl';
 import { useProfile } from '../../../lib/api/auth';
 import { clientItemVisibleByCenter } from '../../../lib/studentCenterMatch';
+import { isDownloadingAllowed } from '../../../components/AllowDownloadingRadio';
 
 export default function MyMaterial() {
   const { data: profile } = useProfile();
@@ -75,8 +77,8 @@ export default function MyMaterial() {
                     </div>
                   </div>
                   <div className="homework-buttons" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    {item.pdf_url && (
-                      <button onClick={() => fetch(item.pdf_url).then((r) => r.blob()).then((b) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${item.pdf_file_name || 'file'}.pdf`; a.click(); URL.revokeObjectURL(a.href); })} className="hw-action-btn" style={{ padding: '8px 16px', backgroundColor: '#32b750', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {item.pdf_url && isDownloadingAllowed(item.allow_downloading) && (
+                      <button onClick={() => downloadFileUrl(item.pdf_url, `${item.pdf_file_name || 'file'}.pdf`).catch((err) => alert(err.message || 'Download failed'))} className="hw-action-btn" style={{ padding: '8px 16px', backgroundColor: '#32b750', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Image src="/pdf.svg" alt="PDF" width={18} height={18} />
                         Download PDF
                       </button>

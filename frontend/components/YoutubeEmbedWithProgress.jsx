@@ -10,6 +10,7 @@ export default function YoutubeEmbedWithProgress({
   onThresholdReached,
   thresholdFraction = 0.1,
   watermarkText,
+  hideWatermark = false,
   style,
   className,
 }) {
@@ -127,7 +128,7 @@ export default function YoutubeEmbedWithProgress({
           height: "100%",
         }}
       />
-      <VideoWatermarkOverlay text={watermarkText} />
+      {!hideWatermark ? <VideoWatermarkOverlay text={watermarkText} /> : null}
     </div>
   );
 }

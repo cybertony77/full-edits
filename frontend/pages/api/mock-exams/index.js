@@ -37,6 +37,30 @@ const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'topphysics';
 
 console.log('🔗 Using Mongo URI:', MONGO_URI);
 
+/** Format like "02/13/2026, 7:26 AM" in Egypt (Africa/Cairo) time */
+function formatEgyptDateTime(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  const month = get('month');
+  const day = get('day');
+  const year = get('year');
+  const hour = get('hour');
+  const minute = get('minute');
+  const period = (get('dayPeriod') || '').toUpperCase();
+
+  return `${month}/${day}/${year}, ${hour}:${minute} ${period}`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -131,24 +155,12 @@ export default async function handler(req, res) {
       };
       console.log('🗑️ Clearing mock exam data for student:', student.name);
     } else {
-      // Normal mock exam operation
-      // Format date like "02/13/2026, 7:26 AM" in local timezone
-      const now = new Date();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const yyyy = now.getFullYear();
-      let hrs = now.getHours();
-      const mins = String(now.getMinutes()).padStart(2, '0');
-      const ampm = hrs >= 12 ? 'PM' : 'AM';
-      hrs = hrs % 12;
-      hrs = hrs ? hrs : 12; // 0 should be 12
-      const formattedDate = `${mm}/${dd}/${yyyy}, ${hrs}:${mins} ${ampm}`;
-      
+      // Normal mock exam operation — always Egypt time, not server local/UTC
       examData = {
         examDegree: examDegree,
         outOf: outOf,
         percentage: percentage,
-        date: formattedDate
+        date: formatEgyptDateTime(new Date())
       };
       console.log('💾 Saving mock exam data for student:', student.name);
     }

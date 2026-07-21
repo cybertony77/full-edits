@@ -5,12 +5,14 @@ import dynamic from 'next/dynamic';
 import Title from '../../../components/Title';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../lib/axios';
+import { downloadFileUrl } from '../../../lib/downloadFileUrl';
 import { useProfile } from '../../../lib/api/auth';
 import { useSystemConfig } from '../../../lib/api/system';
 import NeedHelp from '../../../components/NeedHelp';
 import HomeworkPerformanceChart from '../../../components/HomeworkPerformanceChart';
 const PdfViewerModal = dynamic(() => import('../../../components/PdfViewerModal'), { ssr: false });
 import StudentLessonSelect from '../../../components/StudentLessonSelect';
+import { isDownloadingAllowed } from '../../../components/AllowDownloadingRadio';
 import { TextInput, ActionIcon, useMantineTheme } from '@mantine/core';
 import { IconSearch, IconArrowRight } from '@tabler/icons-react';
 import { clientItemVisibleByCenter } from '../../../lib/studentCenterMatch';
@@ -771,8 +773,8 @@ export default function MyHomeworks() {
                     )}
                   </div>
                   <div className="homework-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    {homework.homework_type === 'pdf' && homework.pdf_url && (
-                      <button onClick={(e) => { e.stopPropagation(); fetch(homework.pdf_url).then(r => r.blob()).then(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${homework.pdf_file_name || 'file'}.pdf`; a.click(); URL.revokeObjectURL(a.href); }); }} className="hw-action-btn"
+                    {homework.homework_type === 'pdf' && homework.pdf_url && isDownloadingAllowed(homework.allow_downloading) && (
+                      <button onClick={(e) => { e.stopPropagation(); downloadFileUrl(homework.pdf_url, `${homework.pdf_file_name || 'file'}.pdf`).catch((err) => alert(err.message || 'Download failed')); }} className="hw-action-btn"
                         style={{ padding: '8px 16px', backgroundColor: '#32b750', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                         <Image src="/pdf.svg" alt="PDF" width={18} height={18} style={{ display: 'inline-block' }} />
                         Download PDF

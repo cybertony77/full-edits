@@ -11,6 +11,7 @@ export default function Dashboard() {
   const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
   const isZoomJoinMeetingEnabled = systemConfig?.zoom_join_meeting === true || systemConfig?.zoom_join_meeting === 'true';
   const isPaymentSystemEnabled = systemConfig?.payment_system === true || systemConfig?.payment_system === 'true';
+  const isCertificatesEnabled = systemConfig?.certificates === true || systemConfig?.certificates === 'true';
 
   useEffect(() => {
     // Authentication is now handled by _app.js with HTTP-only cookies
@@ -95,6 +96,14 @@ export default function Dashboard() {
         .dashboard-btn.whatsapp-btn:hover:not(:disabled) {
           background: linear-gradient(90deg, #128C7E 0%, #25D366 100%);
           box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4);
+        }
+        .dashboard-btn.certificate-btn {
+          background: linear-gradient(90deg, #eda739 0%, #e09a2e 100%);
+          box-shadow: 0 4px 16px rgba(237, 167, 57, 0.35);
+        }
+        .dashboard-btn.certificate-btn:hover:not(:disabled) {
+          background: linear-gradient(90deg,rgb(231, 159, 50) 0%,rgb(218, 146, 45) 100%);
+          box-shadow: 0 8px 25px rgba(200, 134, 40, 0.4);
         }
         
         @media (max-width: 768px) {
@@ -224,6 +233,15 @@ export default function Dashboard() {
           <Image src="/history.svg" alt="History" width={20} height={20} />
           History
         </button>
+        {isCertificatesEnabled && (
+          <button
+            className="dashboard-btn certificate-btn"
+            onClick={() => router.push("/dashboard/certificates")}
+          >
+            <Image src="/certificate.svg" alt="Certificates" width={20} height={20} />
+            Certificates
+          </button>
+        )}
         {isZoomJoinMeetingEnabled && (
           <button
             className="dashboard-btn zoom-btn"

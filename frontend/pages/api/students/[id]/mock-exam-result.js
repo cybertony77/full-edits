@@ -33,21 +33,54 @@ const envConfig = loadEnvConfig();
 const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI;
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME;
 
-// Format date as MM/DD/YYYY at hour:minute:second AM/PM
-function formatDate(date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = date.getFullYear();
-  
-  let hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // the hour '0' should be '12'
-  const hoursStr = String(hours).padStart(2, '0');
-  
-  return `${month}/${day}/${year} at ${hoursStr}:${minutes}:${seconds} ${ampm}`;
+/** Format as MM/DD/YYYY at HH:MM:SS AM/PM in Egypt (Africa/Cairo) time */
+function formatDate(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  const month = get('month');
+  const day = get('day');
+  const year = get('year');
+  const hours = get('hour');
+  const minutes = get('minute');
+  const seconds = get('second');
+  const ampm = (get('dayPeriod') || '').toUpperCase();
+
+  return `${month}/${day}/${year} at ${hours}:${minutes}:${seconds} ${ampm}`;
+}
+
+/** Format like "02/13/2026, 7:26 AM" in Egypt time (mockExams.date) */
+function formatEgyptDateTime(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  const month = get('month');
+  const day = get('day');
+  const year = get('year');
+  const hour = get('hour');
+  const minute = get('minute');
+  const period = (get('dayPeriod') || '').toUpperCase();
+
+  return `${month}/${day}/${year}, ${hour}:${minute} ${period}`;
 }
 
 export default async function handler(req, res) {
@@ -128,23 +161,11 @@ export default async function handler(req, res) {
           const totalQuestions = parseInt(resultParts[1], 10) || 0;
           const percentageNum = typeof percentage === 'string' ? parseInt(percentage.toString().replace('%', ''), 10) : percentage;
 
-          // Format date like "02/13/2026, 7:26 AM" in local timezone
-          const now = new Date();
-          const mm = String(now.getMonth() + 1).padStart(2, '0');
-          const dd = String(now.getDate()).padStart(2, '0');
-          const yyyy = now.getFullYear();
-          let hrs = now.getHours();
-          const mins = String(now.getMinutes()).padStart(2, '0');
-          const ampm = hrs >= 12 ? 'PM' : 'AM';
-          hrs = hrs % 12;
-          hrs = hrs ? hrs : 12; // 0 should be 12
-          const formattedDate = `${mm}/${dd}/${yyyy}, ${hrs}:${mins} ${ampm}`;
-
           const examData = {
             examDegree: correctCount,
             outOf: totalQuestions,
             percentage: percentageNum,
-            date: formattedDate
+            date: formatEgyptDateTime(new Date())
           };
 
           // Initialize mockExams array if it doesn't exist

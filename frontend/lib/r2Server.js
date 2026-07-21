@@ -70,7 +70,7 @@ export function assertR2Config(cfg) {
 }
 
 /** Origins allowed to PUT/GET from the browser to R2 (cross-origin). */
-export function buildR2CorsAllowedOrigins(envConfig = {}) {
+export function buildR2CorsAllowedOrigins(envConfig = {}, requestOrigin = '') {
   const fromEnv =
     process.env.R2_CORS_ORIGINS ||
     envConfig.R2_CORS_ORIGINS ||
@@ -88,9 +88,16 @@ export function buildR2CorsAllowedOrigins(envConfig = {}) {
     'http://127.0.0.1:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3001',
+    'http://192.168.1.8:3000',
+    'http://192.168.1.8:3001',
   ];
 
-  return [...new Set([...defaults, ...extra, ...(domain ? [domain] : [])])];
+  const origin =
+    typeof requestOrigin === 'string' && /^https?:\/\//i.test(requestOrigin.trim())
+      ? requestOrigin.trim().replace(/\/+$/, '')
+      : '';
+
+  return [...new Set([...defaults, ...extra, ...(domain ? [domain] : []), ...(origin ? [origin] : [])])];
 }
 
 function createR2S3ClientPlain(cfg) {
@@ -108,12 +115,16 @@ function createR2S3ClientPlain(cfg) {
 
 /**
  * Ensures bucket CORS allows browser → R2 PUT (and preflight OPTIONS).
- * Runs once per Node process. Call from r2-signed-url so uploads work without POST /r2-setup-cors.
+ * Re-applies when the request origin is not yet in the allow-list.
  * If this fails (IAM), run POST /api/upload/r2-setup-cors or set CORS in Cloudflare dashboard.
  */
-export async function ensureR2CorsForBrowserUploads(cfg) {
-  const allowedOrigins = buildR2CorsAllowedOrigins(cfg.envConfig || {});
-  if (globalThis.__r2CorsEnsured === true) {
+export async function ensureR2CorsForBrowserUploads(cfg, requestOrigin = '') {
+  const allowedOrigins = buildR2CorsAllowedOrigins(cfg.envConfig || {}, requestOrigin);
+  const originOk =
+    !requestOrigin ||
+    allowedOrigins.some((o) => o === requestOrigin || o === '*');
+
+  if (globalThis.__r2CorsEnsured === true && originOk && globalThis.__r2CorsOriginsKey === allowedOrigins.join('|')) {
     return { ok: true, skipped: true, allowedOrigins };
   }
 
@@ -136,6 +147,7 @@ export async function ensureR2CorsForBrowserUploads(cfg) {
     });
     await client.send(command);
     globalThis.__r2CorsEnsured = true;
+    globalThis.__r2CorsOriginsKey = allowedOrigins.join('|');
     return { ok: true, skipped: false, allowedOrigins };
   } catch (e) {
     console.warn('[R2] ensureR2CorsForBrowserUploads:', e.message);

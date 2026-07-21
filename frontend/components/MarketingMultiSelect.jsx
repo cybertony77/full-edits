@@ -1,19 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
 
-const triggerStyle = (open, hasValue) => ({
+const triggerStyle = (open, hasValue, onDark) => ({
   padding: '14px 16px',
-  border: open ? '2px solid #1FA8DC' : '2px solid #e9ecef',
-  borderRadius: '10px',
+  border: open
+    ? '2px solid #1FA8DC'
+    : onDark
+      ? '2px solid rgba(148, 163, 184, 0.35)'
+      : '2px solid #e9ecef',
+  borderRadius: '12px',
   backgroundColor: hasValue ? '#f0f8ff' : '#ffffff',
   cursor: 'pointer',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   fontSize: '1rem',
-  color: hasValue ? '#1FA8DC' : '#adb5bd',
+  color: hasValue ? '#1FA8DC' : '#94a3b8',
   fontWeight: hasValue ? 600 : 400,
   transition: 'all 0.3s ease',
-  boxShadow: open ? '0 0 0 3px rgba(31, 168, 220, 0.1)' : 'none',
+  boxShadow: open
+    ? '0 0 0 3px rgba(31, 168, 220, 0.14)'
+    : onDark
+      ? '0 8px 20px rgba(15, 23, 42, 0.18)'
+      : 'none',
   minHeight: 48,
 });
 
@@ -43,6 +51,7 @@ export default function MarketingMultiSelect({
   onChange,
   placeholder = 'Select…',
   onDark = false,
+  showChips = false,
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -77,6 +86,7 @@ export default function MarketingMultiSelect({
             fontWeight: 600,
             color: onDark ? '#e2e8f0' : '#495057',
             fontSize: '0.95rem',
+            textAlign: 'center',
           }}
         >
           {label}
@@ -85,7 +95,7 @@ export default function MarketingMultiSelect({
       <div
         role="button"
         tabIndex={0}
-        style={triggerStyle(open, selectedLabels.length > 0)}
+        style={triggerStyle(open, selectedLabels.length > 0, onDark)}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -137,7 +147,7 @@ export default function MarketingMultiSelect({
           )}
         </div>
       )}
-      {selectedLabels.length > 0 && (
+      {showChips && selectedLabels.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
           {options
             .filter((o) => selected.has(o.value))

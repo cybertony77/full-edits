@@ -12,6 +12,16 @@ import {
  * Optional env: R2_CORS_ORIGINS = comma-separated origins
  */
 export default async function handler(req, res) {
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin === '*' ? '*' : origin);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -20,7 +30,8 @@ export default async function handler(req, res) {
     const cfg = getR2Config();
     assertR2Config(cfg);
 
-    const allowedOrigins = buildR2CorsAllowedOrigins(cfg.envConfig || {});
+    const allowedOrigins = buildR2CorsAllowedOrigins(cfg.envConfig || {}, req.headers.origin || '');
+    globalThis.__r2CorsEnsured = false;
 
     const s3Client = new S3Client({
       region: 'auto',

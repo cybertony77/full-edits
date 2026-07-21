@@ -1,27 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../axios';
 
-// Query keys for system config
 export const systemKeys = {
   all: ['system'],
-  config: () => [...systemKeys.all, 'config'],
+  config: () => [...systemKeys.all, 'config', 'grades-v1'],
 };
 
-// API functions
 const systemApi = {
-  // Get system config
   getConfig: async () => {
     const response = await apiClient.get('/api/system/config');
     return response.data;
   },
 };
 
-// React Query hooks
 export const useSystemConfig = (options = {}) => {
   return useQuery({
     queryKey: systemKeys.config(),
     queryFn: () => systemApi.getConfig(),
-    staleTime: 60 * 60 * 1000, // 1 hour (system config doesn't change often)
+    // Override _app.js defaults (staleTime: Infinity, refetchOnMount: false)
+    // so GRADES_OR_COURSES updates from env.config are picked up.
+    staleTime: 0,
+    refetchOnMount: 'always',
     retry: 1,
     ...options,
   });

@@ -5,17 +5,60 @@ import { getApiBaseUrl } from '../config';
 const apiClient = axios.create({
   baseURL: getApiBaseUrl(),
   withCredentials: true, // This ensures cookies are sent with requests
-  // 5 minutes covers slow networks uploading large PDFs/images.
-  // Without an explicit timeout, axios defaults to 0 (infinite) so stuck
-  // sockets would hang forever instead of failing fast.
-  timeout: 5 * 60 * 1000,
-  // Allow large request/response bodies (default is 10MB / 2MB in axios).
-  maxContentLength: 50 * 1024 * 1024,
-  maxBodyLength: 50 * 1024 * 1024,
+  // 30 minutes covers slow networks uploading large PDFs (up to 200 MB).
+  timeout: 30 * 60 * 1000,
+  // Allow large request/response bodies when falling back to API base64 uploads.
+  maxContentLength: 300 * 1024 * 1024,
+  maxBodyLength: 300 * 1024 * 1024,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+let handlingUnauthorized = false;
+
+function isPublicBrowserPath(pathname) {
+  const publicPaths = [
+    '/',
+    '/sign-up',
+    '/forgot_password',
+    '/welcome',
+    '/contact_developer',
+    '/contact_assistants',
+    '/404',
+    '/student_not_found',
+  ];
+  return publicPaths.includes(pathname);
+}
+
+function shouldSkipUnauthorizedRedirect(url = '') {
+  return (
+    url.includes('/api/auth/login') ||
+    url.includes('/api/auth/otp') ||
+    url.includes('/api/auth/forgot') ||
+    url.includes('/api/auth/reset') ||
+    url.includes('/api/auth/signup') ||
+    url.includes('/api/auth/register') ||
+    url.includes('/api/auth/me')
+  );
+}
+
+async function redirectToLoginOnUnauthorized() {
+  if (typeof window === 'undefined' || handlingUnauthorized) return;
+  if (isPublicBrowserPath(window.location.pathname)) return;
+
+  handlingUnauthorized = true;
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (_) {
+    // Ignore logout failures — still send the user to login
+  }
+
+  window.location.assign('/');
+}
 
 // Request interceptor for debugging
 apiClient.interceptors.request.use(
@@ -34,7 +77,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for debugging
+// Response interceptor — handle expired/missing sessions without crashing the UI
 apiClient.interceptors.response.use(
   (response) => {
     console.log('✅ API Response:', {
@@ -45,9 +88,21 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+
+    if (status === 401) {
+      if (!shouldSkipUnauthorizedRedirect(url)) {
+        redirectToLoginOnUnauthorized();
+      }
+      // Soft log — avoid console.error(Error) which triggers Next.js overlay in dev
+      console.warn('Session expired or unauthorized:', url);
+      return Promise.reject(error);
+    }
+
     console.error('❌ API Error:', {
-      status: error.response?.status,
-      url: error.config?.url,
+      status,
+      url,
       message: error.message,
       data: error.response?.data,
     });
@@ -56,4 +111,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-

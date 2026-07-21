@@ -204,7 +204,7 @@ export default function Custom404() {
           }
           
           .btn-primary {
-            background: linear-gradient(90deg,rgba(158, 158, 158, 1) 0%, rgba(99, 191, 191, 1) 50%, rgba(8, 156, 170, 1) 100%);
+            background: #00bdcf;
             color: white;
             box-shadow: 0 8px 25px rgba(31, 168, 220, 0.4);
           }

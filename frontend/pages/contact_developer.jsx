@@ -686,7 +686,7 @@ export default function ContactDeveloperPage() {
               border: "2px solid rgba(254, 185, 84, 0.2)",
               textAlign: "center"
             }}>
-              🚀 Senior Software Developer
+              🚀 Business Owner & Software Developer
             </div>
           </div>
 

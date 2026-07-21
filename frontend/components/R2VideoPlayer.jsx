@@ -12,6 +12,7 @@ export default function R2VideoPlayer({
   onComplete,
   onMilestonePercent,
   watermarkText,
+  hideWatermark = false,
 }) {
   const playerContainerRef = useRef(null);
   const watermarkRef = useRef(null);
@@ -355,38 +356,40 @@ export default function R2VideoPlayer({
         }}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          zIndex: 4,
-          overflow: "hidden",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-        }}
-        aria-hidden
-      >
-        <span
-          ref={watermarkRef}
+      {!hideWatermark ? (
+        <div
           style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            color: "rgba(255,255,255,0.30)",
-            fontSize: "clamp(11px, 1.4vw, 16px)",
-            letterSpacing: "1.2px",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            textShadow: "0 1px 2px rgba(0,0,0,0.45)",
-            transform: `translate3d(${watermarkPos.x}px, ${watermarkPos.y}px, 0)`,
-            whiteSpace: "nowrap",
-            mixBlendMode: "screen",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 4,
+            overflow: "hidden",
+            userSelect: "none",
+            WebkitUserSelect: "none",
           }}
+          aria-hidden
         >
-          {resolvedWatermarkText}
-        </span>
-      </div>
+          <span
+            ref={watermarkRef}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              color: "rgba(255,255,255,0.30)",
+              fontSize: "clamp(11px, 1.4vw, 16px)",
+              letterSpacing: "1.2px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              textShadow: "0 1px 2px rgba(0,0,0,0.45)",
+              transform: `translate3d(${watermarkPos.x}px, ${watermarkPos.y}px, 0)`,
+              whiteSpace: "nowrap",
+              mixBlendMode: "screen",
+            }}
+          >
+            {resolvedWatermarkText}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

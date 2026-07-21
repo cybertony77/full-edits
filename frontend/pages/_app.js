@@ -4,7 +4,7 @@ import '@mantine/carousel/styles.css';
 import { MantineProvider } from '@mantine/core';
 import NextJsApp from 'next/app';
 import { useRouter } from "next/router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Header from "../components/Header";
@@ -14,6 +14,36 @@ import apiClient from "../lib/axios";
 import Image from "next/image";
 import ErrorBoundary from "../components/ErrorBoundary";
 import CustomHeader from "../components/publicHeader";
+import {
+  DEFAULT_SYSTEM_BACKGROUND,
+  loadSystemBackgroundFromEnv,
+} from "../lib/systemColors";
+
+const SYSTEM_BG_STORAGE_KEY = 'system-page-bg';
+
+function readCachedSystemBackground() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage.getItem(SYSTEM_BG_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function cacheSystemBackground(value) {
+  if (typeof window === 'undefined' || !value) return;
+  try {
+    window.sessionStorage.setItem(SYSTEM_BG_STORAGE_KEY, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+function applySystemBackground(value) {
+  if (typeof document === 'undefined' || !value) return;
+  document.documentElement.style.setProperty('--system-page-bg', value);
+  cacheSystemBackground(value);
+}
 
 // PWA Service Worker Registration handled by next-pwa
 
@@ -48,7 +78,7 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
     '/sign-up',
     '/contact_developer',
     '/contact_assistants',
-    '/marketing_page',
+    '/welcome',
     '/forgot_password',
     '/404',
     '/student_not_found'
@@ -129,66 +159,71 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       }
     };
 
-    // Improved DevTools detection - uses requestAnimationFrame for efficient continuous checking
-    // This catches devtools opened via menu (3 dots > More tools > Developer tools)
+    // DevTools detection via outer/inner size delta from a learned baseline.
+    // Absolute thresholds (e.g. heightDiff > 160) false-trigger from normal browser
+    // chrome (tabs, address bar, bookmarks). Console timing / getter tricks are also flaky.
     let rafId = null;
     let lastCheck = 0;
-    const CHECK_INTERVAL = 500; // Check every 500ms (not every frame to reduce overhead)
+    const CHECK_INTERVAL = 600;
     let detectionCount = 0;
-    const REQUIRED_DETECTIONS = 2; // Require 2 consecutive detections (reduced for faster detection)
+    const REQUIRED_DETECTIONS = 3;
+    const OPEN_DELTA = 140; // docked DevTools usually adds well above this
+    const CLOSE_DELTA = 80;
+    let baselineWidthGap = null;
+    let baselineHeightGap = null;
+    let baselineSamples = 0;
+    const BASELINE_SAMPLES_NEEDED = 4;
+    let clearCount = 0;
+
+    const readGaps = () => ({
+      widthGap: Math.max(0, window.outerWidth - window.innerWidth),
+      heightGap: Math.max(0, window.outerHeight - window.innerHeight),
+    });
 
     const detectDevTools = () => {
-      // Method 1: Check window size difference
-      const widthDiff = window.outerWidth - window.innerWidth;
-      const heightDiff = window.outerHeight - window.innerHeight;
-      
-      // Method 2: Check console timing
-      const consoleStart = performance.now();
-      console.log('%c', '');
-      const consoleEnd = performance.now();
-      const consoleTiming = consoleEnd - consoleStart;
-      
-      // Method 3: Use devtools detection via toString
-      let devtoolsOpen = false;
-      try {
-        const element = new window.Image();
-        Object.defineProperty(element, 'id', {
-          get: function() {
-            devtoolsOpen = true;
-          }
-        });
-        // This triggers the getter if console is open
-        requestAnimationFrame(() => {
-          console.log(element);
-          console.clear();
-        });
-      } catch (e) {
-        // Ignore
+      const { widthGap, heightGap } = readGaps();
+
+      // Learn normal browser chrome while DevTools is assumed closed
+      if (baselineWidthGap === null || baselineSamples < BASELINE_SAMPLES_NEEDED) {
+        baselineWidthGap =
+          baselineWidthGap === null ? widthGap : Math.min(baselineWidthGap, widthGap);
+        baselineHeightGap =
+          baselineHeightGap === null ? heightGap : Math.min(baselineHeightGap, heightGap);
+        baselineSamples += 1;
+        detectionCount = 0;
+        clearCount = 0;
+        setDevToolsDetected(false);
+        return;
       }
-      
-      // Check multiple conditions - any one can indicate devtools
-      // Lower thresholds to catch menu-opened devtools faster
-      const hasDimensionDiff = widthDiff > 160 || heightDiff > 160;
-      const hasSlowConsole = consoleTiming > 1.5; // Slightly lower threshold
-      const hasDevtoolsGetter = devtoolsOpen;
-      
-      // If any method detects devtools, increment counter
-      if (hasDimensionDiff || hasSlowConsole || hasDevtoolsGetter) {
-        detectionCount++;
+
+      const widthIncrease = widthGap - baselineWidthGap;
+      const heightIncrease = heightGap - baselineHeightGap;
+      const looksOpen = widthIncrease > OPEN_DELTA || heightIncrease > OPEN_DELTA;
+      const looksClosed = widthIncrease < CLOSE_DELTA && heightIncrease < CLOSE_DELTA;
+
+      if (looksOpen) {
+        clearCount = 0;
+        detectionCount += 1;
         if (detectionCount >= REQUIRED_DETECTIONS) {
           setDevToolsDetected(true);
-          detectionCount = REQUIRED_DETECTIONS; // Keep at max to maintain detection
+          detectionCount = REQUIRED_DETECTIONS;
         }
-      } else {
-        // Reset counter if all methods fail
-        if (detectionCount > 0) {
-          detectionCount = 0;
+        return;
+      }
+
+      if (looksClosed) {
+        detectionCount = 0;
+        clearCount += 1;
+        // Require a few clear samples before unlocking (avoids flicker)
+        if (clearCount >= 2) {
+          setDevToolsDetected(false);
+          // Gently refresh baseline so UI chrome changes (bookmarks bar, zoom) don't stick
+          baselineWidthGap = Math.min(baselineWidthGap, widthGap);
+          baselineHeightGap = Math.min(baselineHeightGap, heightGap);
         }
-        setDevToolsDetected(false);
       }
     };
 
-    // Continuous detection using requestAnimationFrame (more efficient than setInterval)
     const continuousCheck = (timestamp) => {
       if (timestamp - lastCheck >= CHECK_INTERVAL) {
         detectDevTools();
@@ -196,48 +231,33 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       }
       rafId = requestAnimationFrame(continuousCheck);
     };
-    
-    // Start continuous checking
+
     rafId = requestAnimationFrame(continuousCheck);
 
-    // Add event listeners with capture phase
     document.addEventListener('contextmenu', handleContextMenu, true);
     document.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('contextmenu', handleContextMenu, true);
     window.addEventListener('keydown', handleKeyDown, true);
 
-    // Listen for window resize (immediate check)
     const handleResize = () => {
       detectDevTools();
     };
     window.addEventListener('resize', handleResize);
 
-    // Detect when keyboard shortcuts are attempted
     const handleKeyDownDetection = (e) => {
-      if (e.key === 'F12' || e.keyCode === 123 ||
-          (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) ||
-          (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) ||
-          (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67))) {
-        // Check immediately and after delay
+      if (
+        e.key === 'F12' ||
+        e.keyCode === 123 ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67))
+      ) {
         detectDevTools();
-        setTimeout(() => {
-          detectDevTools();
-        }, 300);
+        setTimeout(() => detectDevTools(), 400);
       }
     };
     window.addEventListener('keydown', handleKeyDownDetection);
 
-    // Also check on focus/blur (devtools might affect window focus)
-    const handleFocus = () => {
-      setTimeout(() => detectDevTools(), 100);
-    };
-    const handleBlur = () => {
-      setTimeout(() => detectDevTools(), 100);
-    };
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
-
-    // Cleanup
     return () => {
       if (rafId) {
         cancelAnimationFrame(rafId);
@@ -248,8 +268,6 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDownDetection);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
     };
   }, [isDeveloper, devtoolsBlockEnabled, isMobile]);
 
@@ -277,7 +295,7 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       '/sign-up',
       '/contact_developer',
       '/contact_assistants',
-      '/marketing_page',
+      '/welcome',
       '/forgot_password',
       '/404',
       '/student_not_found'
@@ -453,7 +471,7 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       '/sign-up',
       '/contact_developer',
       '/contact_assistants',
-      '/marketing_page',
+      '/welcome',
       '/forgot_password',
       '/404',
       '/student_not_found'
@@ -672,7 +690,8 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
 }
 
 // Preloader Component
-function Preloader() {
+function Preloader({ background }) {
+  const bg = background || DEFAULT_SYSTEM_BACKGROUND;
   return (
     <div style={{
       position: 'fixed',
@@ -680,7 +699,7 @@ function Preloader() {
       left: 0,
       width: '100%',
       height: '100%',
-      background: 'linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);',
+      background: bg,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -849,7 +868,42 @@ const isStudentDashboardRoute = (path) => {
   return path.startsWith('/student_dashboard');
 };
 
-export default function App({ Component, pageProps }) {
+export default function App({ Component, pageProps, systemBackground }) {
+  const initialBg = systemBackground || DEFAULT_SYSTEM_BACKGROUND;
+  const [pageBg, setPageBg] = useState(initialBg);
+
+  // Sync when getInitialProps provides a new value (SSR / client navigation)
+  useLayoutEffect(() => {
+    if (systemBackground && systemBackground !== pageBg) {
+      setPageBg(systemBackground);
+    }
+    applySystemBackground(systemBackground || pageBg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [systemBackground]);
+
+  // Always confirm against env via API so we never stick on the hardcoded default
+  useEffect(() => {
+    let cancelled = false;
+    const ensureEnvBackground = async () => {
+      try {
+        const res = await fetch('/api/system/config');
+        if (!res.ok) return;
+        const data = await res.json();
+        const nextBg = data?.page_background;
+        if (!cancelled && nextBg) {
+          setPageBg(nextBg);
+          applySystemBackground(nextBg);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    ensureEnvBackground();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Create a new QueryClient instance
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
@@ -887,7 +941,7 @@ export default function App({ Component, pageProps }) {
   const [isSubscriptionEnabled, setIsSubscriptionEnabled] = useState(true); // Default to true
 
   // Define public pages using useMemo to prevent recreation on every render
-  const publicPages = useMemo(() => ["/", "/sign-up", "/contact_developer", "/contact_assistants", "/marketing_page", "/404", "/forgot_password", "/student_not_found", "/dashboard/student_info"], []);
+  const publicPages = useMemo(() => ["/", "/sign-up", "/contact_developer", "/contact_assistants", "/welcome", "/404", "/forgot_password", "/student_not_found", "/dashboard/student_info"], []);
   
   // Define pages that should never show header/footer (even if authenticated)
   const noHeaderFooterPages = useMemo(() => ["/", "/sign-up", "/student_dashboard/my_homeworks/start", "/student_dashboard/my_quizzes/start"], []);
@@ -1450,7 +1504,7 @@ export default function App({ Component, pageProps }) {
 
   // Show loading while checking authentication, subscription, or during route changes
   if (isLoading || (isSubscriptionEnabled && isAuthenticated && isLoadingSubscription && !publicPages.includes(router.pathname)) || isRouteChanging) {
-    return <Preloader />;
+    return <Preloader background={pageBg} />;
   }
 
   // Show redirect to login preloader if redirecting due to unauthorized access
@@ -1465,7 +1519,7 @@ export default function App({ Component, pageProps }) {
 
   // For unauthorized users on protected pages, show loading (will redirect)
   if (!isAuthenticated && !publicPages.includes(router.pathname)) {
-    return <Preloader />;
+    return <Preloader background={pageBg} />;
   }
 
   // Only show Header/Footer if user is authenticated
@@ -1473,7 +1527,7 @@ export default function App({ Component, pageProps }) {
     return (
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
-          <MantineProvider>
+          <MantineProvider forceColorScheme="light">
             <DevToolsProtection userRole={userRole} devtoolsBlockEnabled={devtoolsBlockEnabled} />
             {router.pathname === "/dashboard/student_info" ? (
               <div
@@ -1489,7 +1543,7 @@ export default function App({ Component, pageProps }) {
                 </div>
                 <Footer />
               </div>
-            ) : router.pathname === "/marketing_page" ? (
+            ) : router.pathname === "/welcome" ? (
               <div
                 style={{
                   display: "flex",
@@ -1510,52 +1564,6 @@ export default function App({ Component, pageProps }) {
     );
   }
 
-  // Marketing page:
-  // - visitors/students use the marketing-page header
-  // - assistants/admins/developers use the main app Header
-  const usesMainHeaderOnMarketingPage =
-    userRole === 'assistant' || userRole === 'admin' || userRole === 'developer';
-  if (router.pathname === '/marketing_page' && !usesMainHeaderOnMarketingPage) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          <MantineProvider>
-            <DevToolsProtection userRole={userRole} devtoolsBlockEnabled={devtoolsBlockEnabled} />
-            {showExpiryWarning && (
-              <div
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#ff6b6b',
-                  color: 'white',
-                  padding: '10px',
-                  textAlign: 'center',
-                  zIndex: 9999,
-                  fontWeight: 'bold',
-                }}
-              >
-                ⚠️ Your session will expire soon. Please save your work and log in again.
-              </div>
-            )}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: '100vh',
-              }}
-            >
-              <Component {...pageProps} />
-              <Footer />
-            </div>
-            <ReactQueryDevtools initialIsOpen={false} />
-          </MantineProvider>
-        </ErrorBoundary>
-      </QueryClientProvider>
-    );
-  }
-
   // Check if current page should not show header/footer
   const shouldHideHeaderFooter = noHeaderFooterPages.includes(router.pathname);
   
@@ -1564,7 +1572,7 @@ export default function App({ Component, pageProps }) {
     return (
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
-          <MantineProvider>
+          <MantineProvider forceColorScheme="light">
             <DevToolsProtection userRole={userRole} devtoolsBlockEnabled={devtoolsBlockEnabled} />
             <Component {...pageProps} />
             <ReactQueryDevtools initialIsOpen={false} />
@@ -1577,7 +1585,7 @@ export default function App({ Component, pageProps }) {
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        <MantineProvider>
+        <MantineProvider forceColorScheme="light">
           <DevToolsProtection userRole={userRole} devtoolsBlockEnabled={devtoolsBlockEnabled} />
           <div className="page-container" style={{ 
             display: 'flex', 
@@ -1718,5 +1726,34 @@ export default function App({ Component, pageProps }) {
 // "NextRouter was not mounted" while prerendering pages.
 App.getInitialProps = async (appContext) => {
   const appProps = await NextJsApp.getInitialProps(appContext);
-  return { ...appProps };
+  let systemBackground = DEFAULT_SYSTEM_BACKGROUND;
+
+  if (typeof window === 'undefined') {
+    try {
+      systemBackground = loadSystemBackgroundFromEnv();
+    } catch {
+      /* keep default */
+    }
+  } else {
+    // Client navigations cannot read env.config — use cache or API (never wipe SSR color with hardcoded default)
+    const cached = readCachedSystemBackground();
+    if (cached) {
+      systemBackground = cached;
+    } else {
+      try {
+        const res = await fetch('/api/system/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.page_background) {
+            systemBackground = data.page_background;
+            cacheSystemBackground(systemBackground);
+          }
+        }
+      } catch {
+        /* keep default only as last resort */
+      }
+    }
+  }
+
+  return { ...appProps, systemBackground };
 };

@@ -290,6 +290,20 @@ export const useToggleAttendance = () => {
   return useMutation({
     mutationFn: ({ id, attendanceData }) =>
       studentsApi.toggleAttendance(id, attendanceData, ),
+    onSuccess: (result, { id }) => {
+      if (result?.payment) {
+        queryClient.setQueryData(studentKeys.detail(id), (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            payment: {
+              ...(old.payment || {}),
+              ...result.payment,
+            },
+          };
+        });
+      }
+    },
     onSettled: async (_, __, { id }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
@@ -427,6 +441,22 @@ export const useSavePayment = () => {
 
   return useMutation({
     mutationFn: (paymentData) => studentsApi.savePayment(paymentData),
+    onSuccess: (result, { studentId }) => {
+      const payment = result?.data;
+      if (!studentId || !payment) return;
+      queryClient.setQueryData(studentKeys.detail(studentId), (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          payment: {
+            numberOfSessions: payment.numberOfSessions ?? null,
+            cost: payment.cost ?? null,
+            paymentComment: payment.paymentComment ?? null,
+            date: payment.date ?? null,
+          },
+        };
+      });
+    },
     onSettled: async (_, __, { studentId }) => {
       // Invalidate the specific student's data
       queryClient.invalidateQueries({ queryKey: studentKeys.detail(studentId) });

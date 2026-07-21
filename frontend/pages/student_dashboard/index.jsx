@@ -11,6 +11,104 @@ import apiClient from '../../lib/axios';
 function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, setShowMessagePopup, messagePopupContent, groups, handleJoinGroup }) {
   return (
     <>
+      <style jsx global>{`
+        .whatsapp-groups-popup {
+          box-sizing: border-box;
+        }
+        .whatsapp-groups-popup *,
+        .whatsapp-groups-popup *::before,
+        .whatsapp-groups-popup *::after {
+          box-sizing: border-box;
+        }
+        .whatsapp-groups-popup-content {
+          min-width: 0;
+          overflow-x: hidden;
+        }
+        .whatsapp-groups-popup-header {
+          gap: 12px;
+          min-width: 0;
+        }
+        .whatsapp-groups-popup-title {
+          flex: 1;
+          min-width: 0;
+          font-size: clamp(1.05rem, 4.2vw, 1.5rem) !important;
+          line-height: 1.3;
+          word-break: break-word;
+        }
+        .whatsapp-groups-popup-title img {
+          flex-shrink: 0;
+        }
+        .whatsapp-group-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+          align-items: center;
+          column-gap: 12px;
+          min-width: 0;
+          width: 100%;
+          overflow: hidden;
+        }
+        .whatsapp-group-row-title {
+          min-width: 0;
+          justify-self: start;
+          text-align: left;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        .whatsapp-group-row-arrow {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          justify-self: center;
+          flex-shrink: 0;
+        }
+        .whatsapp-group-row-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          justify-self: end;
+          min-width: 0;
+        }
+        .whatsapp-group-join-btn {
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        @media (max-width: 480px) {
+          .whatsapp-groups-popup {
+            padding: 12px !important;
+            align-items: center !important;
+          }
+          .whatsapp-groups-popup-content {
+            max-width: 100% !important;
+            width: 100% !important;
+            max-height: 85vh !important;
+            padding: 16px 14px !important;
+            border-radius: 16px !important;
+          }
+          .whatsapp-group-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 10px;
+          }
+          .whatsapp-group-row-title {
+            flex: 1 1 100%;
+            justify-self: stretch;
+            text-align: center;
+          }
+          .whatsapp-group-row-actions {
+            width: 100%;
+            justify-content: flex-end;
+            justify-self: stretch;
+          }
+          .whatsapp-group-row-arrow {
+            display: none !important;
+          }
+          .whatsapp-group-join-btn {
+            width: 100%;
+            text-align: center;
+          }
+        }
+      `}</style>
 
       {/* Multiple Groups Popup */}
       {showPopup && groups && groups.length > 1 && (
@@ -34,7 +132,7 @@ function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, se
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: '20px'
+            padding: '16px'
           }}
         >
           <div 
@@ -43,37 +141,44 @@ function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, se
             style={{
               background: '#fff',
               borderRadius: '16px',
-              padding: '32px 24px',
+              padding: '24px 18px',
               boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
               maxWidth: '500px',
               width: '100%',
               maxHeight: '90vh',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              overflowX: 'hidden'
             }}
           >
-            <div style={{
+            <div
+              className="whatsapp-groups-popup-header"
+              style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '24px',
-              paddingBottom: '16px',
+              marginBottom: '20px',
+              paddingBottom: '14px',
               borderBottom: '2px solid #e9ecef'
-            }}>
-              <h3 style={{
+            }}
+            >
+              <h3
+                className="whatsapp-groups-popup-title"
+                style={{
                 margin: 0,
                 color: '#333',
-                fontSize: '1.5rem',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
-              }}>
-                <Image src="/whatsapp2.svg" alt="WhatsApp" width={30} height={30} />
-                Join WhatsApp Group
+              }}
+              >
+                <Image src="/whatsapp2.svg" alt="WhatsApp" width={28} height={28} />
+                Join WhatsApp Groups
               </h3>
               <button
                 type="button"
                 onClick={() => setShowPopup(false)}
+                aria-label="Close"
                 style={{
                   background: 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)',
                   color: 'white',
@@ -111,20 +216,19 @@ function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, se
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px'
+              gap: '12px',
+              minWidth: 0,
+              width: '100%'
             }}>
               {groups.map((group) => (
                 <div
                   key={group._id}
+                  className="whatsapp-group-row"
                   style={{
                     background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%)',
                     border: '2px solid rgba(37, 211, 102, 0.2)',
                     borderRadius: '12px',
-                    padding: '16px 20px',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: '100px',
+                    padding: '14px 16px',
                     transition: 'all 0.3s ease',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
@@ -139,24 +243,23 @@ function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, se
                     e.currentTarget.style.borderColor = 'rgba(37, 211, 102, 0.2)';
                   }}
                 >
-                  <h4 style={{
+                  <h4
+                    className="whatsapp-group-row-title"
+                    style={{
                     margin: 0,
                     color: '#333',
                     fontSize: '1rem',
-                    fontWeight: '600',
-                    flex: 1
-                  }}>
+                    fontWeight: '600'
+                  }}
+                  >
                     {group.title}
                   </h4>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '130px',
-                    flex: '0 0 auto'
-                  }}>
-                    <Image src="/arrow-right.svg" alt="Arrow" width={20} height={20} style={{ flexShrink: 0 }} />
+                  <span className="whatsapp-group-row-arrow">
+                    <Image src="/arrow-right.svg" alt="" width={18} height={18} />
+                  </span>
+                  <div className="whatsapp-group-row-actions">
                     <button
+                      className="whatsapp-group-join-btn"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleJoinGroup(group.link);
@@ -166,7 +269,7 @@ function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, se
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
-                        padding: '10px 20px',
+                        padding: '10px 18px',
                         fontWeight: '600',
                         fontSize: '0.9rem',
                         cursor: 'pointer',
@@ -332,6 +435,7 @@ export default function StudentDashboard() {
   const isHomeworksVideosEnabled = systemConfig?.homeworks_videos === true || systemConfig?.homeworks_videos === 'true';
   const isHomeworksEnabled = systemConfig?.homeworks === true || systemConfig?.homeworks === 'true';
   const isMaterialEnabled = systemConfig?.material === true || systemConfig?.material === 'true';
+  const isCertificatesEnabled = systemConfig?.certificates === true || systemConfig?.certificates === 'true';
   const isQuizzesEnabled = systemConfig?.quizzes === true || systemConfig?.quizzes === 'true';
   const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
   const isZoomJoinMeetingEnabled = systemConfig?.zoom_join_meeting === true || systemConfig?.zoom_join_meeting === 'true';
@@ -339,7 +443,7 @@ export default function StudentDashboard() {
   
   // Get student ID from profile and fetch student data
   const studentId = profile?.id ? profile.id.toString() : null;
-  const { data: studentData, isLoading: studentLoading } = useStudent(studentId, { 
+  const { data: studentData, isLoading: studentLoading, refetch: refetchStudent } = useStudent(studentId, { 
     enabled: !!studentId,
     refetchInterval: 10000, // Auto-refetch every 10 seconds for live sessions/score updates
     refetchIntervalInBackground: true, // Continue refetching even when tab is in background
@@ -414,7 +518,12 @@ export default function StudentDashboard() {
         const response = await apiClient.get('/api/join-zoom-meeting/student');
         setZoomMeeting(response.data.meeting || null);
       } catch (error) {
-        console.error('Error checking zoom meeting:', error);
+        // Expired/missing token is handled by axios interceptor (redirect to login)
+        if (error?.response?.status === 401) {
+          setZoomMeeting(null);
+          return;
+        }
+        console.warn('Error checking zoom meeting:', error?.message || 'unknown');
         setZoomMeeting(null);
       }
     };
@@ -426,20 +535,33 @@ export default function StudentDashboard() {
     return () => clearInterval(interval);
   }, [studentId]);
 
-  const handleJoinZoomMeeting = () => {
+  const handleJoinZoomMeeting = async () => {
     if (!zoomMeeting || !zoomMeeting.link) return;
 
     // Open the link immediately in the synchronous click context
     // so the browser doesn't block the popup
     window.open(zoomMeeting.link, '_blank', 'noopener,noreferrer');
 
-    // Record attendance asynchronously (fire-and-forget)
+    // Record attendance (deducts 1 session when payment system is enabled)
     if (zoomMeeting.lesson && studentId) {
-      apiClient.post('/api/join-zoom-meeting/attend', {
-        lesson: zoomMeeting.lesson
-      }).catch(err => {
+      try {
+        await apiClient.post('/api/join-zoom-meeting/attend', {
+          lesson: zoomMeeting.lesson
+        });
+        if (refetchStudent) {
+          await refetchStudent();
+        }
+      } catch (err) {
         console.error('Failed to record zoom attendance:', err);
-      });
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          'Failed to record attendance';
+        // Still opened Zoom; surface payment/session errors if any
+        if (err?.response?.status === 400) {
+          alert(msg);
+        }
+      }
     }
   };
 
@@ -747,6 +869,14 @@ export default function StudentDashboard() {
           .dashboard-btn.zoom-btn:hover:not(:disabled) {
             background: linear-gradient(90deg, #1a6fdb 0%, #2d8cff 100%);
             box-shadow: 0 8px 25px rgba(45, 140, 255, 0.4);
+          }
+          .dashboard-btn.certificate-btn {
+            background: linear-gradient(90deg, #eda739 0%, #e09a2e 100%);
+            box-shadow: 0 4px 16px rgba(237, 167, 57, 0.35);
+          }
+          .dashboard-btn.certificate-btn:hover:not(:disabled) {
+            background: linear-gradient(90deg,rgb(231, 159, 50) 0%,rgb(218, 146, 45) 100%);
+            box-shadow: 0 8px 25px rgba(200, 134, 40, 0.4);
           }
           
           @media (max-width: 768px) {
@@ -1218,6 +1348,16 @@ export default function StudentDashboard() {
                 >
                   <Image src="/exam.svg" alt="Mock Exams" width={20} height={20} />
                   My Mock Exams
+                </button>
+              )}
+
+              {isCertificatesEnabled && (
+                <button
+                  className="dashboard-btn certificate-btn"
+                  onClick={() => router.push("/student_dashboard/my_certificates")}
+                >
+                  <Image src="/certificate.svg" alt="My Certificates" width={20} height={20} />
+                  My Certificates
                 </button>
               )}
 

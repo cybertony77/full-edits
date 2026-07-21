@@ -1,11 +1,17 @@
 .header {
   position: sticky;
   top: 0;
-  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-7));
+  background-color: #ffffff;
+  color: #212529;
   transition: box-shadow 150ms ease;
   z-index: 1;
 }
 
+.header :global(th) {
+  color: #212529 !important;
+  background-color: #ffffff !important;
+}
+
 .scrolled {
   box-shadow: var(--mantine-shadow-sm);
-} 
+}

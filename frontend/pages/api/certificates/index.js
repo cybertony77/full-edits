@@ -7,6 +7,7 @@ import {
   studentsCsvFromIds,
   parseStudentsCsv,
 } from '../../../lib/certificatesUtils';
+import { resolveCertificateFontName } from '../../../lib/certificateFonts';
 
 function loadEnvConfig() {
   try {
@@ -42,7 +43,7 @@ function normalizePayload(body = {}) {
   const certificate_image = String(body.certificate_image || '').trim();
   const student_nameX = Number(body.student_nameX);
   const student_nameY = Number(body.student_nameY);
-  const fontFamily = String(body.fontFamily || 'Arial').trim() || 'Arial';
+  const fontFamily = resolveCertificateFontName(body.fontFamily || 'Roboto');
   const fontSize = Number(body.fontSize);
   const textColor = String(body.textColor || '#1a1a1a').trim() || '#1a1a1a';
 
@@ -54,7 +55,7 @@ function normalizePayload(body = {}) {
     student_nameX: Number.isFinite(student_nameX) ? student_nameX : 0,
     student_nameY: Number.isFinite(student_nameY) ? student_nameY : 0,
     fontFamily,
-    fontSize: Number.isFinite(fontSize) ? Math.min(150, Math.max(1, fontSize)) : 48,
+    fontSize: Number.isFinite(fontSize) ? Math.min(150, Math.max(1, fontSize)) : 75,
     textColor,
   };
 }

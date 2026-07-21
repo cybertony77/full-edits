@@ -1278,24 +1278,42 @@ export default function App({ Component, pageProps, systemBackground }) {
       try {
         // Only show loading spinner on initial load, not during background polling
         if (!isBackgroundPoll) {
-        setIsLoadingSubscription(true);
+          setIsLoadingSubscription(true);
         }
         const response = await apiClient.get('/api/subscription');
         setSubscription(response.data);
       } catch (error) {
-        // Handle 401 (Unauthorized) errors silently - user may not be authenticated or token expired
-        if (error.response?.status === 401) {
-          console.log('Subscription fetch: Unauthorized (401) - user may not be authenticated');
-          setSubscription(null);
-        } else {
-        console.error('Error fetching subscription:', error);
+        const status = error.response?.status;
+        const details = String(
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            error.response?.data?.details ||
+            error.message ||
+            ''
+        ).toLowerCase();
+        const isAuthFailure =
+          status === 401 ||
+          status === 403 ||
+          details.includes('token') ||
+          details.includes('unauthorized') ||
+          details.includes('jwt');
+
         setSubscription(null);
+
+        if (isAuthFailure) {
+          // Expired/invalid session — clear auth quietly (axios interceptor redirects on 401)
+          if (status === 401) {
+            setIsAuthenticated(false);
+            setUserRole(null);
+          }
+        } else {
+          console.warn('Subscription fetch failed:', status || error.message);
         }
       } finally {
         // Only clear loading spinner if it was set (not during background polling)
         if (!isBackgroundPoll) {
-        setIsLoadingSubscription(false);
-      }
+          setIsLoadingSubscription(false);
+        }
       }
     };
 

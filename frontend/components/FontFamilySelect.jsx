@@ -2,21 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import {
   CERTIFICATE_FONT_NAMES,
   fontCssFamily,
-  getCertificateGoogleFontsHref,
+  ensureCertificateGoogleFontsLoaded,
 } from '../lib/certificateFonts';
-
-function ensureGoogleFontsLoaded() {
-  if (typeof document === 'undefined') return;
-  const href = getCertificateGoogleFontsHref();
-  if (!href) return;
-  const id = 'certificate-google-fonts';
-  if (document.getElementById(id)) return;
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = href;
-  document.head.appendChild(link);
-}
 
 export default function FontFamilySelect({
   value = '',
@@ -26,29 +13,55 @@ export default function FontFamilySelect({
   onToggle,
   onClose,
   label = 'Font Family',
-  placeholder = 'Select Font Family',
+  placeholder = 'Select Google Font',
   error = null,
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const listRef = useRef(null);
+  const selectedOptionRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const wasOpenRef = useRef(false);
   const actualIsOpen = isOpen !== undefined ? isOpen : internalOpen;
   const actualOnToggle = onToggle || (() => setInternalOpen((o) => !o));
   const actualOnClose = onClose || (() => setInternalOpen(false));
 
-  useEffect(() => {
-    ensureGoogleFontsLoaded();
-  }, []);
+  onCloseRef.current = actualOnClose;
 
   useEffect(() => {
+    ensureCertificateGoogleFontsLoaded();
+  }, []);
+
+  // Click-outside to close (stable — does not rebind on every parent render)
+  useEffect(() => {
     if (!actualIsOpen) return undefined;
+    ensureCertificateGoogleFontsLoaded();
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        actualOnClose();
+        onCloseRef.current?.();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [actualIsOpen, actualOnClose]);
+  }, [actualIsOpen]);
+
+  // Scroll to selected font only once when the menu opens
+  useEffect(() => {
+    const justOpened = actualIsOpen && !wasOpenRef.current;
+    wasOpenRef.current = actualIsOpen;
+    if (!justOpened) return undefined;
+
+    const frame = requestAnimationFrame(() => {
+      const option = selectedOptionRef.current;
+      const list = listRef.current;
+      if (!option || !list) return;
+      const optionTop = option.offsetTop;
+      const optionHeight = option.offsetHeight;
+      const listHeight = list.clientHeight;
+      list.scrollTop = Math.max(0, optionTop - listHeight / 2 + optionHeight / 2);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [actualIsOpen]);
 
   const handleSelect = (font) => {
     onChange(font);
@@ -97,6 +110,7 @@ export default function FontFamilySelect({
 
         {actualIsOpen && (
           <div
+            ref={listRef}
             style={{
               position: 'absolute',
               top: '100%',
@@ -114,27 +128,29 @@ export default function FontFamilySelect({
           >
             {CERTIFICATE_FONT_NAMES.map((font) => {
               const css = fontCssFamily(font);
+              const isSelected = value === font;
               return (
                 <div
                   key={font}
+                  ref={isSelected ? selectedOptionRef : null}
                   style={{
                     padding: '12px 16px',
                     cursor: 'pointer',
                     borderBottom: '1px solid #f8f9fa',
-                    color: value === font ? '#1FA8DC' : '#000000',
-                    backgroundColor: value === font ? '#f0f8ff' : '#ffffff',
-                    fontWeight: value === font ? 600 : 400,
+                    color: isSelected ? '#1FA8DC' : '#000000',
+                    backgroundColor: isSelected ? '#f0f8ff' : '#ffffff',
+                    fontWeight: isSelected ? 600 : 400,
                     fontFamily: css,
-                    fontSize: '1.05rem',
+                    fontSize: '1.15rem',
                     transition: 'background-color 0.15s ease',
                   }}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(font)}
                   onMouseEnter={(e) => {
-                    if (value !== font) e.currentTarget.style.backgroundColor = '#f8f9fa';
+                    if (!isSelected) e.currentTarget.style.backgroundColor = '#f8f9fa';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = value === font ? '#f0f8ff' : '#ffffff';
+                    e.currentTarget.style.backgroundColor = isSelected ? '#f0f8ff' : '#ffffff';
                   }}
                 >
                   {font}

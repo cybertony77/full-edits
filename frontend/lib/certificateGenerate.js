@@ -57,8 +57,8 @@ export async function generateCertificatePng({
   studentName,
   student_nameX,
   student_nameY,
-  fontFamily = 'Arial',
-  fontSize = 48,
+  fontFamily = 'Roboto',
+  fontSize = 75,
   textColor = '#1a1a1a',
 }) {
   const publicId = normalizeCertificateImagePublicId(certificateImage);
@@ -82,7 +82,7 @@ export async function generateCertificatePng({
 
   const x = Math.max(0, Math.min(width, Number(student_nameX) || width / 2));
   const y = Math.max(0, Math.min(height, Number(student_nameY) || height / 2));
-  const size = Math.max(1, Math.min(150, Number(fontSize) || 48));
+  const size = Math.max(1, Math.min(150, Number(fontSize) || 75));
   const fontMeta = getCertificateFont(fontFamily);
   const family =
     String(fontMeta?.cssFamily || fontMeta?.name || fontFamily || 'Arial').replace(

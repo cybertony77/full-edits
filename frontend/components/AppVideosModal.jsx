@@ -352,7 +352,7 @@ export default function AppVideosModal({ isOpen, onClose, role = '' }) {
             <div className={styles.emptyBox} aria-live="polite">
               <div className={styles.catalogSpinner} />
               <p className={styles.emptyTitle}>Loading app videos…</p>
-              <p className={styles.emptyText}>Reading the latest videos from app_videos.json.</p>
+              <p className={styles.emptyText}>Please wait we are loading the videos...</p>
             </div>
           ) : catalogStatus === 'error' ? (
             <div className={styles.emptyBox} role="alert">
@@ -371,7 +371,7 @@ export default function AppVideosModal({ isOpen, onClose, role = '' }) {
             <div className={styles.emptyBox}>
               <Image src="/video.svg" alt="" width={36} height={36} />
               <p className={styles.emptyTitle}>No videos available</p>
-              <p className={styles.emptyText}>There are no videos configured for your role yet.</p>
+              <p className={styles.emptyText}>There are no videos for you right now.</p>
             </div>
           ) : (
             sections.map((section) => (

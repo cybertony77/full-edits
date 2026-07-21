@@ -168,7 +168,6 @@
   margin-top: 4px;
   padding-top: 16px;
   border-top: 1px solid rgba(226, 232, 240, 0.95);
-  animation: fadeIn 0.28s ease;
   cursor: default;
 }
 
@@ -190,7 +189,6 @@
   height: auto;
   border-radius: 13px;
   background: #0b1220;
-  animation: fadeIn 0.35s ease;
 }
 
 .spinnerOverlay {
@@ -203,10 +201,7 @@
   justify-content: center;
   gap: 10px;
   border-radius: 13px;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(31, 168, 220, 0.28), transparent 52%),
-    radial-gradient(circle at 70% 70%, rgba(254, 185, 84, 0.16), transparent 45%),
-    linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  background: #0b1220;
 }
 
 .loaderStack {

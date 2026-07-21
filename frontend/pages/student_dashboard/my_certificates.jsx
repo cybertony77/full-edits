@@ -58,11 +58,12 @@ export default function MyCertificatesPage() {
 
   const loadCertificate = async (cert) => {
     const id = String(cert._id);
-    setPlayerState((prev) => ({ ...prev, [id]: { status: 'loading' } }));
     try {
       const blob = await fetchCertificateBlob(cert._id);
       const url = URL.createObjectURL(blob);
       setPlayerState((prev) => {
+        // Ignore stale responses if this card was closed or switched
+        if (prev[id]?.status !== 'loading') return prev;
         if (prev[id]?.url) URL.revokeObjectURL(prev[id].url);
         return { ...prev, [id]: { status: 'ready', url } };
       });
@@ -75,21 +76,36 @@ export default function MyCertificatesPage() {
           /* keep */
         }
       }
-      setPlayerState((prev) => ({ ...prev, [id]: { status: 'error', message: msg } }));
+      setPlayerState((prev) => {
+        if (prev[id]?.status !== 'loading') return prev;
+        return { ...prev, [id]: { status: 'error', message: msg } };
+      });
     }
   };
 
   const handleToggle = (cert) => {
     const id = String(cert._id);
-    setOpenId((prev) => {
-      if (prev === id) {
-        clearPreviewUrl(id);
-        return null;
+
+    if (openId === id) {
+      setOpenId(null);
+      clearPreviewUrl(id);
+      return;
+    }
+
+    const previousId = openId;
+    // Set open + loading in one sync turn so the shell never paints empty
+    setOpenId(id);
+    setPlayerState((prev) => {
+      const next = { ...prev };
+      if (previousId && previousId !== id) {
+        if (next[previousId]?.url) URL.revokeObjectURL(next[previousId].url);
+        delete next[previousId];
       }
-      if (prev) clearPreviewUrl(prev);
-      loadCertificate(cert);
-      return id;
+      if (next[id]?.url) URL.revokeObjectURL(next[id].url);
+      next[id] = { status: 'loading' };
+      return next;
     });
+    loadCertificate(cert);
   };
 
   const getCertificateBlob = async (cert) => {
@@ -238,9 +254,10 @@ export default function MyCertificatesPage() {
                 const id = String(cert._id);
                 const isOpen = openId === id;
                 const state = playerState[id];
-                const isLoadingCert = isOpen && state?.status === 'loading';
-                const isReady = isOpen && state?.status === 'ready';
+                const isReady = isOpen && state?.status === 'ready' && !!state.url;
                 const isError = isOpen && state?.status === 'error';
+                // Treat missing/pending as loading so the shell never flashes empty
+                const isLoadingCert = isOpen && !isReady && !isError;
 
                 return (
                   <article
@@ -286,10 +303,7 @@ export default function MyCertificatesPage() {
                         <div className={styles.viewerWrap}>
                           {isLoadingCert && (
                             <div className={styles.spinnerOverlay} aria-live="polite">
-                              <div className={styles.loaderStack}>
-                                <div className={styles.spinner} />
-                                <div className={styles.loaderPulse} />
-                              </div>
+                              <div className={styles.spinner} />
                               <p className={styles.spinnerText}>Generating certificate…</p>
                               <p className={styles.spinnerSub}>This may take a moment</p>
                             </div>
@@ -300,13 +314,20 @@ export default function MyCertificatesPage() {
                               <Image src="/alert-triangle2.svg" alt="" width={28} height={28} />
                               <p className={styles.errorTitle}>Certificate unavailable</p>
                               <p className={styles.errorText}>{state.message}</p>
-                              <button type="button" className={styles.retryBtn} onClick={() => loadCertificate(cert)}>
+                              <button
+                                type="button"
+                                className={styles.retryBtn}
+                                onClick={() => {
+                                  setPlayerState((prev) => ({ ...prev, [id]: { status: 'loading' } }));
+                                  loadCertificate(cert);
+                                }}
+                              >
                                 Try again
                               </button>
                             </div>
                           )}
 
-                          {isReady && state.url && (
+                          {isReady && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               className={styles.certImage}

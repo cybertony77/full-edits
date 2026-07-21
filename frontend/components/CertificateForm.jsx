@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ColorInput } from '@mantine/core';
 import AccountStateSelect from './AccountStateSelect';
 import CertificateStudentsSelect from './CertificateStudentsSelect';
 import FontFamilySelect from './FontFamilySelect';
@@ -6,10 +7,26 @@ import apiClient from '../lib/axios';
 import {
   fontCssFamily,
   fontWeightFor,
-  getCertificateGoogleFontsHref,
+  ensureCertificateGoogleFontsLoaded,
   getFontFileUrl,
+  resolveCertificateFontName,
 } from '../lib/certificateFonts';
 import { buildCenteredTextPath, parseFontBuffer } from '../lib/certificateTextPath';
+
+const CERT_COLOR_SWATCHES = [
+  '#1a1a1a',
+  '#000000',
+  '#ffffff',
+  '#1FA8DC',
+  '#0ea5e9',
+  '#dc2626',
+  '#16a34a',
+  '#ca8a04',
+  '#7c3aed',
+  '#db2777',
+  '#0f766e',
+  '#334155',
+];
 
 const fieldStyle = (hasError) => ({
   width: '100%',
@@ -132,8 +149,8 @@ export default function CertificateForm({
     certificate_image: initialData?.certificate_image || '',
     student_nameX: initialData?.student_nameX ?? '',
     student_nameY: initialData?.student_nameY ?? '',
-    fontFamily: initialData?.fontFamily || 'Arial',
-    fontSize: initialData?.fontSize || 48,
+    fontFamily: resolveCertificateFontName(initialData?.fontFamily || 'Roboto'),
+    fontSize: initialData?.fontSize || 75,
     textColor: initialData?.textColor || '#1a1a1a',
   });
   const [errors, setErrors] = useState({});
@@ -156,22 +173,14 @@ export default function CertificateForm({
   const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const href = getCertificateGoogleFontsHref();
-    if (!href) return;
-    const id = 'certificate-google-fonts';
-    if (document.getElementById(id)) return;
-    const link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    link.href = href;
-    document.head.appendChild(link);
+    ensureCertificateGoogleFontsLoaded();
   }, []);
 
   // Load the same TTF used by PNG generation so preview size/style match student side
   useEffect(() => {
     let cancelled = false;
-    const url = getFontFileUrl(formData.fontFamily);
+    const resolved = resolveCertificateFontName(formData.fontFamily);
+    const url = getFontFileUrl(resolved);
     if (!url) {
       setPreviewFont(null);
       return undefined;
@@ -413,7 +422,7 @@ export default function CertificateForm({
   };
 
   const scale = displaySize.w > 0 && previewNatural.w > 0 ? displaySize.w / previewNatural.w : 1;
-  const previewFontPx = Math.max(1, Number(formData.fontSize) || 48) * scale;
+  const previewFontPx = Math.max(1, Number(formData.fontSize) || 75) * scale;
   const showDesignExtras =
     !!formData.certificate_image && placementReady && !uploading && !uploadSuccessFlash;
 
@@ -430,7 +439,7 @@ export default function CertificateForm({
       return buildCenteredTextPath(
         previewFont,
         'Student Name',
-        Number(formData.fontSize) || 48,
+        Number(formData.fontSize) || 75,
         Number(formData.student_nameX),
         Number(formData.student_nameY)
       );
@@ -478,7 +487,7 @@ export default function CertificateForm({
           certificate_image: String(formData.certificate_image).trim(),
           student_nameX: Number(formData.student_nameX),
           student_nameY: Number(formData.student_nameY),
-          fontFamily: formData.fontFamily,
+          fontFamily: resolveCertificateFontName(formData.fontFamily),
           fontSize: Math.min(150, Math.max(1, Number(formData.fontSize))),
           textColor: formData.textColor,
         });
@@ -1012,7 +1021,7 @@ export default function CertificateForm({
                       <circle
                         cx={Number(formData.student_nameX)}
                         cy={Number(formData.student_nameY)}
-                        r={Math.max(28, (Number(formData.fontSize) || 48) * 0.55)}
+                        r={Math.max(28, (Number(formData.fontSize) || 75) * 0.55)}
                         fill="transparent"
                       />
                     </svg>
@@ -1099,86 +1108,34 @@ export default function CertificateForm({
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>
                   Text Color <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 14,
-                    alignItems: 'center',
-                    padding: 14,
-                    borderRadius: 14,
-                    border: errors.textColor ? '2px solid #f87171' : '2px solid #e9ecef',
-                    background: errors.textColor
-                      ? 'linear-gradient(145deg, #fff5f5, #ffffff)'
-                      : 'linear-gradient(145deg, #ffffff, #f8fafc)',
-                    boxShadow: errors.textColor
-                      ? '0 0 0 4px rgba(220, 53, 69, 0.12), 0 8px 18px rgba(220, 53, 69, 0.08)'
-                      : 'inset 0 1px 0 rgba(255,255,255,0.9)',
+                <ColorInput
+                  format="hex"
+                  withPicker
+                  withEyeDropper
+                  swatches={CERT_COLOR_SWATCHES}
+                  swatchesPerRow={6}
+                  value={formData.textColor || '#1a1a1a'}
+                  onChange={(color) => {
+                    setFormData((p) => ({ ...p, textColor: color }));
+                    if (color) clearFieldError('textColor');
                   }}
-                >
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 14,
-                      overflow: 'hidden',
-                      border: '2px solid #e2e8f0',
-                      boxShadow: '0 6px 16px rgba(15,23,42,0.1)',
-                      flexShrink: 0,
-                      position: 'relative',
-                    }}
-                  >
-                    <input
-                      type="color"
-                      value={/^#[0-9a-fA-F]{6}$/.test(formData.textColor) ? formData.textColor : '#1a1a1a'}
-                      onChange={(e) => {
-                        setFormData((p) => ({ ...p, textColor: e.target.value }));
-                        clearFieldError('textColor');
-                      }}
-                      style={{
-                        position: 'absolute',
-                        inset: -8,
-                        width: 68,
-                        height: 68,
-                        border: 'none',
-                        cursor: 'pointer',
-                        background: 'transparent',
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.06em', color: '#94a3b8', marginBottom: 4 }}>
-                      HEX
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.textColor}
-                      onChange={(e) => {
-                        setFormData((p) => ({ ...p, textColor: e.target.value }));
-                        if (e.target.value.trim()) clearFieldError('textColor');
-                      }}
-                      placeholder="#1a1a1a"
-                      style={{
-                        ...fieldStyle(!!errors.textColor),
-                        border: errors.textColor ? '1.5px solid #f87171' : '1.5px solid #e2e8f0',
-                        padding: '10px 12px',
-                        fontWeight: 800,
-                        letterSpacing: '0.04em',
-                      }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 12,
-                      background: formData.textColor,
-                      border: '2px solid #fff',
-                      boxShadow: '0 4px 14px rgba(15,23,42,0.18)',
-                      flexShrink: 0,
-                    }}
-                    title={formData.textColor}
-                  />
-                </div>
+                  onFocus={() => setFontOpen(false)}
+                  placeholder="#1a1a1a"
+                  radius="md"
+                  size="md"
+                  styles={{
+                    input: {
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      border: errors.textColor ? '2px solid #f87171' : '2px solid #e9ecef',
+                      background: errors.textColor ? '#fff5f5' : '#ffffff',
+                      minHeight: 48,
+                    },
+                    eyeDropperButton: {
+                      color: '#1FA8DC',
+                    },
+                  }}
+                />
                 <FieldError message={errors.textColor} />
               </div>
             </div>

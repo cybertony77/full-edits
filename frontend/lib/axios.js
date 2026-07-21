@@ -90,8 +90,22 @@ apiClient.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || '';
+    const details = String(
+      error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        ''
+    ).toLowerCase();
+    const looksLikeAuthFailure =
+      status === 401 ||
+      details.includes('token expired') ||
+      details.includes('jwt expired') ||
+      details.includes('no token') ||
+      details.includes('invalid token') ||
+      details.includes('unauthorized');
 
-    if (status === 401) {
+    if (looksLikeAuthFailure) {
       if (!shouldSkipUnauthorizedRedirect(url)) {
         redirectToLoginOnUnauthorized();
       }

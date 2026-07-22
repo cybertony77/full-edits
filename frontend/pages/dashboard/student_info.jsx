@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { Playfair_Display, Cormorant_Garamond } from 'next/font/google';
 import Title from "../../components/Title";
 import { Table, ScrollArea, Modal } from '@mantine/core';
 import styles from '../../styles/TableScrollArea.module.css';
@@ -11,6 +12,20 @@ import Image from 'next/image';
 import { verifySignature } from '../../lib/hmac';
 import ChartTabs from '../../components/ChartTabs';
 import { useSystemConfig } from '../../lib/api/system';
+import MarketingPageLoader from '../../components/MarketingPageLoader';
+
+const welcomeDisplayFont = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  display: 'swap',
+});
+
+const welcomeAccentFont = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  style: ['normal', 'italic'],
+  display: 'swap',
+});
 
 // Helper function to check if user has token by making API call
 const hasToken = async () => {
@@ -36,19 +51,21 @@ export default function StudentInfo() {
   const [isValidSignature, setIsValidSignature] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasAuthToken, setHasAuthToken] = useState(null);
+  const [minLoaderElapsed, setMinLoaderElapsed] = useState(false);
   const router = useRouter();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsType, setDetailsType] = useState('absent');
   const [detailsWeeks, setDetailsWeeks] = useState([]);
   const [detailsTitle, setDetailsTitle] = useState('');
 
-  // Fetch lessons from database
+  // Fetch lessons from database (staff search UI only — skip on public HMAC links)
   const { data: lessonsResponse } = useQuery({
     queryKey: ['lessons'],
     queryFn: async () => {
       const response = await apiClient.get('/api/lessons');
       return response.data.lessons || [];
     },
+    enabled: !!hasAuthToken,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     refetchOnWindowFocus: false
   });
@@ -81,6 +98,17 @@ export default function StudentInfo() {
     };
     checkAuth();
   }, [router]);
+
+  // Same welcome-page behavior: keep MarketingPageLoader visible ≥ 2s for public (no token) visits
+  useEffect(() => {
+    if (hasAuthToken === true) {
+      setMinLoaderElapsed(true);
+      return undefined;
+    }
+    setMinLoaderElapsed(false);
+    const timer = setTimeout(() => setMinLoaderElapsed(true), 2000);
+    return () => clearTimeout(timer);
+  }, [hasAuthToken, router.query.id, router.query.sig]);
 
   // Handle URL parameters and HMAC verification
   useEffect(() => {
@@ -660,12 +688,45 @@ export default function StudentInfo() {
     setDetailsOpen(true);
   };
 
+  const isPublicGuest = hasAuthToken === false;
+  const isAuthPending = hasAuthToken === null;
+  const studentFirstName = (currentStudent?.name || '')
+    .trim()
+    .split(/\s+/)
+    .find(Boolean) || '';
+  const publicContentReady =
+    isPublicGuest &&
+    router.isReady &&
+    isValidSignature &&
+    !publicStudentLoading &&
+    (!!publicStudent || !!publicStudentError || studentDeleted);
+  const showPublicWelcomeLoader =
+    (isAuthPending || isPublicGuest) &&
+    (!minLoaderElapsed ||
+      isAuthPending ||
+      (isPublicGuest && !!router.query.sig && !publicContentReady));
+
   return (
+    <div style={{ position: 'relative', minHeight: '100%' }}>
+      {(isAuthPending || isPublicGuest) && (
+        <MarketingPageLoader
+          active={showPublicWelcomeLoader}
+          label="Welcome"
+          keyword="Parents"
+        />
+      )}
     <div style={{ 
       padding: "20px 5px 20px 5px"
     }}>
-      <div ref={containerRef} style={{ maxWidth: 600, margin: "auto", padding: 24 }}>
+      <div ref={containerRef} className="page-shell">
         <style jsx>{`
+          .page-shell {
+            max-width: 600px;
+            margin: auto;
+            padding: 24px;
+            width: 100%;
+            box-sizing: border-box;
+          }
           .header {
             display: flex;
             justify-content: space-between;
@@ -676,6 +737,79 @@ export default function StudentInfo() {
             font-size: 2rem;
             font-weight: 700;
             color: #ffffff;
+          }
+          .public-welcome {
+            text-align: center;
+            margin: 8px 0 28px;
+            padding: 28px 20px 26px;
+            border-radius: 20px;
+            background:
+              linear-gradient(145deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            box-shadow:
+              0 18px 40px rgba(15, 23, 42, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+          }
+          .public-welcome-eyebrow {
+            margin: 0 0 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.78);
+          }
+          .public-welcome-title {
+            margin: 0;
+            font-size: clamp(1.85rem, 5.5vw, 2.55rem);
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: 0.01em;
+            color: #ffffff;
+            text-shadow: 0 2px 18px rgba(15, 23, 42, 0.18);
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            hyphens: auto;
+          }
+          .public-welcome-rule {
+            position: relative;
+            width: min(96px, 28vw);
+            height: 1px;
+            margin: 18px auto 0;
+            background: linear-gradient(
+              90deg,
+              transparent 0%,
+              rgba(255, 255, 255, 0.25) 18%,
+              rgba(255, 255, 255, 0.92) 50%,
+              rgba(255, 255, 255, 0.25) 82%,
+              transparent 100%
+            );
+          }
+          .public-welcome-rule::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            transform: translate(-50%, -50%) rotate(45deg);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow:
+              0 0 0 1px rgba(254, 185, 84, 0.65),
+              0 0 10px rgba(255, 255, 255, 0.35);
+          }
+          .public-welcome-sub {
+            margin: 14px 0 0;
+            font-size: clamp(1rem, 3.6vw, 1.15rem);
+            font-weight: 500;
+            font-style: italic;
+            color: rgba(255, 255, 255, 0.88);
+            letter-spacing: 0.02em;
+            line-height: 1.45;
+            padding: 0 4px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
           }
           .fetch-form {
             display: flex;
@@ -750,6 +884,48 @@ export default function StudentInfo() {
             border: 1px solid rgba(255,255,255,0.2);
             margin-top: 20px;
           }
+          .student-profile-heading-wrap {
+            margin: 0 0 8px;
+            text-align: center;
+            padding: 0 4px;
+          }
+          .student-profile-heading {
+            margin: 0;
+            text-align: center;
+            font-size: clamp(1.55rem, 5.2vw, 2.25rem);
+            font-weight: 500;
+            font-style: italic;
+            letter-spacing: 0.1em;
+            color: #2c3e50;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+          .student-profile-ornament {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: clamp(8px, 2.5vw, 10px);
+            margin: 12px 0 28px;
+          }
+          .student-profile-ornament::before,
+          .student-profile-ornament::after {
+            content: '';
+            width: clamp(24px, 8vw, 36px);
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(201, 162, 89, 0.75));
+          }
+          .student-profile-ornament::after {
+            background: linear-gradient(90deg, rgba(201, 162, 89, 0.75), transparent);
+          }
+          .student-profile-ornament-diamond {
+            width: 6px;
+            height: 6px;
+            transform: rotate(45deg);
+            background: #c9a259;
+            box-shadow: 0 0 0 1px rgba(201, 162, 89, 0.25);
+            flex-shrink: 0;
+          }
           .student-details {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -813,6 +989,9 @@ export default function StudentInfo() {
           }
           
           @media (max-width: 768px) {
+            .page-shell {
+              padding: 16px 12px;
+            }
             .fetch-form {
               flex-direction: column;
               gap: 12px;
@@ -831,9 +1010,40 @@ export default function StudentInfo() {
             .student-details {
               gap: 12px;
             }
+            .public-welcome {
+              margin: 4px 0 20px;
+              padding: 22px 16px 20px;
+              border-radius: 16px;
+            }
+            .public-welcome-eyebrow {
+              font-size: 0.78rem;
+              letter-spacing: 0.2em;
+              margin-bottom: 8px;
+            }
+            .public-welcome-title {
+              font-size: clamp(1.45rem, 6.2vw, 1.95rem);
+              line-height: 1.25;
+            }
+            .public-welcome-rule {
+              margin-top: 14px;
+            }
+            .public-welcome-sub {
+              margin-top: 12px;
+              font-size: clamp(0.95rem, 3.8vw, 1.05rem);
+              line-height: 1.5;
+            }
+            .student-profile-heading {
+              letter-spacing: 0.06em;
+            }
+            .student-profile-ornament {
+              margin: 10px 0 22px;
+            }
           }
           
           @media (max-width: 480px) {
+            .page-shell {
+              padding: 12px 8px;
+            }
             .form-container, .info-container {
               padding: 20px;
             }
@@ -848,6 +1058,41 @@ export default function StudentInfo() {
             }
             .weeks-title {
               font-size: 1.3rem;
+            }
+            .public-welcome {
+              margin: 0 0 16px;
+              padding: 18px 12px 16px;
+              border-radius: 14px;
+            }
+            .public-welcome-eyebrow {
+              font-size: 0.7rem;
+              letter-spacing: 0.16em;
+            }
+            .public-welcome-title {
+              font-size: clamp(1.28rem, 7vw, 1.65rem);
+            }
+            .public-welcome-rule {
+              width: min(72px, 32vw);
+            }
+            .public-welcome-rule::before {
+              width: 5px;
+              height: 5px;
+            }
+            .public-welcome-sub {
+              font-size: 0.92rem;
+              padding: 0 2px;
+            }
+            .student-profile-heading {
+              font-size: clamp(1.35rem, 6.5vw, 1.7rem);
+              letter-spacing: 0.04em;
+            }
+            .student-profile-ornament {
+              gap: 8px;
+              margin: 8px 0 18px;
+            }
+            .student-profile-ornament::before,
+            .student-profile-ornament::after {
+              width: 22px;
             }
           }
         `}</style>
@@ -936,26 +1181,40 @@ export default function StudentInfo() {
         </div>
         )}
         
-        {/* Welcome title for public access (no token) */}
+        {/* Welcome title for public access (parents viewing their child's account) */}
         {currentStudent && !studentDeleted && !hasAuthToken && (
-          <div style={{
-            textAlign: "center",
-            marginBottom: "24px"
-          }}>
-            <h1 style={{
-              fontSize: "2.5rem",
-              fontWeight: "700",
-              color: "white",
-              margin: "0",
-              textShadow: "0 2px 4px rgba(0,0,0,0.1)"
-            }}            >
-              {systemName ? `Welcome to ${systemName}!` : 'Welcome!'}
+          <div className="public-welcome">
+            <p className={`public-welcome-eyebrow ${welcomeAccentFont.className}`}>
+              For Parents
+            </p>
+            <h1 className={`public-welcome-title ${welcomeDisplayFont.className}`}>
+              {studentFirstName
+                ? systemName
+                  ? `${studentFirstName}’s progress at ${systemName}`
+                  : `${studentFirstName}’s progress`
+                : systemName
+                  ? `Your child’s progress at ${systemName}`
+                  : 'Your child’s progress'}
             </h1>
+            <div className="public-welcome-rule" aria-hidden />
+            <p className={`public-welcome-sub ${welcomeAccentFont.className}`}>
+              Track progress, attendance, and performance—all in one place.
+            </p>
           </div>
         )}
 
         {currentStudent && !studentDeleted && (
           <div className="info-container">
+            {!hasAuthToken && (
+              <div className="student-profile-heading-wrap">
+                <h2 className={`student-profile-heading ${welcomeAccentFont.className}`}>
+                  Student profile
+                </h2>
+                <div className="student-profile-ornament" aria-hidden>
+                  <span className="student-profile-ornament-diamond" />
+                </div>
+              </div>
+            )}
             <div className="student-details">
               {/* Profile Picture Preview - Read Only - Full Row (auth + public signed links) */}
               <div className="detail-item" style={{ 
@@ -1784,6 +2043,7 @@ export default function StudentInfo() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

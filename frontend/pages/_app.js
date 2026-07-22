@@ -13,7 +13,6 @@ import { getApiBaseUrl } from "../config";
 import apiClient from "../lib/axios";
 import Image from "next/image";
 import ErrorBoundary from "../components/ErrorBoundary";
-import CustomHeader from "../components/publicHeader";
 import {
   DEFAULT_SYSTEM_BACKGROUND,
   loadSystemBackgroundFromEnv,
@@ -81,7 +80,8 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
     '/welcome',
     '/forgot_password',
     '/404',
-    '/student_not_found'
+    '/student_not_found',
+    '/student_info'
   ];
   const isPublicPage = publicPagesList.includes(currentPath);
 
@@ -1555,11 +1555,9 @@ export default function App({ Component, pageProps, systemBackground }) {
                   minHeight: "100vh",
                 }}
               >
-                <CustomHeader />
                 <div style={{ flex: 1 }}>
                   <Component {...pageProps} />
                 </div>
-                <Footer />
               </div>
             ) : router.pathname === "/welcome" ? (
               <div

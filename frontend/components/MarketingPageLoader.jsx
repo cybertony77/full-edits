@@ -9,7 +9,11 @@ const welcomeFont = Great_Vibes({
   display: 'swap',
 });
 
-export default function MarketingPageLoader({ active = true, label = 'Welcome' }) {
+export default function MarketingPageLoader({
+  active = true,
+  label = 'Welcome',
+  keyword = '',
+}) {
   const [shouldRender, setShouldRender] = useState(active);
   const [isVisible, setIsVisible] = useState(active);
 
@@ -27,16 +31,21 @@ export default function MarketingPageLoader({ active = true, label = 'Welcome' }
 
   if (typeof document === 'undefined' || !shouldRender) return null;
 
+  const ariaLabel = keyword ? `${label} · ${keyword}` : label;
+
   return createPortal(
     <div
       className={`${styles.overlay} ${isVisible ? styles.visible : styles.hidden}`}
       role="status"
       aria-live="polite"
       aria-busy={active}
-      aria-label={label}
+      aria-label={ariaLabel}
     >
       <div className={styles.wordWrap}>
-        <div className={`${styles.word} ${welcomeFont.className}`}>Welcome</div>
+        <div className={styles.wordStack}>
+          <div className={`${styles.word} ${welcomeFont.className}`}>Welcome</div>
+          {keyword ? <div className={styles.keyword}>{keyword}</div> : null}
+        </div>
       </div>
     </div>,
     document.body

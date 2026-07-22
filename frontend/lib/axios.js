@@ -27,6 +27,7 @@ function isPublicBrowserPath(pathname) {
     '/contact_assistants',
     '/404',
     '/student_not_found',
+    '/dashboard/student_info',
   ];
   return publicPaths.includes(pathname);
 }
@@ -43,9 +44,25 @@ function shouldSkipUnauthorizedRedirect(url = '') {
   );
 }
 
+function hasPublicStudentInfoSig() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return new URLSearchParams(window.location.search).has('sig');
+  } catch {
+    return false;
+  }
+}
+
 async function redirectToLoginOnUnauthorized() {
   if (typeof window === 'undefined' || handlingUnauthorized) return;
+  // Never force-login away from public pages or HMAC student links
   if (isPublicBrowserPath(window.location.pathname)) return;
+  if (
+    window.location.pathname.startsWith('/dashboard/student_info') &&
+    hasPublicStudentInfoSig()
+  ) {
+    return;
+  }
 
   handlingUnauthorized = true;
   try {

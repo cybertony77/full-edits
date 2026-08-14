@@ -17,7 +17,7 @@
   font-size: 0.95rem;
   color: #f1f5f9;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(31, 168, 220, 0.45);
+  border: 1px solid rgba(31, 168, 220, 0.4);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   text-align: center;
@@ -26,7 +26,8 @@
 
 .linkBtn:hover {
   transform: translateY(-3px);
-  background: rgba(31, 168, 220, 0.18);
+  color: #f1f5f9;
+  background: rgba(31, 168, 220, 0.16);
   box-shadow: 0 10px 28px rgba(31, 168, 220, 0.25);
 }
 
@@ -45,14 +46,16 @@
   color: #1e293b;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
-  border-left: 4px solid #1fa8dc;
+  border-left: 4px solid #1FA8DC;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .linkBtnLight:hover {
-  background: #e9ecef;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(31, 168, 220, 0.15);
+  color: #1e293b;
+  background: rgba(31, 168, 220, 0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(31, 168, 220, 0.25);
+  border-color: rgba(31, 168, 220, 0.4);
 }
 
 /* Modal */
@@ -124,11 +127,11 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 800;
-  color: #fbbf24;
+  color: #1FA8DC;
 }
 
 .modalTitleLight {
-  color: #1fa8dc;
+  color: #1FA8DC;
 }
 
 .formGroup {
@@ -154,7 +157,7 @@
   border-radius: 10px;
   font-size: 1rem;
   background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  color: var(--system-surface);
   box-sizing: border-box;
 }
 
@@ -166,7 +169,7 @@
 
 .formInput:focus {
   outline: none;
-  border-color: #1fa8dc;
+  border-color: #1FA8DC;
   box-shadow: 0 0 0 3px rgba(31, 168, 220, 0.2);
 }
 
@@ -185,7 +188,7 @@
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  background: linear-gradient(90deg, #1fa8dc 0%, #87ceeb 100%);
+  background: linear-gradient(90deg, #1FA8DC 0%, #0E80C7 100%);
   color: #fff;
   box-shadow: 0 4px 14px rgba(31, 168, 220, 0.35);
 }
@@ -283,7 +286,7 @@
   inset: 0;
   border-radius: 50%;
   border: 3px solid rgba(31, 168, 220, 0.14);
-  border-top-color: #1fa8dc;
+  border-top-color: #1FA8DC;
   border-right-color: #87ceeb;
   animation: linksSpin 0.85s linear infinite;
 }
@@ -311,7 +314,7 @@
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #1fa8dc;
+  color: #1FA8DC;
   line-height: 1.3;
 }
 
@@ -401,7 +404,7 @@
   margin-top: 24px;
   padding: 28px;
   border-radius: 20px;
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(145deg, #ffffff 0%, var(--system-surface) 100%);
   border: 1px solid rgba(31, 168, 220, 0.15);
   box-shadow: 0 12px 40px rgba(31, 168, 220, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
 }
@@ -422,7 +425,7 @@
 
 .sectionTitle {
   margin: 0 0 6px;
-  color: #1fa8dc;
+  color: #1FA8DC;
   font-weight: 800;
   font-size: 1.45rem;
   letter-spacing: -0.02em;
@@ -459,14 +462,14 @@
 
 .btnAddTop:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(31, 168, 220, 0.45);
+  box-shadow: 0 6px 20px rgba(31, 168, 220, 0.5);
 }
 
 .emptyStateManage {
   text-align: center;
   padding: 40px 24px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  background: linear-gradient(135deg, var(--system-surface) 0%, #f1f5f9 100%);
   border: 2px dashed rgba(31, 168, 220, 0.25);
   margin-bottom: 8px;
 }
@@ -549,7 +552,7 @@
   width: 18px;
   height: 18px;
   border: 2px solid rgba(31, 168, 220, 0.25);
-  border-top-color: #1fa8dc;
+  border-top-color: #1FA8DC;
   border-radius: 50%;
   animation: linksSpin 0.7s linear infinite;
 }
@@ -581,7 +584,7 @@
 .builderCardLight {
   background: #fff;
   border: 1px solid #e9ecef;
-  border-left: 4px solid #1fa8dc;
+  border-left: 4px solid #1FA8DC;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -619,7 +622,7 @@
 
 .builderCardName {
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--system-surface);
   margin-bottom: 4px;
 }
 
@@ -642,24 +645,32 @@
 }
 
 .btnEdit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 8px 16px;
   border: none;
   border-radius: 8px;
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
-  background: linear-gradient(90deg, #1fa8dc 0%, #87ceeb 100%);
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(31, 168, 220, 0.3);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btnEdit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(31, 168, 220, 0.4);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
 }
 
 .btnDelete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 8px 16px;
   border: none;
   border-radius: 8px;
@@ -696,13 +707,13 @@
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  background: linear-gradient(90deg, #1fa8dc 0%, #87ceeb 100%);
+  background: linear-gradient(90deg, #1FA8DC 0%, #0E80C7 100%);
   color: #fff;
   box-shadow: 0 4px 14px rgba(31, 168, 220, 0.35);
 }
 
 .btnAddLight {
-  background: linear-gradient(90deg, #1fa8dc 0%, #87ceeb 100%);
+  background: linear-gradient(90deg, #1FA8DC 0%, #0E80C7 100%);
 }
 
 .savingHint {
@@ -836,7 +847,7 @@
   max-width: 400px;
   padding: 28px 28px 24px;
   border-radius: 16px;
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(145deg, #ffffff 0%, var(--system-surface) 100%);
   border: 1px solid rgba(31, 168, 220, 0.18);
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
   animation: linksLoaderCardLift 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -859,7 +870,7 @@
 }
 
 .confirmMessage strong {
-  color: #1fa8dc;
+  color: #1FA8DC;
   font-weight: 700;
 }
 

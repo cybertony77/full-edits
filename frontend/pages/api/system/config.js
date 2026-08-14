@@ -73,6 +73,27 @@ export default async function handler(req, res) {
     const cloudflareR2 = envConfig.SYSTEM_CLOUDFLARE_R2 === 'true' || process.env.SYSTEM_CLOUDFLARE_R2 === 'true';
     const zoomJoinMeeting = envConfig.SYSTEM_ZOOM_JOIN_MEETING === 'true' || process.env.SYSTEM_ZOOM_JOIN_MEETING === 'true';
     const zoomIntegrations = envConfig.SYSTEM_ZOOM_INTEGRATIONS === 'true' || process.env.SYSTEM_ZOOM_INTEGRATIONS === 'true';
+    const googleMeetIntegrations =
+      envConfig.SYSTEM_GOOGLE_MEET_INTEGRATIONS === 'true' ||
+      process.env.SYSTEM_GOOGLE_MEET_INTEGRATIONS === 'true' ||
+      envConfig.SYSTEM_GOOGLE_MEET_INTEGRATION === 'true' ||
+      process.env.SYSTEM_GOOGLE_MEET_INTEGRATION === 'true';
+    const googleJoinMeeting =
+      envConfig.SYSTEM_GOOGLE_JOIN_MEETING === 'true' ||
+      process.env.SYSTEM_GOOGLE_JOIN_MEETING === 'true' ||
+      envConfig.SYSTEM_GOOGLE_MEET_JOIN_MEETING === 'true' ||
+      process.env.SYSTEM_GOOGLE_MEET_JOIN_MEETING === 'true';
+    const desmosIntegrations =
+      envConfig.SYSTEM_DESMOS_INTEGRATIONS === 'true' ||
+      process.env.SYSTEM_DESMOS_INTEGRATIONS === 'true' ||
+      envConfig.SYSTEM_DESMOS_INTEGRATION === 'true' ||
+      process.env.SYSTEM_DESMOS_INTEGRATION === 'true';
+    const desmosApiKey = desmosIntegrations
+      ? (envConfig.DESMOS_API_KEY || process.env.DESMOS_API_KEY || '').trim()
+      : '';
+    const mathReferenceSheet =
+      envConfig.SYSTEM_MATH_REFERENCE_SHEET === 'true' ||
+      process.env.SYSTEM_MATH_REFERENCE_SHEET === 'true';
     const paymentSystem = envConfig.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
     const subscription = envConfig.SYSTEM_SUBSCRIPTION === 'true' || process.env.SYSTEM_SUBSCRIPTION === 'true';
     const deviceLimitations = envConfig.SYSTEM_DEVICE_LIMITATIONS === 'true' || process.env.SYSTEM_DEVICE_LIMITATIONS === 'true';
@@ -106,6 +127,11 @@ export default async function handler(req, res) {
       cloudflare_r2: cloudflareR2,
       zoom_join_meeting: zoomJoinMeeting,
       zoom_integrations: zoomIntegrations,
+      google_meet_integrations: googleMeetIntegrations,
+      google_join_meeting: googleJoinMeeting,
+      desmos_integrations: desmosIntegrations,
+      desmos_api_key: desmosApiKey,
+      math_reference_sheet: mathReferenceSheet,
       payment_system: paymentSystem,
       subscription: subscription,
       device_limitations: deviceLimitations,

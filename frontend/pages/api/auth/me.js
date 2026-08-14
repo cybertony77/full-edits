@@ -73,6 +73,9 @@ export default async function handler(req, res) {
       if (assistant.role === 'student') {
         const student = await db.collection('students').findOne({ id: assistant.id });
         if (student) {
+          if (student.name) {
+            payload.name = student.name;
+          }
           payload.main_center = student.main_center ?? null;
           payload.course = student.course ?? null;
           payload.courseType = student.courseType ?? null;

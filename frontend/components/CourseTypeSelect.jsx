@@ -8,7 +8,7 @@ export default function CourseTypeSelect({ selectedCourseType, onCourseTypeChang
   const actualOnClose = onClose || (() => setInternalIsOpen(false));
 
   // Static course type options
-  const courseTypes = ['advanced', 'basics'];
+  const courseTypes = ['advanced', 'basics to advanced'];
 
   const handleCourseTypeSelect = (courseType) => {
     onCourseTypeChange(courseType);
@@ -89,7 +89,7 @@ export default function CourseTypeSelect({ selectedCourseType, onCourseTypeChang
               onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
               onMouseLeave={(e) => e.target.style.backgroundColor = '#ffffff'}
             >
-              {courseType === 'basics' ? 'Basics' : 'Advanced'}
+              {courseType === 'basics to advanced' ? 'Basics to Advanced' : 'Advanced'}
             </div>
           ))}
         </div>

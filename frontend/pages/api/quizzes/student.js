@@ -2,8 +2,8 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
-import { pickQuestionPictureFields } from '../../../lib/questionPictures';
 import { itemCenterMatchesStudentMainCenter } from '../../../lib/studentCenterMatch';
+import { sanitizeQuestionForStudent } from '../../../lib/onlineQuestionApiNormalize';
 
 function loadEnvConfig() {
   try {
@@ -151,13 +151,7 @@ export default async function handler(req, res) {
           }
 
           if (quiz.quiz_type !== 'pdf') {
-            sanitized.questions = (quiz.questions || []).map(q => ({
-              question_text: q.question_text || '',
-              question_picture: q.question_picture || null,
-              ...pickQuestionPictureFields(q),
-              answers: q.answers || [],
-              answer_texts: q.answer_texts || []
-            }));
+            sanitized.questions = (quiz.questions || []).map(q => sanitizeQuestionForStudent(q));
           } else {
             sanitized.questions = [];
           }

@@ -11,7 +11,7 @@ export function toYoutubeEmbed(url) {
   for (const p of patterns) {
     const m = u.match(p);
     if (m?.[1]) {
-      return `https://www.youtube.com/embed/${m[1]}?controls=1&rel=0&modestbranding=1&disablekb=1&fs=1`;
+      return `/api/youtube/${encodeURIComponent(m[1])}?hw=1`;
     }
   }
   return null;

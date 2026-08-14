@@ -1,9 +1,12 @@
-import { useEffect, useRef, useId } from "react";
-import VideoWatermarkOverlay from "./VideoWatermarkOverlay";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { VideoPlayerChromeStyles, VideoPremiumLoader } from "./videoSeekGestures";
+
+const YT_ID_RE = /^[a-zA-Z0-9_-]{6,20}$/;
 
 /**
- * YouTube embed using IFrame API so we can detect when the user has watched
- * at least a fraction of the video (default 10%). Fires onThresholdReached once.
+ * YouTube playback — same black surface + spinner as R2 / Zoom / Google Meet.
+ * Loads the player through same-origin `/api/youtube/[videoId]` so the parent
+ * iframe src is not youtube.com.
  */
 export default function YoutubeEmbedWithProgress({
   youtubeVideoId,
@@ -16,119 +19,92 @@ export default function YoutubeEmbedWithProgress({
 }) {
   const cbRef = useRef(onThresholdReached);
   cbRef.current = onThresholdReached;
+  const [frameLoaded, setFrameLoaded] = useState(false);
 
-  const playerRef = useRef(null);
-  const intervalRef = useRef(null);
-  const thresholdDoneRef = useRef(false);
-  const reactId = useId().replace(/:/g, "");
-  const playerDivId = `yt-prog-${reactId}`;
-
-  useEffect(() => {
-    thresholdDoneRef.current = false;
+  const safeId = useMemo(() => {
+    const id = String(youtubeVideoId || "").trim();
+    return YT_ID_RE.test(id) ? id : "";
   }, [youtubeVideoId]);
 
-  useEffect(() => {
-    if (!youtubeVideoId || typeof window === "undefined") return;
-
-    let destroyed = false;
-
-    const checkProgress = (player) => {
-      if (thresholdDoneRef.current || destroyed) return;
-      try {
-        const dur = player.getDuration();
-        const cur = player.getCurrentTime();
-        if (dur > 0 && cur / dur >= thresholdFraction) {
-          thresholdDoneRef.current = true;
-          cbRef.current?.();
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    const initPlayer = () => {
-      if (destroyed || !window.YT?.Player) return;
-      playerRef.current = new window.YT.Player(playerDivId, {
-        videoId: youtubeVideoId,
-        width: "100%",
-        height: "100%",
-        playerVars: {
-          controls: 1,
-          rel: 0,
-          modestbranding: 1,
-          disablekb: 1,
-          fs: 1,
-        },
-        events: {
-          onReady: (e) => {
-            if (destroyed) return;
-            intervalRef.current = setInterval(() => checkProgress(e.target), 500);
-          },
-        },
-      });
-    };
-
-    const pollTimer = setInterval(() => {
-      if (destroyed) {
-        clearInterval(pollTimer);
-        return;
-      }
-      if (window.YT?.Player) {
-        clearInterval(pollTimer);
-        initPlayer();
-      }
-    }, 100);
-
-    if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
+  const src = useMemo(() => {
+    if (!safeId) return "";
+    const q = new URLSearchParams();
+    if (Number.isFinite(thresholdFraction) && thresholdFraction > 0) {
+      q.set("tf", String(thresholdFraction));
     }
+    if (watermarkText) q.set("wm", String(watermarkText));
+    if (hideWatermark) q.set("hw", "1");
+    const qs = q.toString();
+    return `/api/youtube/${encodeURIComponent(safeId)}${qs ? `?${qs}` : ""}`;
+  }, [safeId, thresholdFraction, watermarkText, hideWatermark]);
 
-    return () => {
-      destroyed = true;
-      clearInterval(pollTimer);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+  useEffect(() => {
+    setFrameLoaded(false);
+  }, [src]);
+
+  useEffect(() => {
+    if (!safeId) return undefined;
+
+    const onMessage = (event) => {
+      if (typeof window === "undefined") return;
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || data.source !== "yt-safe-player") return;
+      if (data.videoId !== safeId) return;
+      if (data.type === "threshold") {
+        cbRef.current?.();
       }
-      try {
-        playerRef.current?.destroy?.();
-      } catch {
-        // ignore
-      }
-      playerRef.current = null;
     };
-  }, [youtubeVideoId, playerDivId, thresholdFraction]);
 
-  if (!youtubeVideoId) {
-    return null;
-  }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [safeId]);
+
+  if (!safeId || !src) return null;
 
   return (
     <div
       className={className}
       style={{
+        position: "relative",
         width: "100%",
         aspectRatio: "16 / 9",
         maxHeight: "100vh",
         backgroundColor: "#000",
-        position: "relative",
+        overflow: "hidden",
         ...style,
       }}
     >
-      <div
-        id={playerDivId}
+      <iframe
+        src={src}
+        title="Video player"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        onLoad={() => setFrameLoaded(true)}
         style={{
+          position: "absolute",
+          inset: 0,
           width: "100%",
           height: "100%",
+          border: 0,
+          display: "block",
+          backgroundColor: "#000",
         }}
       />
-      {!hideWatermark ? <VideoWatermarkOverlay text={watermarkText} /> : null}
+      {!frameLoaded ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2,
+            backgroundColor: "#000",
+          }}
+        >
+          <VideoPlayerChromeStyles />
+          <VideoPremiumLoader active label="Loading video" />
+        </div>
+      ) : null}
     </div>
   );
 }

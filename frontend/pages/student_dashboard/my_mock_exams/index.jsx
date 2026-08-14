@@ -85,7 +85,7 @@ export default function MyMockExams() {
       const response = await apiClient.get('/api/online_mock_exams/student');
       return response.data;
     },
-    // No auto refetch interval here; fetch on mount/reconnect only (no window focus to prevent auto-refresh)
+    refetchInterval: 15000,
     refetchOnWindowFocus: false, // Disabled to prevent auto-refresh on window focus
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -182,7 +182,7 @@ export default function MyMockExams() {
       }
     },
     enabled: !!profile?.id,
-    // No auto refetch interval; rely on mount/reconnect + manual invalidation (no window focus to prevent auto-refresh)
+    refetchInterval: 15000,
     refetchOnWindowFocus: false, // Disabled to prevent auto-refresh on window focus
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -216,6 +216,7 @@ export default function MyMockExams() {
       if (profile?.id) {
         queryClient.invalidateQueries({ queryKey: ['mock-exam-performance', profile.id] });
         queryClient.invalidateQueries({ queryKey: ['online-mock-exams-student'] });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
         fetchStudentData(); // Refetch student data to update completion status
       }
     };
@@ -225,6 +226,7 @@ export default function MyMockExams() {
       if (document.visibilityState === 'visible' && profile?.id) {
         refetchChart();
         queryClient.invalidateQueries({ queryKey: ['online-mock-exams-student'] });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
         fetchStudentData(); // Refetch student data to update completion status
       }
     };
@@ -233,6 +235,7 @@ export default function MyMockExams() {
     if (profile?.id) {
       queryClient.invalidateQueries({ queryKey: ['mock-exam-performance', profile.id] });
       queryClient.invalidateQueries({ queryKey: ['online-mock-exams-student'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
       fetchStudentData(); // Refetch student data to update completion status
     }
 
@@ -264,6 +267,15 @@ export default function MyMockExams() {
 
   useEffect(() => {
     fetchStudentData();
+  }, [profile?.id]);
+
+  // Keep Done/Start buttons in sync with admin resets (same cadence as charts)
+  useEffect(() => {
+    if (!profile?.id) return undefined;
+    const id = setInterval(() => {
+      fetchStudentData();
+    }, 15000);
+    return () => clearInterval(id);
   }, [profile?.id]);
 
   // Check which mock exams exist in online_mock_exams array

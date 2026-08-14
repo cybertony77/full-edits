@@ -7,6 +7,7 @@ import CourseTypeSelect from '../../../../components/CourseTypeSelect';
 import CenterSelect from '../../../../components/CenterSelect';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../lib/axios';
+import { useSystemConfig } from '../../../../lib/api/system';
 import Image from 'next/image';
 import ZoomableImage from '../../../../components/ZoomableImage';
 import AccountStateSelect from '../../../../components/AccountStateSelect';
@@ -21,17 +22,40 @@ import {
   reindexQuestionErrorsAfterQuestionRemoved,
   reindexDragOverAfterQuestionRemoved,
 } from '../../../../lib/onlineItemQuestionFormHelpers';
+import {
+  createEmptyMcqQuestion,
+  getQuestionType,
+  isEssayQuestion,
+  normalizeLoadedQuestion,
+  normalizeValidCorrectAnswers,
+  QUESTION_TYPE_ESSAY,
+  switchQuestionType,
+} from '../../../../lib/onlineQuestionTypes';
+import QuestionTypeTabs from '../../../../components/online/QuestionTypeTabs';
+import EssayValidAnswersEditor from '../../../../components/online/EssayValidAnswersEditor';
 import DeadlineTimeRow from '../../../../components/DeadlineTimeRow';
 import AllowDownloadingRadio from '../../../../components/AllowDownloadingRadio';
+import UseDesmosInQuestionRadio from '../../../../components/online/UseDesmosInQuestionRadio';
 import {
   isDeadlineStrictlyInFutureEgypt,
   normalizeDeadlineTimeField,
   parseDeadlineTime,
 } from '../../../../lib/deadlineTimeEgypt';
+import { isQuizFormReady } from '../../../../lib/onlineItemFormReady';
+
+function createDefaultMcqQuestion(desmosEnabled) {
+  return {
+    ...createEmptyMcqQuestion(),
+    use_desmos: desmosEnabled ? true : false,
+  };
+}
 
 export default function EditQuiz() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: systemConfig } = useSystemConfig();
+  const desmosEnabled =
+    systemConfig?.desmos_integrations === true || systemConfig?.desmos_integrations === 'true';
   const { id } = router.query;
   const [formData, setFormData] = useState({
     lesson_name: '',
@@ -47,15 +71,7 @@ export default function EditQuiz() {
     pdf_file_name: '',
     pdf_url: '',
     allow_downloading: true,
-    questions: [{
-      _clientKey: newQuestionClientKey(),
-      question_text: '',
-      question_picture: null,
-      answers: ['A', 'B'],
-      answer_texts: ['', ''],
-      correct_answer: '',
-      question_explanation: ''
-    }] || []
+    questions: [createDefaultMcqQuestion(desmosEnabled)]
   });
   const [activeTab, setActiveTab] = useState('questions');
   const [pdfUploading, setPdfUploading] = useState(false);
@@ -144,6 +160,11 @@ export default function EditQuiz() {
     [quizzes, id]
   );
 
+  const isFormReady = useMemo(
+    () => isQuizFormReady({ formData, selectedCourse, selectedLesson, accountState }),
+    [formData, selectedCourse, selectedLesson, accountState]
+  );
+
   const handleImportApply = async () => {
     if (!importSelectedId) return;
     const quiz = quizzes.find((q) => String(q._id) === importSelectedId);
@@ -214,27 +235,17 @@ export default function EditQuiz() {
         pdf_url: quizData.pdf_url || '',
         allow_downloading: quizData.allow_downloading !== false && quizData.allow_downloading !== 'false',
         questions: quizType === 'questions' && quizData.questions && Array.isArray(quizData.questions)
-          ? quizData.questions.map(q => ({
-              _clientKey: q._id ? String(q._id) : newQuestionClientKey(),
-              question_text: q.question_text || '',
-              question_picture: q.question_picture || null,
-              ...Object.keys(q)
-                .filter((key) => /^question_picture_\d+$/.test(key))
-                .reduce((acc, key) => ({ ...acc, [key]: q[key] || null }), {}),
-              answers: q.answers && q.answers.length > 0 ? q.answers : ['A', 'B'],
-              answer_texts: q.answer_texts && q.answer_texts.length > 0 ? q.answer_texts : (q.answers ? q.answers.map(() => '') : ['', '']),
-              correct_answer: q.correct_answer || '',
-              question_explanation: q.question_explanation || ''
-            }))
-          : [{
-              _clientKey: newQuestionClientKey(),
-              question_text: '',
-              question_picture: null,
-              answers: ['A', 'B'],
-              answer_texts: ['', ''],
-              correct_answer: '',
-              question_explanation: ''
-            }]
+          ? quizData.questions.map((q) =>
+              normalizeLoadedQuestion({
+                ...q,
+                _clientKey: q._id ? String(q._id) : newQuestionClientKey(),
+                question_picture: q.question_picture || null,
+                ...Object.keys(q)
+                  .filter((key) => /^question_picture_\d+$/.test(key))
+                  .reduce((acc, key) => ({ ...acc, [key]: q[key] || null }), {}),
+              })
+            )
+          : [createDefaultMcqQuestion(desmosEnabled)]
       });
       setDataLoaded(true);
       dataLoadedRef.current = true; // Mark as loaded in ref
@@ -709,18 +720,25 @@ export default function EditQuiz() {
     });
   };
 
+  const setQuestionType = (questionIndex, nextType) => {
+    setFormData((prev) => {
+      const newQuestions = [...prev.questions];
+      newQuestions[questionIndex] = switchQuestionType(newQuestions[questionIndex], nextType);
+      return { ...prev, questions: newQuestions };
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`question_${questionIndex}_answers`];
+      delete next[`question_${questionIndex}_correct`];
+      delete next[`question_${questionIndex}_valid`];
+      return next;
+    });
+  };
+
   const addQuestion = () => {
     setFormData(prev => ({
       ...prev,
-      questions: [...(prev.questions || []), {
-        _clientKey: newQuestionClientKey(),
-        question_text: '',
-        question_picture: null,
-        answers: ['A', 'B'],
-        answer_texts: ['', ''],
-        correct_answer: '',
-        question_explanation: ''
-      }]
+      questions: [...(prev.questions || []), createDefaultMcqQuestion(desmosEnabled)]
     }));
   };
 
@@ -795,11 +813,17 @@ export default function EditQuiz() {
           if (!hasQuestionText && !hasQuestionImage) {
             newErrors[`question_${qIdx}_text_or_image`] = '❌ Question must have at least question text or image (or both)';
           }
-          if (!q.answers || q.answers.length < 2) {
-            newErrors[`question_${qIdx}_answers`] = '❌ At least 2 answers (A and B) are required';
-          }
-          if (!q.correct_answer) {
-            newErrors[`question_${qIdx}_correct`] = '❌ Please select the correct answer';
+          if (isEssayQuestion(q)) {
+            if (normalizeValidCorrectAnswers(q.valid_correct_answers).length < 1) {
+              newErrors[`question_${qIdx}_valid`] = '❌ At least one valid correct answer is required';
+            }
+          } else {
+            if (!q.answers || q.answers.length < 2) {
+              newErrors[`question_${qIdx}_answers`] = '❌ At least 2 answers (A and B) are required';
+            }
+            if (!q.correct_answer) {
+              newErrors[`question_${qIdx}_correct`] = '❌ Please select the correct answer';
+            }
           }
         });
       }
@@ -905,14 +929,32 @@ export default function EditQuiz() {
       submitData.pdf_url = formData.pdf_url.trim();
       submitData.allow_downloading = formData.allow_downloading !== false;
     } else if (formData.questions && Array.isArray(formData.questions)) {
-      submitData.questions = formData.questions.map(({ _clientKey, ...q }) => ({
-        question_text: q.question_text || '',
-        ...buildQuestionPicturesPayload(getQuestionPictures(q)),
-        answers: q.answers,
-        answer_texts: q.answer_texts || [],
-        correct_answer: q.correct_answer,
-        question_explanation: q.question_explanation || ''
-      }));
+      submitData.questions = formData.questions.map(({ _clientKey, ...q }) => {
+        const type = getQuestionType(q);
+        const base = {
+          question_type: type,
+          question_text: q.question_text || '',
+          ...buildQuestionPicturesPayload(getQuestionPictures(q)),
+          question_explanation: q.question_explanation || '',
+          use_desmos: q.use_desmos === true || q.use_desmos === 'true',
+        };
+        if (type === QUESTION_TYPE_ESSAY) {
+          return {
+            ...base,
+            valid_correct_answers: normalizeValidCorrectAnswers(q.valid_correct_answers),
+            answers: [],
+            answer_texts: [],
+            correct_answer: '',
+          };
+        }
+        return {
+          ...base,
+          answers: q.answers,
+          answer_texts: q.answer_texts || [],
+          correct_answer: q.correct_answer,
+          valid_correct_answers: [],
+        };
+      });
     }
 
     console.log('Submitting quiz data:', {
@@ -986,6 +1028,9 @@ export default function EditQuiz() {
       </div>
     );
   }
+
+  const isUploading = Object.values(uploadingImages).some(val => val === true);
+  const isSaveDisabled = !isFormReady || updateQuizMutation.isPending || isUploading;
 
   return (
     <div style={{ 
@@ -1250,7 +1295,7 @@ export default function EditQuiz() {
                     setFormData({
                       ...formData,
                       quiz_type: 'pdf',
-                      questions: [{ _clientKey: newQuestionClientKey(), question_text: '', question_picture: null, answers: ['A', 'B'], answer_texts: ['', ''], correct_answer: '', question_explanation: '' }],
+                      questions: [{ _clientKey: newQuestionClientKey(), question_text: '', question_picture: null, answers: ['A', 'B', 'C', 'D'], answer_texts: ['', '', '', ''], correct_answer: '', question_explanation: '', use_desmos: desmosEnabled ? true : false }],
                       timer_type: 'no_timer',
                       timer: null
                     });
@@ -1623,6 +1668,11 @@ export default function EditQuiz() {
                   )}
                 </div>
 
+                <QuestionTypeTabs
+                  value={getQuestionType(question)}
+                  onChange={(type) => setQuestionType(qIdx, type)}
+                />
+
                 {/* Question Image Uploads */}
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6c757d', marginBottom: '8px' }}>
@@ -1691,13 +1741,22 @@ export default function EditQuiz() {
                   />
                 </div>
 
-                {/* Answers */}
+                {/* Answers (MCQ) / Valid Correct Answers (Essay) */}
+                {isEssayQuestion(question) ? (
+                  <EssayValidAnswersEditor
+                    questionIndex={qIdx}
+                    values={question.valid_correct_answers || []}
+                    error={errors[`question_${qIdx}_valid`]}
+                    onChange={(next) => handleQuestionChange(qIdx, 'valid_correct_answers', next)}
+                  />
+                ) : (
+                <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', textAlign: 'left' }}>
                     Answers
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {question.answers.map((answerLetter, aIdx) => {
+                    {(question.answers || []).map((answerLetter, aIdx) => {
                       const isLastAnswer = aIdx === question.answers.length - 1;
                       const hasTrashButton = aIdx >= 2;
                       const showAddButton = isLastAnswer && (aIdx === 1 || hasTrashButton);
@@ -1815,7 +1874,7 @@ export default function EditQuiz() {
                     Correct Answer <span style={{ color: 'red' }}>*</span>
                   </label>
                   <div className="correct-answer-radio" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {question.answers.map((answerLetter, aIdx) => {
+                    {(question.answers || []).map((answerLetter, aIdx) => {
                       return (
                         <label key={aIdx} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '12px', borderRadius: '8px', border: (() => {
                               const isCorrect = Array.isArray(question.correct_answer) 
@@ -1865,6 +1924,14 @@ export default function EditQuiz() {
                     </div>
                   )}
                 </div>
+                </>
+                )}
+
+                <UseDesmosInQuestionRadio
+                  name={`use_desmos_${qIdx}`}
+                  value={question.use_desmos === true || question.use_desmos === 'true'}
+                  onChange={(next) => handleQuestionChange(qIdx, 'use_desmos', next)}
+                />
 
                 {/* Question Explanation */}
                 <div style={{ marginBottom: '16px' }}>
@@ -1938,17 +2005,17 @@ export default function EditQuiz() {
             <div className="submit-buttons" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
                 type="submit"
-                disabled={updateQuizMutation.isPending || Object.values(uploadingImages).some(val => val === true)}
+                disabled={isSaveDisabled}
                 style={{
                   padding: '12px 24px',
                   background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  cursor: (updateQuizMutation.isPending || Object.values(uploadingImages).some(val => val === true)) ? 'not-allowed' : 'pointer',
+                  cursor: isSaveDisabled ? 'not-allowed' : 'pointer',
                   fontSize: '1rem',
                   fontWeight: '600',
-                  opacity: (updateQuizMutation.isPending || Object.values(uploadingImages).some(val => val === true)) ? 0.7 : 1
+                  opacity: isSaveDisabled ? 0.7 : 1
                 }}
               >
                 {updateQuizMutation.isPending ? 'Saving...' : 'Save'}

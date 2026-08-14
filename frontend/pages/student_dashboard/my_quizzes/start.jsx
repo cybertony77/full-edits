@@ -4,7 +4,10 @@ import Image from 'next/image';
 import apiClient from '../../../lib/axios';
 import { useProfile } from '../../../lib/api/auth';
 import QuestionImagesCarousel from '../../../components/student/QuestionImagesCarousel';
+import DesmosQuestionAssist from '../../../components/student/DesmosQuestionAssist';
+import MathReferenceSheetAssist from '../../../components/student/MathReferenceSheetAssist';
 import { listQuestionPicturePublicIds } from '../../../lib/questionPictures';
+import { isEssayQuestion, isEssayAnswerCorrect } from '../../../lib/onlineQuestionTypes';
 
 export default function QuizStart() {
   const router = useRouter();
@@ -159,6 +162,12 @@ export default function QuizStart() {
             shuffledQuestions = questionIndices.map(origIdx => {
               const origQ = qz.questions[origIdx];
               const shuffledQ = { ...origQ };
+
+              // Essay questions have no answers to shuffle - keep as-is
+              if (isEssayQuestion(origQ)) {
+                shuffledQ._originalIndex = origIdx;
+                return shuffledQ;
+              }
               
               // Keep answer letters in order (A, B, C, D)
               shuffledQ.answers = [...origQ.answers];
@@ -360,6 +369,19 @@ export default function QuizStart() {
     return String.fromCharCode(65 + index); // A, B, C, etc.
   };
 
+  const handleEssayAnswerChange = (questionIndex, text) => {
+    setSelectedAnswers(prev => {
+      const newAnswers = {
+        ...prev,
+        [questionIndex]: text
+      };
+      if (id) {
+        sessionStorage.setItem(`quiz_${id}_selectedAnswers`, JSON.stringify(newAnswers));
+      }
+      return newAnswers;
+    });
+  };
+
   const handleNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -419,6 +441,15 @@ export default function QuizStart() {
         // Get original question index
         const originalIdx = shuffleMapping ? shuffledToOriginal[shuffledIdx] : shuffledIdx;
         const originalQ = fullQuiz.questions[originalIdx];
+
+        if (originalQ && isEssayQuestion(originalQ)) {
+          const selectedAnswerData = selectedAnswers[shuffledIdx];
+          const selectedText = typeof selectedAnswerData === 'string' ? selectedAnswerData : '';
+          if (isEssayAnswerCorrect(selectedText, originalQ.valid_correct_answers)) {
+            correctCount++;
+          }
+          return;
+        }
         
         if (originalQ && originalQ.correct_answer) {
           const selectedAnswerData = selectedAnswers[shuffledIdx];
@@ -546,6 +577,13 @@ export default function QuizStart() {
           const originalIdx = shuffleMapping ? shuffledToOriginal[shuffledIdx] : shuffledIdx;
           const originalQ = fullQuiz.questions[originalIdx];
           const questionItem = questions[shuffledIdx];
+
+          if (originalQ && isEssayQuestion(originalQ)) {
+            if (typeof selectedAnswerData === 'string' && selectedAnswerData.trim() !== '') {
+              studentAnswersObj[originalIdx] = selectedAnswerData.trim();
+            }
+            return;
+          }
           
           // Extract answer letter and text
           let answerLetter = null;
@@ -816,6 +854,11 @@ export default function QuizStart() {
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
   const questionNumber = currentQuestionIndex + 1;
   const totalQuestions = questions.length;
+  const currentIsEssay = isEssayQuestion(currentQuestion);
+  const currentSelectedAnswer = selectedAnswers[currentQuestionIndex];
+  const isCurrentAnswered = currentIsEssay
+    ? typeof currentSelectedAnswer === 'string' && currentSelectedAnswer.trim() !== ''
+    : currentSelectedAnswer !== undefined && currentSelectedAnswer !== null;
 
   return (
     <div style={{
@@ -905,10 +948,17 @@ export default function QuizStart() {
           justifyContent: "flex-start",
           padding: "20px 0",
           overflow: "auto",
-          maxWidth: "900px",
+          maxWidth: "min(1400px, 100%)",
           width: "100%",
           margin: "0 auto"
         }}>
+          <MathReferenceSheetAssist>
+          {({ referenceButton }) => (
+          <DesmosQuestionAssist
+            useDesmos={currentQuestion?.use_desmos}
+            instanceKey={`quiz-${id}-q-${currentQuestionIndex}`}
+          >
+          {({ calculatorButton }) => (
           <div className="question-card" style={{
             background: "linear-gradient(135deg,rgb(63, 58, 58) 0%,rgb(87, 81, 81) 100%)",
             borderRadius: "20px",
@@ -925,7 +975,10 @@ export default function QuizStart() {
             alignItems: "center",
             justifyContent: "center",
             gap: "8px",
-            marginBottom: "20px"
+            marginBottom: "20px",
+            position: "relative",
+            minHeight: "36px",
+            width: "100%"
           }}>
             <span style={{
               background: "linear-gradient(135deg, #1FA8DC 0%, #0d5a7a 100%)",
@@ -938,6 +991,28 @@ export default function QuizStart() {
             }}>
               Question {questionNumber} of {totalQuestions}
             </span>
+            {referenceButton ? (
+              <div style={{
+                position: "absolute",
+                left: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 2
+              }}>
+                {referenceButton}
+              </div>
+            ) : null}
+            {calculatorButton ? (
+              <div style={{
+                position: "absolute",
+                right: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 2
+              }}>
+                {calculatorButton}
+              </div>
+            ) : null}
           </div>
           
           <QuestionImagesCarousel
@@ -967,7 +1042,25 @@ export default function QuizStart() {
             width: "100%",
             marginBottom: "20px"
           }}>
-            {currentQuestion.answers.map((answer, aIdx) => {
+            {currentIsEssay ? (
+              <input
+                type="text"
+                className="essay-answer-input"
+                value={typeof currentSelectedAnswer === 'string' ? currentSelectedAnswer : ''}
+                onChange={(e) => handleEssayAnswerChange(currentQuestionIndex, e.target.value)}
+                placeholder="Type your answer"
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  border: "2px solid #e9ecef",
+                  fontSize: "1rem",
+                  color: "#212529",
+                  fontFamily: "inherit",
+                  boxSizing: "border-box"
+                }}
+              />
+            ) : currentQuestion.answers.map((answer, aIdx) => {
               // answer is now a letter like "A", "B", "C", "D"
               const selectedAnswerData = selectedAnswers[currentQuestionIndex];
               const isSelected = selectedAnswerData !== undefined && selectedAnswerData !== null && (
@@ -1044,6 +1137,10 @@ export default function QuizStart() {
             })}
           </div>
         </div>
+          )}
+          </DesmosQuestionAssist>
+          )}
+          </MathReferenceSheetAssist>
       </div>
 
       {/* Navigation Buttons */}
@@ -1090,7 +1187,7 @@ export default function QuizStart() {
           </button>
         )}
 
-        {!isLastQuestion && selectedAnswers[currentQuestionIndex] !== undefined && (
+        {!isLastQuestion && isCurrentAnswered && (
           <button
             onClick={handleNext}
             style={{
@@ -1126,10 +1223,10 @@ export default function QuizStart() {
         {isLastQuestion && (
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isCurrentAnswered}
             style={{
               padding: "12px 24px",
-              background: isSubmitting 
+              background: (isSubmitting || !isCurrentAnswered)
                 ? "linear-gradient(135deg, #6c757d 0%, #495057 100%)"
                 : "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
               color: "white",
@@ -1137,11 +1234,11 @@ export default function QuizStart() {
               borderRadius: "8px",
               fontSize: "1rem",
               fontWeight: "600",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-              boxShadow: isSubmitting 
+              cursor: (isSubmitting || !isCurrentAnswered) ? "not-allowed" : "pointer",
+              boxShadow: (isSubmitting || !isCurrentAnswered)
                 ? "0 2px 8px rgba(108, 117, 125, 0.3)"
                 : "0 4px 16px rgba(40, 167, 69, 0.3)",
-              opacity: isSubmitting ? 0.7 : 1,
+              opacity: (isSubmitting || !isCurrentAnswered) ? 0.7 : 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1149,13 +1246,13 @@ export default function QuizStart() {
               maxWidth: isFirstQuestion ? "500px" : "244px"
             }}
             onMouseEnter={(e) => {
-              if (!isSubmitting) {
+              if (!isSubmitting && isCurrentAnswered) {
                 e.currentTarget.style.transform = "translateY(-2px)";
                 e.currentTarget.style.boxShadow = "0 6px 20px rgba(40, 167, 69, 0.4)";
               }
             }}
             onMouseLeave={(e) => {
-              if (!isSubmitting) {
+              if (!isSubmitting && isCurrentAnswered) {
                 e.currentTarget.style.transform = "translateY(0)";
                 e.currentTarget.style.boxShadow = "0 4px 16px rgba(40, 167, 69, 0.3)";
               }

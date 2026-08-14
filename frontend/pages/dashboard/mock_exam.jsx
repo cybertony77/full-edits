@@ -553,7 +553,7 @@ export default function MockExam() {
                   <span style={{ fontFamily: 'monospace' }}>{s.phone || 'N/A'}</span>
                 </div>
                 <div className="result-details" style={{ marginTop: 2 }}>
-                  {s.grade || 'N/A'} • {s.main_center || 'N/A'}
+                  {[s.course, s.courseType, s.main_center].filter(Boolean).join(' • ') || 'N/A'}
                 </div>
               </button>
             ))}

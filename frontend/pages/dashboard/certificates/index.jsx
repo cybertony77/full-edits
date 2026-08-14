@@ -8,7 +8,7 @@ import Title from '../../../components/Title';
 import AccountStateSelect from '../../../components/AccountStateSelect';
 import apiClient from '../../../lib/axios';
 import { parseStudentsCsv } from '../../../lib/certificatesUtils';
-import styles from '../../../components/StudentCertificates.module.css';
+import styles from '../../../styles/StudentCertificates.module.css';
 
 function InputWithButton(props) {
   const theme = useMantineTheme();

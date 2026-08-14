@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import Title from '../../components/Title';
 import apiClient from '../../lib/axios';
-import styles from '../../components/StudentCertificates.module.css';
+import styles from '../../styles/StudentCertificates.module.css';
 
 async function fetchCertificateBlob(certId) {
   const response = await apiClient.get(`/api/certificates/download?id=${certId}`, {

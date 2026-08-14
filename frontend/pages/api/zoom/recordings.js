@@ -84,6 +84,8 @@ export default async function handler(req, res) {
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
+  const startedAt = Date.now();
+
   try {
     const user = await authMiddleware(req);
     if (!['admin', 'developer', 'assistant'].includes(user.role)) {
@@ -91,12 +93,22 @@ export default async function handler(req, res) {
     }
 
     const nextPageToken = String(req.query.next_page_token || '');
+    console.log('[zoom-recordings] list request', {
+      userId: user.id || user._id || null,
+      role: user.role,
+      hasNextPageToken: Boolean(nextPageToken),
+    });
 
     let payload;
+    let retriedAfter401 = false;
     try {
       payload = await listZoomUserRecordings(nextPageToken);
     } catch (error) {
       if (error?.statusCode === 401) {
+        retriedAfter401 = true;
+        console.warn('[zoom-recordings] 401 — forcing OAuth refresh and retry', {
+          message: error?.message || 'Zoom token expired',
+        });
         payload = await listZoomUserRecordings(nextPageToken, true);
       } else {
         throw error;
@@ -125,17 +137,35 @@ export default async function handler(req, res) {
       };
     });
 
+    console.log('[zoom-recordings] list success', {
+      count: mapped.length,
+      retriedAfter401,
+      hasMore: Boolean(payload?.next_page_token),
+      durationMs: Date.now() - startedAt,
+    });
+
     return res.json({
       meetings: mapped,
       next_page_token: payload?.next_page_token || '',
     });
   } catch (error) {
     const statusCode = error?.statusCode || 500;
+    const details = error?.message || 'Unknown error';
+    const missingScope = details.includes('does not contain scopes');
+
+    console.error('[zoom-recordings] list failed', {
+      httpStatus: statusCode,
+      zoomCode: error?.zoomCode ?? error?.details?.code ?? null,
+      zoomMessage: error?.zoomMessage || error?.details?.message || details,
+      isTimeout: Boolean(error?.isTimeout),
+      missingScope,
+      durationMs: Date.now() - startedAt,
+      zoomDetails: error?.details || null,
+    });
+
     if (statusCode === 401) {
       return res.status(401).json({ error: 'Zoom token expired' });
     }
-    const details = error?.message || 'Unknown error';
-    const missingScope = details.includes('does not contain scopes');
     return res.status(statusCode).json({
       error: 'Failed to fetch zoom recordings',
       details,

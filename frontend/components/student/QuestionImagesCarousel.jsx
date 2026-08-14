@@ -6,7 +6,7 @@ import ZoomableImage from '../ZoomableImage';
 
 import { listQuestionPicturePublicIds } from '../../lib/questionPictures';
 
-import classes from './QuestionImagesCarousel.module.css';
+import classes from '../../styles/QuestionImagesCarousel.module.css';
 
 
 

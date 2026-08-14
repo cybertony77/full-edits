@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
+import { getStudentLesson, mergeStudentLesson } from '../../../lib/studentLessons';
 
 function loadEnvConfig() {
   try {
@@ -104,32 +105,30 @@ export default async function handler(req, res) {
 
       // Update lesson name in all students' lessons object if name changed
       if (oldName !== newName) {
-        // Find all students that have this lesson in their lessons object
-        const studentsWithLesson = await db.collection('students').find({
-          [`lessons.${oldName}`]: { $exists: true }
+        const studentsWithLessons = await db.collection('students').find({
+          lessons: { $exists: true, $ne: null, $not: { $type: 'array' } },
         }).toArray();
 
-        // Update each student's lessons object
-        for (const student of studentsWithLesson) {
-          if (student.lessons && student.lessons[oldName]) {
-            // Get the lesson data
-            const lessonData = { ...student.lessons[oldName] };
-            
-            // Update the lesson field to match the new name
-            lessonData.lesson = newName;
-            
-            // Remove old lesson key and add new lesson key with updated lesson field
-            await db.collection('students').updateOne(
-              { id: student.id },
-              {
-                $unset: { [`lessons.${oldName}`]: "" },
-                $set: { [`lessons.${newName}`]: lessonData }
-              }
-            );
-          }
+        let updatedCount = 0;
+        for (const student of studentsWithLessons) {
+          const lessonData = getStudentLesson(student.lessons, oldName);
+          if (!lessonData) continue;
+
+          const withoutOld = { ...(student.lessons || {}) };
+          delete withoutOld[oldName];
+          const nextLessons = mergeStudentLesson(withoutOld, newName, {
+            ...lessonData,
+            lesson: newName,
+          });
+
+          await db.collection('students').updateOne(
+            { id: student.id },
+            { $set: { lessons: nextLessons } }
+          );
+          updatedCount++;
         }
 
-        console.log(`✅ Updated lesson name from "${oldName}" to "${newName}" in ${studentsWithLesson.length} student(s)`);
+        console.log(`✅ Updated lesson name from "${oldName}" to "${newName}" in ${updatedCount} student(s)`);
       }
 
       res.json({ success: true });
@@ -142,9 +141,12 @@ export default async function handler(req, res) {
       }
 
       // Check if lesson is being used by students
-      const studentsWithLesson = await db.collection('students').find({
-        [`lessons.${lesson.name}`]: { $exists: true }
+      const studentsWithLessons = await db.collection('students').find({
+        lessons: { $exists: true, $ne: null, $not: { $type: 'array' } },
       }).toArray();
+      const studentsWithLesson = studentsWithLessons.filter(
+        (s) => getStudentLesson(s.lessons, lesson.name)
+      );
       
       if (studentsWithLesson.length > 0) {
         return res.status(400).json({ 

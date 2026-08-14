@@ -2,6 +2,11 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import {
+  createDefaultStudentLesson,
+  getStudentLesson,
+  mergeStudentLesson,
+} from '../../../../lib/studentLessons';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -78,43 +83,30 @@ export default async function handler(req, res) {
         );
       }
       
-      if (!student.lessons[lesson]) {
+      if (!getStudentLesson(student.lessons, lesson)) {
         console.log(`🧩 Creating missing lesson "${lesson}" for student ${studentId}`);
+        const nextLessons = mergeStudentLesson(
+          student.lessons,
+          lesson,
+          createDefaultStudentLesson(lesson)
+        );
         await db.collection('students').updateOne(
           { id: studentId },
-          { $set: { [`lessons.${lesson}`]: {
-            lesson: lesson,
-            attended: false,
-            lastAttendance: null,
-            lastAttendanceCenter: null,
-            hwDone: false,
-            quizDegree: null,
-            comment: null,
-            message_state: false,
-            homework_degree: null
-          } } }
+          { $set: { lessons: nextLessons } }
         );
-        // Refresh student in-memory reference
-        student.lessons[lesson] = {
-          lesson: lesson,
-          attended: false,
-          lastAttendance: null,
-          lastAttendanceCenter: null,
-          hwDone: false,
-          quizDegree: null,
-          comment: null,
-          message_state: false,
-          homework_degree: null
-        };
-    }
+        student.lessons = nextLessons;
+      }
     };
 
     await ensureLessonExists();
 
     // Update comment in the selected lesson
+    const nextLessons = mergeStudentLesson(student.lessons, lesson, {
+      comment: (comment && String(comment).trim() !== '') ? String(comment).trim() : null,
+    });
     await db.collection('students').updateOne(
       { id: studentId },
-      { $set: { [`lessons.${lesson}.comment`]: (comment && String(comment).trim() !== '') ? String(comment).trim() : null } }
+      { $set: { lessons: nextLessons } }
     );
 
     return res.json({ success: true });

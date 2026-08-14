@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
+import { maskGoogleMeetIdsInDocuments } from '../../../lib/googleVideoIds';
 
 function loadEnvConfig() {
   try {
@@ -123,7 +124,7 @@ export default async function handler(req, res) {
         return new Date(b.date) - new Date(a.date);
       });
       
-      res.json({ success: true, sessions: sortedSessions });
+      res.json({ success: true, sessions: maskGoogleMeetIdsInDocuments(sortedSessions) });
     } else {
       // If student has no course, return empty array (don't show any sessions)
       return res.json({ success: true, sessions: [] });

@@ -10,6 +10,7 @@ export default function Dashboard() {
   const isWhatsAppJoinGroupEnabled = systemConfig?.whatsapp_join_group_btn === true || systemConfig?.whatsapp_join_group_btn === 'true';
   const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
   const isZoomJoinMeetingEnabled = systemConfig?.zoom_join_meeting === true || systemConfig?.zoom_join_meeting === 'true';
+  const isGoogleJoinMeetingEnabled = systemConfig?.google_join_meeting === true || systemConfig?.google_join_meeting === 'true';
   const isPaymentSystemEnabled = systemConfig?.payment_system === true || systemConfig?.payment_system === 'true';
   const isCertificatesEnabled = systemConfig?.certificates === true || systemConfig?.certificates === 'true';
 
@@ -88,6 +89,14 @@ export default function Dashboard() {
         .dashboard-btn.zoom-btn:hover:not(:disabled) {
           background: linear-gradient(90deg, #1a6fdb 0%, #2d8cff 100%);
           box-shadow: 0 8px 25px rgba(45, 140, 255, 0.4);
+        }
+        .dashboard-btn.google-meet-btn {
+          background: linear-gradient(200deg, #00AC47 0%, #4285F4 100%);
+          box-shadow: 0 4px 16px rgba(66, 133, 244, 0.3);
+        }
+        .dashboard-btn.google-meet-btn:hover:not(:disabled) {
+          background: linear-gradient(200deg, #4285F4 0%, #00AC47 100%);
+          box-shadow: 0 8px 25px rgba(0, 172, 71, 0.4);
         }
         .dashboard-btn.whatsapp-btn {
           background: linear-gradient(90deg, #25D366 0%, #128C7E 100%);
@@ -249,6 +258,15 @@ export default function Dashboard() {
           >
             <Image src="/zoom.svg" alt="Zoom" width={20} height={20} />
             Join Zoom Meeting
+          </button>
+        )}
+        {isGoogleJoinMeetingEnabled && (
+          <button
+            className="dashboard-btn google-meet-btn"
+            onClick={() => router.push("/dashboard/join_google_meeting")}
+          >
+            <Image src="/google-meet.svg" alt="Google Meet" width={20} height={20} />
+            Join Google Meeting
           </button>
         )}
         {isWhatsAppJoinGroupEnabled && (

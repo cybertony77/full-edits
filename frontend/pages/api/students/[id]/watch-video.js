@@ -2,6 +2,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import { mergeStudentLesson } from '../../../../lib/studentLessons';
 
 function loadEnvConfig() {
   try {
@@ -163,50 +164,22 @@ export default async function handler(req, res) {
       // Mark attendance when video finishes
       const lesson = session.lesson;
       if (lesson && lesson.trim()) {
-        const lessons = student.lessons || {};
-        const lessonData = lessons[lesson];
-
         const attendanceDate = formatDate(new Date());
         const attendanceString = `${attendanceDate} in Online`;
 
-        let attendanceMarked = false;
-        
-        if (lessonData) {
-          // Update existing lesson
-          const updateResult = await db.collection('students').updateOne(
-            { id: student_id },
-            {
-              $set: {
-                [`lessons.${lesson}.attended`]: true,
-                [`lessons.${lesson}.lastAttendance`]: attendanceString,
-                [`lessons.${lesson}.lastAttendanceCenter`]: 'Online',
-                [`lessons.${lesson}.attendanceDate`]: attendanceDate,
-                ...(isPaidVideo ? { [`lessons.${lesson}.paid`]: true } : {})
-              }
-            }
-          );
-          attendanceMarked = updateResult.modifiedCount > 0 || updateResult.matchedCount > 0;
-        } else {
-          // Lesson doesn't exist, add new lesson entry
-          const newLesson = {
-            lesson: lesson,
-            attended: true,
-            lastAttendance: attendanceString,
-            lastAttendanceCenter: 'Online',
-            attendanceDate: attendanceDate,
-            hwDone: false,
-            quizDegree: null,
-            comment: null,
-            message_state: false,
-            homework_degree: null,
-            paid: isPaidVideo
-          };
-          const updateResult = await db.collection('students').updateOne(
-            { id: student_id },
-            { $set: { [`lessons.${lesson}`]: newLesson } }
-          );
-          attendanceMarked = updateResult.modifiedCount > 0 || updateResult.matchedCount > 0;
-        }
+        const lessonPatch = {
+          attended: true,
+          lastAttendance: attendanceString,
+          lastAttendanceCenter: 'Online',
+          attendanceDate: attendanceDate,
+          ...(isPaidVideo ? { paid: true } : {}),
+        };
+        const nextLessons = mergeStudentLesson(student.lessons, lesson, lessonPatch);
+        const updateResult = await db.collection('students').updateOne(
+          { id: student_id },
+          { $set: { lessons: nextLessons } }
+        );
+        const attendanceMarked = updateResult.modifiedCount > 0 || updateResult.matchedCount > 0;
 
         // Create history record when attendance is marked (similar to scan page logic)
         if (attendanceMarked) {

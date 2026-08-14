@@ -767,7 +767,7 @@ export default function ChangeStudentAccountPassword() {
                     {s.name} (ID: {s.id})
                   </div>
                   <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
-                    {s.grade} • {s.main_center}
+                    {[s.course, s.courseType, s.main_center].filter(Boolean).join(' • ')}
                   </div>
                 </button>
               ))}

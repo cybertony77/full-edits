@@ -12,6 +12,7 @@ import NeedHelp from '../../components/NeedHelp';
 import R2VideoPlayer from '../../components/R2VideoPlayer';
 import YoutubeEmbedWithProgress from '../../components/YoutubeEmbedWithProgress';
 import ZoomVideoPlayer from '../../components/ZoomVideoPlayer';
+import GoogleMeetVideoPlayer from '../../components/GoogleMeetVideoPlayer';
 import { TextInput, ActionIcon, useMantineTheme } from '@mantine/core';
 import { IconSearch, IconArrowRight } from '@tabler/icons-react';
 
@@ -38,7 +39,7 @@ function InputWithButton(props) {
 
 // Build embed URL
 function buildEmbedUrl(videoId) {
-  return `https://www.youtube.com/embed/${videoId}?controls=1&rel=0&modestbranding=1&disablekb=1&fs=1`;
+  return `https://www.youtube.com/embed/${videoId}?controls=0&rel=0&modestbranding=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1`;
 }
 
 
@@ -1112,6 +1113,14 @@ export default function OnlineSessions() {
                 ) : selectedVideo.video_type === 'zoom' ? (
                   <ZoomVideoPlayer
                     meetingId={selectedVideo.video_ID || selectedVideo.video_ID_1 || ''}
+                    videoId={selectedVideo._id}
+                    watermarkText={`${profile?.id || 'unknown'}`}
+                    onComplete={handleR2VideoComplete}
+                    onMilestonePercent={handleWatchTenPercent}
+                  />
+                ) : selectedVideo.video_type === 'google_meet' ? (
+                  <GoogleMeetVideoPlayer
+                    secureId={selectedVideo.video_ID || selectedVideo.video_ID_1 || ''}
                     videoId={selectedVideo._id}
                     watermarkText={`${profile?.id || 'unknown'}`}
                     onComplete={handleR2VideoComplete}

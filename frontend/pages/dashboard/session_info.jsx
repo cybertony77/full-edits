@@ -811,7 +811,7 @@ export default function SessionInfo() {
             border: 1px solid #e9ecef;
             transition: all 0.2s ease;
             position: relative;
-            z-index: 9999;
+            z-index: 2;
           }
           
           .pagination-page-info.clickable:hover {
@@ -826,7 +826,7 @@ export default function SessionInfo() {
             left: 50%;
             transform: translateX(-50%);
             margin-bottom: 8px;
-            z-index: 10000;
+            z-index: 5;
           }
           
           .page-popup-content {
@@ -840,7 +840,7 @@ export default function SessionInfo() {
             max-height: 400px;
             overflow-y: auto;
             position: relative;
-            z-index: 10001;
+            z-index: 6;
           }
           
           .page-popup-header {

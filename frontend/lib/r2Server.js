@@ -7,18 +7,28 @@ import https from 'https';
 
 const httpsAgent = new https.Agent({
   keepAlive: true,
-  maxSockets: 100,
+  keepAliveMsecs: 30_000,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  // No idle socket timeout — long video proxy streams must not be killed.
+  scheduling: 'lifo',
 });
 
 const httpAgent = new http.Agent({
   keepAlive: true,
-  maxSockets: 100,
+  keepAliveMsecs: 30_000,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  scheduling: 'lifo',
 });
 
 function createR2RequestHandler() {
   return new NodeHttpHandler({
     httpAgent,
     httpsAgent,
+    // Connect/startup only. requestTimeout must stay disabled for multi-hour GetObject bodies.
+    connectionTimeout: 15_000,
+    requestTimeout: 0,
   });
 }
 

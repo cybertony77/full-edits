@@ -9,6 +9,7 @@ import {
   Group,
   NumberInput,
   Paper,
+  Rating,
   ScrollArea,
   Stack,
   Switch,
@@ -22,13 +23,13 @@ import { IconCheck, IconTrash, IconX } from '@tabler/icons-react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import TitleBar from '../components/Title';
-import CourseSelect from '../components/CourseSelect';
 import MarketingPageLoader from '../components/MarketingPageLoader';
 import FullPageActionLoader from '../components/FullPageActionLoader';
 import MarketingMultiSelect from '../components/MarketingMultiSelect';
 import VideoInput from '../components/VideoInput';
 import R2VideoPlayer from '../components/R2VideoPlayer';
 import ZoomVideoPlayer from '../components/ZoomVideoPlayer';
+import GoogleMeetVideoPlayer from '../components/GoogleMeetVideoPlayer';
 import YoutubeEmbedWithProgress from '../components/YoutubeEmbedWithProgress';
 import { useProfile } from '../lib/api/auth';
 import { useSystemConfig } from '../lib/api/system';
@@ -70,6 +71,7 @@ function emptySessionVideo() {
     video_source: 'youtube',
     r2_key: '',
     zoom_meeting_id: '',
+    google_meet_id: '',
     upload_file_name: '',
     upload_progress: 0,
     upload_status: 'idle',
@@ -93,6 +95,9 @@ function sessionVideoFromServer(json) {
   if (type === 'zoom' && id) {
     return { ...base, video_source: 'zoom', zoom_meeting_id: id };
   }
+  if (type === 'google_meet' && id) {
+    return { ...base, video_source: 'google_meet', google_meet_id: id };
+  }
   if (type === 'youtube' && id) {
     const ytId = extractYouTubeId(id) || id;
     return {
@@ -114,13 +119,16 @@ function sessionVideoFromServer(json) {
 function resolveSessionPlayback(videoOrData) {
   if (!videoOrData) return null;
 
-  if (videoOrData.video_source || videoOrData.youtube_url || videoOrData.r2_key || videoOrData.zoom_meeting_id) {
+  if (videoOrData.video_source || videoOrData.youtube_url || videoOrData.r2_key || videoOrData.zoom_meeting_id || videoOrData.google_meet_id) {
     if (videoOrData.r2_key && String(videoOrData.r2_key).trim()) {
       return { type: 'r2', id: String(videoOrData.r2_key).trim() };
     }
     if (videoOrData.zoom_meeting_id && String(videoOrData.zoom_meeting_id).trim()) {
       const meetingId = extractZoomMeetingId(videoOrData.zoom_meeting_id);
       if (meetingId) return { type: 'zoom', id: meetingId };
+    }
+    if (videoOrData.google_meet_id && String(videoOrData.google_meet_id).trim()) {
+      return { type: 'google_meet', id: String(videoOrData.google_meet_id).trim() };
     }
     if (videoOrData.youtube_url && String(videoOrData.youtube_url).trim()) {
       const ytId = extractYouTubeId(videoOrData.youtube_url);
@@ -136,7 +144,7 @@ function resolveSessionPlayback(videoOrData) {
 
   const type = (videoOrData.session_video_type || '').toLowerCase();
   const id = String(videoOrData.session_video_id || '').trim();
-  if (type && id && ['youtube', 'r2', 'zoom'].includes(type)) {
+  if (type && id && ['youtube', 'r2', 'zoom', 'google_meet'].includes(type)) {
     if (type === 'youtube') {
       const ytId = extractYouTubeId(id) || id;
       return { type: 'youtube', id: ytId };
@@ -283,21 +291,44 @@ async function prepareTeacherImageForUpload(file) {
   }
 }
 
+function shuffleArray(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Pick random unique activated testimonials, then reloop to fill `count` slides. */
+function buildTestimonialSlides(activated, count) {
+  const list = Array.isArray(activated)
+    ? activated.filter((t) => t?.name && t?.course && t?.text)
+    : [];
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  if (!list.length || n <= 0) return [];
+
+  const unique = shuffleArray(list).slice(0, Math.min(n, list.length));
+  const slides = [];
+  for (let i = 0; i < n; i += 1) {
+    slides.push(unique[i % unique.length]);
+  }
+  return slides;
+}
+
+function testimonialCardSizeClass(text) {
+  const len = String(text || '').trim().length;
+  if (len < 80) return 'testimonialCardSm';
+  if (len < 220) return 'testimonialCardMd';
+  return 'testimonialCardLg';
+}
+
 function buildBaselineSnapshot(json) {
   const L = json.links?.length ? json.links : [{ name: '', link: '', phone: '' }];
   const links = L.map((row) => {
     const wa = (row.link || '').match(/^https?:\/\/wa\.me\/(\d+)/i);
     return { name: row.name || '', link: row.link || '', phone: wa ? wa[1] : '' };
   });
-  const T = json.students_testimonials?.length
-    ? json.students_testimonials
-    : [{ name: '', course: '', text: '', score: '' }];
-  const testimonials = T.map((t) => ({
-    name: t.name || '',
-    course: t.course || '',
-    text: t.text || '',
-    score: t.score || '',
-  }));
   return JSON.stringify({
     page_state: json.page_state !== false,
     teacher_picture: json.teacher_picture ?? null,
@@ -325,7 +356,10 @@ function buildBaselineSnapshot(json) {
       }))
       .sort((a, b) => String(a.id).localeCompare(String(b.id))),
     links,
-    testimonials,
+    testimonials_to_show:
+      json.testimonials_to_show === null || json.testimonials_to_show === undefined
+        ? ''
+        : String(json.testimonials_to_show),
     outro_text: json.outro_text || '',
     note: json.note || '',
   });
@@ -418,9 +452,9 @@ export default function MarketingPage() {
   const [outroText, setOutroText] = useState('');
   const [noteText, setNoteText] = useState('');
   const [copyLinkSuccess, setCopyLinkSuccess] = useState('');
-  const [testimonialCourseOpen, setTestimonialCourseOpen] = useState({});
   const [studentsTeached, setStudentsTeached] = useState('');
   const [yearsExperience, setYearsExperience] = useState('');
+  const [testimonialsToShow, setTestimonialsToShow] = useState('');
   const [sessionVideo, setSessionVideo] = useState(emptySessionVideo);
   const [sessionVideoErrors, setSessionVideoErrors] = useState({});
   const [centerIds, setCenterIds] = useState([]);
@@ -431,9 +465,6 @@ export default function MarketingPage() {
   const [contactFormPhone, setContactFormPhone] = useState('');
   const [contactFormError, setContactFormError] = useState(null);
   const [links, setLinks] = useState([{ name: '', link: '', phone: '' }]);
-  const [testimonials, setTestimonials] = useState([
-    { name: '', course: '', text: '', score: '' },
-  ]);
   const [saving, setSaving] = useState(false);
   const [uploadingPic, setUploadingPic] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -452,9 +483,26 @@ export default function MarketingPage() {
   const TESTIMONIAL_AUTO_MS = 5000;
   const TESTIMONIAL_RESUME_MS = 3000;
 
-  const viewTestimonialCount = useMemo(() => {
-    return (data?.students_testimonials || []).filter((t) => t.name && t.course && t.text).length;
-  }, [data?.students_testimonials]);
+  const activatedTestimonialsKey = useMemo(() => {
+    return (data?.activated_testimonials || [])
+      .map(
+        (t) =>
+          `${t.id ?? ''}:${t.name}:${t.course}:${t.text}:${t.score ?? ''}:${t.rating ?? ''}`
+      )
+      .sort()
+      .join('|');
+  }, [data?.activated_testimonials]);
+
+  const viewTestimonials = useMemo(() => {
+    return buildTestimonialSlides(
+      data?.activated_testimonials,
+      data?.testimonials_to_show
+    );
+    // Rebuild when activated set or show-count changes (not on every poll identity)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activatedTestimonialsKey, data?.testimonials_to_show]);
+
+  const viewTestimonialCount = viewTestimonials.length;
 
   const applyFormFromServer = useCallback((json) => {
     setPageStateChecked(json.page_state !== false);
@@ -501,16 +549,10 @@ export default function MarketingPage() {
         };
       })
     );
-    const T = json.students_testimonials?.length
-      ? json.students_testimonials
-      : [{ name: '', course: '', text: '', score: '' }];
-    setTestimonials(
-      T.map((t) => ({
-        name: t.name || '',
-        course: t.course || '',
-        text: t.text || '',
-        score: t.score || '',
-      }))
+    setTestimonialsToShow(
+      json.testimonials_to_show === null || json.testimonials_to_show === undefined
+        ? ''
+        : String(json.testimonials_to_show)
     );
     setFormBaseline(buildBaselineSnapshot(json));
   }, []);
@@ -703,6 +745,14 @@ export default function MarketingPage() {
     scheduleTestimonialResume();
   }, [pauseTestimonialAutoplay, scheduleTestimonialResume]);
 
+  const syncTestimonialCarouselHeight = useCallback(() => {
+    if (!embla) return;
+    const slide = embla.slideNodes()[embla.selectedScrollSnap()];
+    const viewport = embla.containerNode()?.parentElement;
+    if (!slide || !viewport) return;
+    viewport.style.height = `${slide.offsetHeight}px`;
+  }, [embla]);
+
   useEffect(() => {
     if (!welcomeReady || !embla || canEdit || viewTestimonialCount === 0) {
       clearTestimonialTimers();
@@ -710,6 +760,7 @@ export default function MarketingPage() {
     }
 
     const onSelect = () => {
+      syncTestimonialCarouselHeight();
       if (testimonialProgrammaticScrollRef.current) {
         testimonialProgrammaticScrollRef.current = false;
         return;
@@ -722,6 +773,7 @@ export default function MarketingPage() {
     const onPointerUp = () => scheduleTestimonialResume();
 
     embla.on('select', onSelect);
+    embla.on('reInit', syncTestimonialCarouselHeight);
     root.addEventListener('pointerdown', onPointerDown);
     root.addEventListener('pointerup', onPointerUp);
     root.addEventListener('touchstart', onPointerDown, { passive: true });
@@ -731,10 +783,14 @@ export default function MarketingPage() {
     root.addEventListener('focusin', onPointerDown);
     root.addEventListener('focusout', onPointerUp);
 
+    // Wait a frame so slide content (rating/fonts) can settle before measuring.
+    const raf = requestAnimationFrame(() => syncTestimonialCarouselHeight());
     startTestimonialAutoplay();
 
     return () => {
+      cancelAnimationFrame(raf);
       embla.off('select', onSelect);
+      embla.off('reInit', syncTestimonialCarouselHeight);
       root.removeEventListener('pointerdown', onPointerDown);
       root.removeEventListener('pointerup', onPointerUp);
       root.removeEventListener('touchstart', onPointerDown);
@@ -755,6 +811,7 @@ export default function MarketingPage() {
     scheduleTestimonialResume,
     startTestimonialAutoplay,
     handleTestimonialUserInteract,
+    syncTestimonialCarouselHeight,
   ]);
 
   const patch = async (body) => {
@@ -787,7 +844,7 @@ export default function MarketingPage() {
           }))
           .sort((a, b) => String(a.id).localeCompare(String(b.id))),
         links,
-        testimonials,
+        testimonials_to_show: testimonialsToShow,
         outro_text: outroText,
         note: noteText,
       }),
@@ -803,7 +860,7 @@ export default function MarketingPage() {
       assistantIds,
       contactPeople,
       links,
-      testimonials,
+      testimonialsToShow,
       outroText,
       noteText,
     ]
@@ -890,7 +947,7 @@ export default function MarketingPage() {
   }, [updateSessionVideo]);
 
   const handleSessionYouTubeUrlChange = useCallback((_index, url) => {
-    updateSessionVideo({ youtube_url: url, video_source: 'youtube', r2_key: '', zoom_meeting_id: '' });
+    updateSessionVideo({ youtube_url: url, video_source: 'youtube', r2_key: '', zoom_meeting_id: '', google_meet_id: '' });
     setSessionVideoErrors((prev) => {
       const next = { ...prev };
       delete next.video_0_youtube_url;
@@ -908,6 +965,7 @@ export default function MarketingPage() {
       video_source: 'zoom',
       youtube_url: '',
       r2_key: '',
+      google_meet_id: '',
     });
     setSessionVideoErrors((prev) => {
       const next = { ...prev };
@@ -920,12 +978,32 @@ export default function MarketingPage() {
     updateSessionVideo({ zoom_meeting_id: '' });
   }, [updateSessionVideo]);
 
+  const handleSessionGoogleMeetIdChange = useCallback((_index, meetId) => {
+    updateSessionVideo({
+      google_meet_id: meetId,
+      video_source: 'google_meet',
+      youtube_url: '',
+      r2_key: '',
+      zoom_meeting_id: '',
+    });
+    setSessionVideoErrors((prev) => {
+      const next = { ...prev };
+      delete next.video_0_google_meet_id;
+      return next;
+    });
+  }, [updateSessionVideo]);
+
+  const handleSessionClearGoogleMeetId = useCallback(() => {
+    updateSessionVideo({ google_meet_id: '' });
+  }, [updateSessionVideo]);
+
   const handleSessionR2Upload = useCallback((_index, r2Key, fileName) => {
     updateSessionVideo({
       r2_key: r2Key,
       video_source: r2Key ? 'r2' : 'youtube',
       youtube_url: '',
       zoom_meeting_id: '',
+      google_meet_id: '',
       upload_file_name: fileName || '',
       upload_status: r2Key ? 'done' : 'idle',
       upload_progress: r2Key ? 100 : 0,
@@ -1023,15 +1101,6 @@ export default function MarketingPage() {
       })
       .filter(Boolean);
 
-    const testimonialsPayload = testimonials
-      .map((t) => ({
-        name: t.name.trim(),
-        course: t.course.trim(),
-        text: t.text.trim(),
-        score: t.score?.trim() ? t.score.trim() : null,
-      }))
-      .filter((t) => t.name && t.course && t.text);
-
     await patch({
       teacher_picture: teacherPicture,
       teacher_name: teacherName.trim() || null,
@@ -1050,10 +1119,17 @@ export default function MarketingPage() {
         }))
         .filter((p) => p.name && p.phone),
       links: linksPayload.length ? linksPayload : null,
-      students_testimonials: testimonialsPayload.length ? testimonialsPayload : null,
+      students_testimonials: null,
+      testimonials_to_show: testimonialsToShow === '' ? null : Number(testimonialsToShow),
       outro_text: outroText.trim() || null,
       note: noteText.trim() || null,
     });
+  };
+
+  const cancelContent = () => {
+    if (!data || saving) return;
+    teacherImageDraftRef.current = false;
+    applyFormFromServer(data);
   };
 
   const marketingPageUrl = useMemo(() => {
@@ -1131,9 +1207,6 @@ export default function MarketingPage() {
     return <MarketingPageLoader active label="Welcome" />;
   }
 
-  const viewTestimonials = (data.students_testimonials || []).filter(
-    (t) => t.name && t.course && t.text
-  );
   const viewLinks = (data.links || []).filter((l) => l.name && l.link);
   const hasHeroVisual =
     data.teacher_picture_url ||
@@ -1605,7 +1678,22 @@ export default function MarketingPage() {
                   withIndicators
                   withControls={false}
                   styles={{
-                    indicator: { background: 'rgba(254, 185, 84, 0.35)' },
+                    viewport: {
+                      overflow: 'hidden',
+                      transition: 'height 280ms ease',
+                    },
+                    container: {
+                      alignItems: 'flex-start',
+                    },
+                    slide: {
+                      height: 'auto',
+                    },
+                    indicator: {
+                      background: 'color-mix(in srgb, #fbbf24 40%, transparent)',
+                      '&[data-active]': {
+                        background: '#fbbf24',
+                      },
+                    },
                     indicators: {
                       position: 'relative',
                       bottom: 'auto',
@@ -1614,21 +1702,36 @@ export default function MarketingPage() {
                   }}
                 >
                   {viewTestimonials.map((t, idx) => (
-                    <Carousel.Slide key={`${t.name}-${idx}`}>
-                      <Paper p="lg" className={mp.testimonialCard}>
-                        <Group gap="sm" mb="sm">
+                    <Carousel.Slide key={`${t.id ?? t.name}-${idx}`}>
+                      <Paper
+                        className={`${mp.testimonialCard} ${mp[testimonialCardSizeClass(t.text)]}`}
+                      >
+                        <Group gap="sm" mb="sm" wrap="wrap" align="center">
                           <Avatar radius="xl" color="orange">
                             {t.name?.[0]}
                           </Avatar>
-                          <Text fw={700} className={mp.testimonialName}>
-                            {t.name} • {t.course}
-                          </Text>
+                          <div className={mp.testimonialMeta}>
+                            <Text fw={700} className={mp.testimonialName}>
+                              {t.name} • {t.course}
+                            </Text>
+                            {t.score != null && t.score !== '' ? (
+                              <Text size="sm" fw={600} className={mp.testimonialScore}>
+                                score : {t.score}
+                              </Text>
+                            ) : null}
+                          </div>
                         </Group>
                         <Text className={mp.testimonialBody}>{t.text}</Text>
-                        {t.score ? (
-                          <Text mt="sm" size="sm" fw={600} className={mp.testimonialScore}>
-                            score : {t.score}
-                          </Text>
+                        {t.rating != null ? (
+                          <Rating
+                            value={Number(t.rating) || 0}
+                            readOnly
+                            fractions={1}
+                            size="sm"
+                            color="yellow"
+                            mt="sm"
+                            className={mp.testimonialRating}
+                          />
                         ) : null}
                       </Paper>
                     </Carousel.Slide>
@@ -1637,89 +1740,27 @@ export default function MarketingPage() {
               )}
 
               {canEdit && (
-                <Stack gap="sm" className={mp.editForm}>
-                  <Text fw={700} c="gray.1">
+                <div className={`${mp.editForm} ${mp.editFormHero} ${mp.testimonialsEdit}`}>
+                  <Title order={4} className={mp.testimonialsEditTitle}>
                     Students testimonials
-                  </Text>
-                  {testimonials.map((t, i) => (
-                    <Paper key={i} p="md" radius="md" className={mp.editItemCard} style={PAGE_STATE_CARD}>
-                      <div className="form-group">
-                        <label className="form-label">Name</label>
-                        <input
-                          className="form-input"
-                          value={t.name}
-                          onChange={(e) => {
-                            const v = [...testimonials];
-                            v[i].name = e.target.value;
-                            setTestimonials(v);
-                          }}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Course</label>
-                        <CourseSelect
-                          selectedGrade={t.course}
-                          onGradeChange={(course) => {
-                            const v = [...testimonials];
-                            v[i].course = course;
-                            setTestimonials(v);
-                          }}
-                          isOpen={!!testimonialCourseOpen[i]}
-                          onToggle={() =>
-                            setTestimonialCourseOpen((o) => ({ ...o, [i]: !o[i] }))
-                          }
-                          onClose={() =>
-                            setTestimonialCourseOpen((o) => ({ ...o, [i]: false }))
-                          }
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Score (optional)</label>
-                        <input
-                          className="form-input"
-                          value={t.score}
-                          onChange={(e) => {
-                            const v = [...testimonials];
-                            v[i].score = e.target.value;
-                            setTestimonials(v);
-                          }}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Text</label>
-                        <textarea
-                          className="form-input"
-                          rows={3}
-                          value={t.text}
-                          onChange={(e) => {
-                            const v = [...testimonials];
-                            v[i].text = e.target.value;
-                            setTestimonials(v);
-                          }}
-                        />
-                      </div>
-                      <div className={mp.editItemDeleteRow}>
-                        <button
-                          type="button"
-                          className={mp.btnDelete}
-                          onClick={() => setTestimonials(testimonials.filter((_, j) => j !== i))}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </Paper>
-                  ))}
-                  <button
-                    type="button"
-                    className={mp.btnAdd}
-                    onClick={() =>
-                      setTestimonials([...testimonials, { name: '', course: '', text: '', score: '' }])
-                    }
-                  >
-                    <Image src="/plus.svg" alt="" width={18} height={18} />
-                    Add testimonial
-                  </button>
-                </Stack>
+                  </Title>
+                  <p className={mp.testimonialsEditLead}>
+                  Only activated testimonials will show.
+                  </p>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Number of testimonials to show</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step={1}
+                      value={testimonialsToShow}
+                      onChange={(e) => setTestimonialsToShow(e.target.value)}
+                      placeholder="e.g. 5"
+                    />
+                  </div>
+                </div>
               )}
             </Stack>
           </Paper>
@@ -1860,6 +1901,8 @@ export default function MarketingPage() {
                   onZoomMeetingIdChange={handleSessionZoomMeetingIdChange}
                   onClearYouTubeUrl={handleSessionClearYouTubeUrl}
                   onClearZoomMeetingId={handleSessionClearZoomMeetingId}
+                  onGoogleMeetIdChange={handleSessionGoogleMeetIdChange}
+                  onClearGoogleMeetId={handleSessionClearGoogleMeetId}
                   onR2Upload={handleSessionR2Upload}
                   onClearR2Upload={handleSessionClearR2Upload}
                   onVideoSourceChange={handleSessionVideoSourceChange}
@@ -1878,6 +1921,8 @@ export default function MarketingPage() {
                   <R2VideoPlayer r2Key={sessionPlayback.id} hideWatermark />
                 ) : sessionPlayback.type === 'zoom' ? (
                   <ZoomVideoPlayer meetingId={sessionPlayback.id} hideWatermark />
+                ) : sessionPlayback.type === 'google_meet' ? (
+                  <GoogleMeetVideoPlayer secureId={sessionPlayback.id} hideWatermark />
                 ) : (
                   <YoutubeEmbedWithProgress youtubeVideoId={sessionPlayback.id} hideWatermark />
                 )}
@@ -2088,7 +2133,7 @@ export default function MarketingPage() {
             <div className={`${mp.copyLinkCard} ${mp.darkSection}`}>
               <div className={`${mp.copyLinkTitle} ${mp.darkSectionTitle}`}>
                 <Image src="/link2.svg" alt="" width={20} height={20} />
-                Marketing Page Link:
+                Welcome Page Link:
               </div>
               <div className={mp.copyLinkDisplay}>
                 <strong>{marketingPageUrl}</strong>
@@ -2113,6 +2158,14 @@ export default function MarketingPage() {
               onClick={saveContent}
             >
               {saving ? 'Saving…' : 'Save changes'}
+            </button>
+            <button
+              type="button"
+              className={mp.btnCancel}
+              disabled={!hasFormChanges || saving}
+              onClick={cancelContent}
+            >
+              Cancel
             </button>
           </div>
         )}

@@ -7,6 +7,13 @@ import { useProfile } from '../../../lib/api/auth';
 import NeedHelp from '../../../components/NeedHelp';
 import QuestionImagesCarousel from '../../../components/student/QuestionImagesCarousel';
 import { listQuestionPicturePublicIds } from '../../../lib/questionPictures';
+import { isEssayQuestion, isEssayAnswerCorrect } from '../../../lib/onlineQuestionTypes';
+import { reconstructShuffledQuestions } from '../../../lib/reconstructShuffledQuestions';
+import EssayDetailsAnswerBlock from '../../../components/online/EssayDetailsAnswerBlock';
+import AnswerStatusBubble from '../../../components/online/AnswerStatusBubble';
+import DesmosQuestionAssist from '../../../components/student/DesmosQuestionAssist';
+import DesmosAssistGroup from '../../../components/student/DesmosAssistGroup';
+import MathReferenceSheetAssist from '../../../components/student/MathReferenceSheetAssist';
 
 export default function HomeworkDetails() {
   const router = useRouter();
@@ -169,69 +176,10 @@ export default function HomeworkDetails() {
   const studentAnswers = result.student_answers || {};
   const shuffleMapping = result.shuffle_mapping || null;
 
-  // Reconstruct shuffled arrangement if shuffle_mapping exists
-  let displayQuestions = [];
-  let originalToShuffled = null;
-  
-  if (shuffleMapping && shuffleMapping.questionOrder) {
-    // Create mapping: original index -> shuffled index
-    originalToShuffled = {};
-    shuffleMapping.questionOrder.forEach(({ shuffledIndex, originalIndex }) => {
-      originalToShuffled[originalIndex] = shuffledIndex;
-    });
-    
-    // Reconstruct shuffled questions array
-    const shuffledQuestions = new Array(homework.questions.length);
-    homework.questions.forEach((origQ, origIdx) => {
-      const shuffledIdx = originalToShuffled[origIdx];
-      if (shuffledIdx !== undefined) {
-        // Get shuffled answer order for this question
-        const answerOrder = shuffleMapping.answerOrder[shuffledIdx] || {};
-        
-        // Create reverse mapping: original letter -> shuffled letter
-        const reverseAnswerMapping = {};
-        Object.keys(answerOrder).forEach(shuffledLetter => {
-          reverseAnswerMapping[answerOrder[shuffledLetter]] = shuffledLetter.toUpperCase();
-        });
-        
-        // Reconstruct shuffled question
-        const shuffledQ = { ...origQ };
-        
-        // Get original answer indices in shuffled order
-        const shuffledAnswerIndices = [];
-        origQ.answers.forEach((origLetter, origAnsIdx) => {
-          const shuffledLetter = reverseAnswerMapping[origLetter.toLowerCase()] || origLetter;
-          const shuffledAnsIdx = shuffledQ.answers.indexOf(shuffledLetter);
-          if (shuffledAnsIdx !== -1) {
-            shuffledAnswerIndices.push(shuffledAnsIdx);
-          } else {
-            // Fallback: find by matching answer_texts
-            shuffledAnswerIndices.push(origAnsIdx);
-          }
-        });
-        
-        // Reorder answers and answer_texts based on shuffled order
-        const reorderedAnswers = [];
-        const reorderedAnswerTexts = [];
-        shuffledAnswerIndices.forEach(shuffledAnsIdx => {
-          if (shuffledAnsIdx < origQ.answers.length) {
-            reorderedAnswers.push(origQ.answers[shuffledAnsIdx]);
-            reorderedAnswerTexts.push(origQ.answer_texts[shuffledAnsIdx] || '');
-          }
-        });
-        
-        shuffledQ.answers = reorderedAnswers.length > 0 ? reorderedAnswers : origQ.answers;
-        shuffledQ.answer_texts = reorderedAnswerTexts.length > 0 ? reorderedAnswerTexts : origQ.answer_texts;
-        
-        shuffledQuestions[shuffledIdx] = shuffledQ;
-      }
-    });
-    
-    displayQuestions = shuffledQuestions;
-  } else {
-    // No shuffling - use original order
-    displayQuestions = homework.questions;
-  }
+  const { displayQuestions, originalToShuffled } = reconstructShuffledQuestions(
+    homework.questions,
+    shuffleMapping
+  );
 
   // Calculate statistics and build question results - use shuffled order for display
   let correctCount = 0;
@@ -240,6 +188,8 @@ export default function HomeworkDetails() {
 
   // Process questions in display order (shuffled or original)
   displayQuestions.forEach((displayQuestion, displayIdx) => {
+    if (!displayQuestion) return;
+
     // Find original index
     let originalIdx = displayIdx;
     if (shuffleMapping && originalToShuffled) {
@@ -252,6 +202,32 @@ export default function HomeworkDetails() {
     
     // Get student answer using original index (student_answers uses original indices)
     const studentAnswerLetter = studentAnswers[originalIdx.toString()] || studentAnswers[originalIdx];
+
+    // Get correct answer from original question
+    const originalQuestion = homework.questions[originalIdx];
+    const isEssay = isEssayQuestion(originalQuestion);
+
+    if (isEssay) {
+      const studentEssayAnswer = typeof studentAnswerLetter === 'string' ? studentAnswerLetter : '';
+      const isAnswered = studentEssayAnswer.trim() !== '';
+      const isCorrect = isEssayAnswerCorrect(studentEssayAnswer, originalQuestion?.valid_correct_answers);
+
+      if (isCorrect) correctCount++;
+      if (!isAnswered) unansweredCount++;
+
+      questionResults.push({
+        question: displayQuestion,
+        isEssay: true,
+        studentEssayAnswer,
+        validCorrectAnswers: originalQuestion?.valid_correct_answers || [],
+        isCorrect,
+        isAnswered,
+        wasShown: true,
+        originalIndex: originalIdx
+      });
+      return;
+    }
+
     // Handle both string and array formats [letter, text]
     let studentAnswer = null;
     let studentAnswerText = null;
@@ -263,9 +239,7 @@ export default function HomeworkDetails() {
         studentAnswer = studentAnswerLetter.toUpperCase();
       }
     }
-    
-    // Get correct answer from original question
-    const originalQuestion = homework.questions[originalIdx];
+
     // Handle both string and array formats for correct_answer
     let correctAnswer = null;
     let correctAnswerText = null;
@@ -297,6 +271,7 @@ export default function HomeworkDetails() {
 
     questionResults.push({
       question: displayQuestion, // Use shuffled question for display
+      isEssay: false,
       studentAnswer: studentAnswer || 'Not answered',
       studentAnswerText: studentAnswerText || null, // Store answer text for matching in shuffled view
       correctAnswer: correctAnswer || 'N/A',
@@ -320,7 +295,8 @@ export default function HomeworkDetails() {
       minHeight: "100vh", 
       padding: "20px 5px 20px 5px" 
     }}>
-      <div className="page-content" style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
+      <DesmosAssistGroup>
+      <div className="page-content desmos-details-page" style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
         <Title backText="Back" href="/student_dashboard/my_homeworks">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Image src="/details.svg" alt="Details" width={32} height={32} />
@@ -328,7 +304,7 @@ export default function HomeworkDetails() {
           </div>
         </Title>
 
-        <div className="details-container" style={{
+        <div className="details-container desmos-details-container" style={{
           background: 'white',
           borderRadius: '16px',
           padding: '15px',
@@ -399,13 +375,22 @@ export default function HomeworkDetails() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {questionResults.map((item, idx) => {
               const question = item.question;
-              const answerOptions = ['A', 'B', 'C', 'D'];
-              const correctAnswerIdx = answerOptions.indexOf(item.correctAnswer);
+              const answerOptions = question?.answers?.length
+                ? question.answers.map((a) => String(a || '').toUpperCase())
+                : ['A', 'B', 'C', 'D'];
+              const correctAnswerIdx = item.isEssay
+                ? -1
+                : answerOptions.indexOf(String(item.correctAnswer || '').toUpperCase());
               
-              // Find student's selected answer index
+              // Find student's selected answer index (MCQ only)
               // When answer_texts exist and shuffling was enabled, use text to find the answer
               let studentAnswerIdx = -1;
-              if (item.isAnswered && item.studentAnswer !== 'Not answered') {
+              if (
+                !item.isEssay &&
+                item.isAnswered &&
+                item.studentAnswer &&
+                item.studentAnswer !== 'Not answered'
+              ) {
                 if (item.studentAnswerText && question.answer_texts && Array.isArray(question.answer_texts)) {
                   // Find which answer in the displayed question has the student's selected text
                   const textIndex = question.answer_texts.findIndex(text => text === item.studentAnswerText);
@@ -413,17 +398,24 @@ export default function HomeworkDetails() {
                     studentAnswerIdx = textIndex;
                   } else {
                     // Fallback: use letter if text not found
-                    studentAnswerIdx = answerOptions.indexOf(item.studentAnswer.toUpperCase());
+                    studentAnswerIdx = answerOptions.indexOf(String(item.studentAnswer).toUpperCase());
                   }
                 } else {
                   // No answer_texts - use letter
-                  studentAnswerIdx = answerOptions.indexOf(item.studentAnswer.toUpperCase());
+                  studentAnswerIdx = answerOptions.indexOf(String(item.studentAnswer).toUpperCase());
                 }
               }
 
               return (
-                <div
+                <DesmosQuestionAssist
                   key={idx}
+                  useDesmos={question?.use_desmos}
+                  instanceKey={`hw-details-${id}-q-${idx}`}
+                >
+                {({ calculatorButton }) => (
+                <MathReferenceSheetAssist instanceKey={`hw-details-${id}-q-${idx}-reference`} iconDark>
+                {({ referenceButton }) => (
+                <div
                   style={{
                     borderTop: '2px solid #e9ecef',
                     padding: '15px 0px',
@@ -436,9 +428,29 @@ export default function HomeworkDetails() {
                       fontSize: '1.1rem',
                       fontWeight: '600',
                       marginBottom: '12px',
-                      color: '#212529'
+                      color: '#212529',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      minHeight: '36px',
+                      width: '100%',
+                      flexWrap: 'wrap'
                     }}>
-                      Question {idx + 1}
+                      <span>Question {idx + 1}</span>
+                      {(referenceButton || calculatorButton) ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          flexWrap: 'wrap',
+                          marginLeft: 'auto',
+                          zIndex: 2
+                        }}>
+                          {referenceButton}
+                          {calculatorButton}
+                        </div>
+                      ) : null}
                     </div>
                     
                     <QuestionImagesCarousel
@@ -465,8 +477,16 @@ export default function HomeworkDetails() {
                   </div>
 
                   {/* Answers */}
+                  {item.isEssay ? (
+                    <EssayDetailsAnswerBlock
+                      studentAnswer={item.studentEssayAnswer}
+                      validCorrectAnswers={item.validCorrectAnswers}
+                      isCorrect={item.isCorrect}
+                      studentLabel="Your Answer:"
+                    />
+                  ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {question.answers.map((answer, ansIdx) => {
+                    {(question.answers || []).map((answer, ansIdx) => {
                       const isCorrect = ansIdx === correctAnswerIdx;
                       
                       // Determine if this answer was selected by the student
@@ -517,7 +537,8 @@ export default function HomeworkDetails() {
                           ...answerStyle,
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '12px'
+                          gap: '12px',
+                          flexWrap: 'wrap'
                         }}>
                           <div style={{
                             minWidth: '32px',
@@ -534,14 +555,21 @@ export default function HomeworkDetails() {
                             {answer}
                           </div>
                           {question.answer_texts && question.answer_texts[ansIdx] && (
-                            <span style={{ flex: 1, fontSize: '0.95rem' }}>
+                            <span style={{ flex: 1, fontSize: '0.95rem', minWidth: 0 }}>
                               {question.answer_texts[ansIdx]}
                             </span>
                           )}
+                          {(isCorrect || isWrong) ? (
+                            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}>
+                              {isCorrect ? <AnswerStatusBubble status="correct" /> : null}
+                              {isWrong ? <AnswerStatusBubble status="wrong" /> : null}
+                            </span>
+                          ) : null}
                         </div>
                       );
                     })}
                   </div>
+                  )}
 
                   {/* Question Explanation */}
                   {question.question_explanation && question.question_explanation.trim() !== '' && (
@@ -580,6 +608,10 @@ export default function HomeworkDetails() {
                     </div>
                   )}
                 </div>
+                )}
+                </MathReferenceSheetAssist>
+                )}
+                </DesmosQuestionAssist>
               );
             })}
           </div>
@@ -588,6 +620,7 @@ export default function HomeworkDetails() {
           <NeedHelp style={{ padding: "20px", borderTop: "1px solid #e9ecef" }} />
         </div>
       </div>
+      </DesmosAssistGroup>
 
       <style jsx>{`
         @media (max-width: 768px) {

@@ -9,6 +9,7 @@ import HomeworkVideoPaymentStateSelect from '../../../../components/HomeworkVide
 import AccountStateSelect from '../../../../components/AccountStateSelect';
 import R2VideoPlayer from '../../../../components/R2VideoPlayer';
 import ZoomVideoPlayer from '../../../../components/ZoomVideoPlayer';
+import GoogleMeetVideoPlayer from '../../../../components/GoogleMeetVideoPlayer';
 import YoutubeEmbedWithProgress from '../../../../components/YoutubeEmbedWithProgress';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../lib/axios';
@@ -40,7 +41,7 @@ function weekNumberToString(weekNumber) {
 
 // Build embed URL
 function buildEmbedUrl(videoId) {
-  return `https://www.youtube.com/embed/${videoId}?controls=1&rel=0&modestbranding=1&disablekb=1&fs=1`;
+  return `https://www.youtube.com/embed/${videoId}?controls=0&rel=0&modestbranding=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1`;
 }
 
 function formatHomeworkVideoPaymentStateLabel(state) {
@@ -1044,6 +1045,11 @@ export default function HomeworksVideos() {
               ) : selectedVideo.video_type === 'zoom' ? (
                 <ZoomVideoPlayer
                   meetingId={selectedVideo.video_ID || selectedVideo.video_ID_1 || ''}
+                  watermarkText={`${profile?.id || 'unknown'}`}
+                />
+              ) : selectedVideo.video_type === 'google_meet' ? (
+                <GoogleMeetVideoPlayer
+                  secureId={selectedVideo.video_ID || selectedVideo.video_ID_1 || ''}
                   watermarkText={`${profile?.id || 'unknown'}`}
                 />
               ) : (

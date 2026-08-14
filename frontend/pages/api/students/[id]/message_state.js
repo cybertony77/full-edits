@@ -2,6 +2,11 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import {
+  createDefaultStudentLesson,
+  getStudentLesson,
+  mergeStudentLesson,
+} from '../../../../lib/studentLessons';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -100,43 +105,30 @@ export default async function handler(req, res) {
         );
       }
       
-      if (!student.lessons[lessonName]) {
+      if (!getStudentLesson(student.lessons, lessonName)) {
         console.log(`🧩 Creating missing lesson "${lessonName}" for student ${student_id}`);
+        const nextLessons = mergeStudentLesson(
+          student.lessons,
+          lessonName,
+          createDefaultStudentLesson(lessonName)
+        );
         await db.collection('students').updateOne(
           { id: student_id },
-          { $set: { [`lessons.${lessonName}`]: {
-            lesson: lessonName,
-            attended: false,
-            lastAttendance: null,
-            lastAttendanceCenter: null,
-            hwDone: false,
-            quizDegree: null,
-            comment: null,
-            message_state: false,
-            homework_degree: null
-          } } }
+          { $set: { lessons: nextLessons } }
         );
-        // Refresh student in-memory reference
-        student.lessons[lessonName] = {
-          lesson: lessonName,
-          attended: false,
-          lastAttendance: null,
-          lastAttendanceCenter: null,
-          hwDone: false,
-          quizDegree: null,
-          comment: null,
-          message_state: false,
-          homework_degree: null
-        };
-    }
+        student.lessons = nextLessons;
+      }
     };
 
     await ensureLessonExists();
     
     // Update the specific lesson in the lessons object
+    const nextLessons = mergeStudentLesson(student.lessons, lessonName, {
+      message_state: !!message_state,
+    });
     const result = await db.collection('students').updateOne(
       { id: student_id },
-      { $set: { [`lessons.${lessonName}.message_state`]: !!message_state } }
+      { $set: { lessons: nextLessons } }
     );
     
     if (result.matchedCount === 0) {

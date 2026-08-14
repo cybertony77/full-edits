@@ -34,6 +34,13 @@ const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI;
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME;
 const PAYMENT_SYSTEM_ENABLED = envConfig.SYSTEM_PAYMENT_SYSTEM === 'true' || process.env.SYSTEM_PAYMENT_SYSTEM === 'true';
 
+function normalizeLessonName(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^\d+\s*[\.\-:)]\s*/, '')
+    .toLowerCase();
+}
+
 // Format date as DD/MM/YYYY at HH:MM AM/PM
 function formatDate(date) {
   const day = String(date.getDate()).padStart(2, '0');
@@ -100,17 +107,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Check lesson restriction
-    if (vhcRecord.code_lesson && vhcRecord.code_lesson !== 'All' && lesson) {
-      if (vhcRecord.code_lesson.toLowerCase() !== lesson.toLowerCase()) {
-        return res.status(200).json({ 
-          success: false,
-          error: '❌ Sorry, Wrong VHC, recheck your VHC',
-          valid: false 
-        });
-      }
-    }
-
     // Check if code is deactivated
     if (vhcRecord.code_state === 'Deactivated') {
       return res.status(200).json({ 
@@ -123,7 +119,7 @@ export default async function handler(req, res) {
     // Check lesson restriction
     const codeLesson = vhcRecord.code_lesson || 'All';
     if (codeLesson !== 'All' && lesson) {
-      if (codeLesson !== lesson) {
+      if (normalizeLessonName(codeLesson) !== normalizeLessonName(lesson)) {
         return res.status(200).json({
           success: false,
           error: '❌ Sorry, Wrong VHC, recheck your VHC',
@@ -213,12 +209,15 @@ export default async function handler(req, res) {
     }
     // For deadline_date, we don't set viewed/viewed_by_who to allow unlimited views until deadline
     
-    const updateResult = await db.collection('VHC').updateOne(
-      { _id: vhcRecord._id },
-      Object.keys(updateData).length > 0 ? { $set: updateData } : { $set: {} }
-    );
+    let updateResult = { matchedCount: 1, modifiedCount: 0 };
+    if (Object.keys(updateData).length > 0) {
+      updateResult = await db.collection('VHC').updateOne(
+        { _id: vhcRecord._id },
+        { $set: updateData }
+      );
+    }
 
-    if (updateResult.modifiedCount === 0) {
+    if (updateResult.matchedCount === 0) {
       return res.status(500).json({ 
         success: false,
         error: 'Failed to update VHC',

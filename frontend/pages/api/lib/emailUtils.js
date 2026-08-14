@@ -37,7 +37,7 @@ const STUDENT_DRIVE_LINK = envConfig.STUDENT_DRIVE_LINK || process.env.STUDENT_D
 const ASSISTANT_DRIVE_LINK = envConfig.ASSISTANT_DRIVE_LINK || process.env.ASSISTANT_DRIVE_LINK || '';
 const ADMIN_DRIVE_LINK = envConfig.ADMIN_DRIVE_LINK || process.env.ADMIN_DRIVE_LINK || '';
 const SYSTEM_DOMAIN = envConfig.SYSTEM_DOMAIN || process.env.SYSTEM_DOMAIN || 'https://demosys.myvnc.com';
-const SYSTEM_NAME = envConfig.SYSTEM_NAME || process.env.SYSTEM_NAME || 'Demo Attendance System';
+const SYSTEM_NAME = envConfig.SYSTEM_NAME || process.env.SYSTEM_NAME || 'AI Agentic Assistant System';
 
 // Initialize Gmail API client
 let gmailClient = null;

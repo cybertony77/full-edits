@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
-import styles from './ImportExistingOnlineItemModal.module.css';
+import styles from '../styles/ImportExistingOnlineItemModal.module.css';
 
 const LOAD_OVERLAY_MIN_MS = 3000;
 

@@ -13,12 +13,31 @@ const nextConfig = {
     ],
     domains: ['localhost', '192.168.1.8'],
   },
-  // Workaround for Windows + Turbopack file watching latency under WSL/OneDrive.
-  // Increase the dev-server keep-alive so very slow Cloudinary uploads (large
-  // PDFs over a poor connection) aren't killed by the Next.js HTTP server
-  // before they complete.
+  // Video proxy streams (Zoom/Google/R2 fallback) can run for hours.
+  // Keep this well above any single recording length; it is not a "max watch" limit
+  // for healthy streams — only a safety bound for stuck proxied connections.
   experimental: {
-    proxyTimeout: 30 * 60 * 1000, // 30 minutes for large Cloudinary uploads
+    proxyTimeout: 3 * 60 * 60 * 1000, // 3 hours
+  },
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/testimonials',
+        destination: '/dashboard/students_reviews',
+        permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    return {
+      // Parent iframe src stays `/api/youtube/:videoId` (no youtube.com in Elements).
+      beforeFiles: [
+        {
+          source: '/api/youtube/:videoId',
+          destination: '/youtube-player/:videoId',
+        },
+      ],
+    };
   },
   async headers() {
     return [

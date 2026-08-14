@@ -264,9 +264,11 @@ export default function ManageLinksPage() {
                 </div>
                 <div className={styles.builderCardActions}>
                   <button type="button" className={styles.btnEdit} onClick={() => openEdit(i)} disabled={saving}>
+                    <Image src="/edit.svg" alt="" width={16} height={16} />
                     Edit
                   </button>
                   <button type="button" className={styles.btnDelete} onClick={() => requestDelete(i)} disabled={saving}>
+                    <Image src="/trash2.svg" alt="" width={16} height={16} />
                     Delete
                   </button>
                 </div>

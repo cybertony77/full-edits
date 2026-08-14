@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
+import { useVideoSeekGestures, VideoPremiumLoader, VideoPlayerChromeStyles } from "./videoSeekGestures";
 
 function buildVideoApiPath(r2Key) {
   if (!r2Key) return null;
@@ -25,6 +26,7 @@ export default function R2VideoPlayer({
   const currentUrlRef = useRef(null);
   const hasMarkedComplete = useRef(false);
   const hasMilestoneRef = useRef(false);
+  const urlErrorRetryRef = useRef(0);
   const resolvedWatermarkText = useMemo(() => {
     const raw = typeof watermarkText === "string" ? watermarkText.trim() : "";
     return raw || "Protected Video";
@@ -33,6 +35,12 @@ export default function R2VideoPlayer({
     const path = buildVideoApiPath(r2Key);
     return path ? decodeURIComponent(path) : null;
   }, [r2Key]);
+
+  const { containerProps: seekContainerProps, playerChrome, videoProps } = useVideoSeekGestures(videoRef, {
+    enabled: Boolean(presignedUrl) && !error,
+    attachKey: presignedUrl,
+    containerRef: playerContainerRef,
+  });
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimerRef.current) {
@@ -131,6 +139,7 @@ export default function R2VideoPlayer({
   useEffect(() => {
     hasMarkedComplete.current = false;
     hasMilestoneRef.current = false;
+    urlErrorRetryRef.current = 0;
     setError(null);
     currentUrlRef.current = null;
     setPresignedUrl(null);
@@ -144,6 +153,17 @@ export default function R2VideoPlayer({
   }, [r2Key, videoApiKey, refreshPresignedUrl, clearRefreshTimer]);
 
   const handleRetry = useCallback(() => {
+    urlErrorRetryRef.current = 0;
+    refreshPresignedUrl(true);
+  }, [refreshPresignedUrl]);
+
+  const handleVideoError = useCallback(() => {
+    // Signed URL expired / network blip — refresh once and preserve playback.
+    if (urlErrorRetryRef.current >= 1) {
+      setError("Failed to load video. Please try again.");
+      return;
+    }
+    urlErrorRetryRef.current += 1;
     refreshPresignedUrl(true);
   }, [refreshPresignedUrl]);
 
@@ -231,60 +251,19 @@ export default function R2VideoPlayer({
 
   if (isLoadingUrl && !presignedUrl) {
     return (
-      <div style={{
-        width: '100%',
-        aspectRatio: '16 / 9',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #3b3d42 0%, #2f3136 100%)',
-        color: '#e5e7eb',
-        fontSize: '1rem',
-        borderRadius: '10px',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'linear-gradient(110deg, rgba(255,255,255,0) 35%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 65%)',
-          animation: 'r2PlayerShimmer 1.5s linear infinite',
-        }} />
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '10px',
-          zIndex: 1,
-        }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            border: '3px solid rgba(255,255,255,0.2)',
-            borderTopColor: '#c3c7cf',
-            borderRadius: '50%',
-            animation: 'r2PlayerSpin 0.9s linear infinite',
-          }} />
-          <span style={{ fontWeight: 500, letterSpacing: '0.2px' }}>
-            Loading video...
-          </span>
-        </div>
-        <style jsx>{`
-          @keyframes r2PlayerSpin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-          @keyframes r2PlayerShimmer {
-            from {
-              transform: translateX(-100%);
-            }
-            to {
-              transform: translateX(100%);
-            }
-          }
-        `}</style>
+      <div
+        className="video-player-root"
+        style={{
+          width: "100%",
+          aspectRatio: "16 / 9",
+          position: "relative",
+          overflow: "hidden",
+          backgroundColor: "#000",
+          borderRadius: "10px",
+        }}
+      >
+        <VideoPlayerChromeStyles />
+        <VideoPremiumLoader active label="Loading video" />
       </div>
     );
   }
@@ -326,35 +305,37 @@ export default function R2VideoPlayer({
   return (
     <div
       ref={playerContainerRef}
+      {...seekContainerProps}
       style={{
         position: "relative",
         width: "100%",
         height: "auto",
-        maxHeight: "100vh",
+        maxHeight: "min(100vh, 100%)",
         aspectRatio: "16 / 9",
         overflow: "hidden",
         backgroundColor: "#000",
+        outline: "none",
       }}
     >
       <video
         ref={videoRef}
         src={presignedUrl || undefined}
-        controls
-        controlsList="nodownload"
-        disablePictureInPicture
-        playsInline
+        {...videoProps}
         onContextMenu={(e) => e.preventDefault()}
-        onError={() => setError("Failed to load video. Please try again.")}
+        onError={handleVideoError}
         style={{
           width: "100%",
           height: "100%",
-          maxHeight: "100vh",
+          maxHeight: "100%",
           aspectRatio: "16 / 9",
           backgroundColor: "#000",
           outline: "none",
           display: "block",
+          objectFit: "contain",
         }}
       />
+
+      {playerChrome}
 
       {!hideWatermark ? (
         <div

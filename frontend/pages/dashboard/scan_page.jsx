@@ -9,6 +9,7 @@ import CenterSelect from "../../components/CenterSelect";
 import QRScanner from "../../components/QRScanner";
 import { useStudents, useStudent, useToggleAttendance, useUpdateHomework, useUpdateHomeworkDegree, useUpdateQuizGrade, useUpdateWeekComment } from "../../lib/api/students";
 import { useSystemConfig } from "../../lib/api/system";
+import { getStudentLesson } from "../../lib/studentLessons";
 
 // Helper to extract student ID from QR text (URL or plain number)
 function extractStudentId(qrText) {
@@ -152,9 +153,9 @@ export default function QR() {
 
   // Helper function to get current lesson data
   const getCurrentLessonData = (student, lessonName) => {
-    if (!student.lessons || !lessonName) return null;
+    if (!student?.lessons || !lessonName) return null;
     if (typeof student.lessons !== 'object' || Array.isArray(student.lessons)) return null;
-    return student.lessons[lessonName] || null;
+    return getStudentLesson(student.lessons, lessonName);
   };
 
   // Helper function to update student state with current lesson data
@@ -457,7 +458,7 @@ export default function QR() {
       const availableSessions = rawStudent.payment?.numberOfSessions || 0;
       
       // Check if student has any paid lessons for the selected lesson
-      const hasPaidLesson = selectedLesson && rawStudent.lessons && rawStudent.lessons[selectedLesson] && rawStudent.lessons[selectedLesson].paid === true;
+      const hasPaidLesson = selectedLesson && getStudentLesson(rawStudent.lessons, selectedLesson)?.paid === true;
       
       if (availableSessions <= 0 && !hasPaidLesson) {
         console.log('❌ No sessions available and no paid lesson - showing error message');
@@ -506,7 +507,7 @@ export default function QR() {
       let dbHomeworkDegree = null;
       
       if (rawStudent?.lessons && selectedLesson && typeof rawStudent.lessons === 'object' && !Array.isArray(rawStudent.lessons)) {
-        const lessonData = rawStudent.lessons[selectedLesson];
+        const lessonData = getStudentLesson(rawStudent.lessons, selectedLesson);
         if (lessonData) {
           dbQuizDegree = lessonData.quizDegree;
           dbHwDone = lessonData.hwDone;
@@ -658,7 +659,7 @@ export default function QR() {
     // Check if student has available sessions or paid lesson (only if payment system is enabled)
     if (isPaymentSystemEnabled) {
       const availableSessions = student.payment?.numberOfSessions || 0;
-      const hasPaidLesson = student.lessons && student.lessons[selectedLesson] && student.lessons[selectedLesson].paid === true;
+      const hasPaidLesson = getStudentLesson(student.lessons, selectedLesson)?.paid === true;
       
       if (availableSessions <= 0 && !hasPaidLesson) {
         setError("Sorry, this account has used all his available sessions. Please pay again to continue.");
@@ -812,7 +813,7 @@ export default function QR() {
           try {
             // Check if there was previous data to reverse
             if (rawStudent?.lessons && selectedLesson && typeof rawStudent.lessons === 'object' && !Array.isArray(rawStudent.lessons)) {
-              const lessonData = rawStudent.lessons[selectedLesson];
+              const lessonData = getStudentLesson(rawStudent.lessons, selectedLesson);
               
               // Reverse homework done points using history
               try {
@@ -931,7 +932,7 @@ export default function QR() {
     // Capture previousHwDone BEFORE database update (to get the actual previous state)
     let previousHwDone = null;
     if (rawStudent?.lessons && selectedLesson && typeof rawStudent.lessons === 'object' && !Array.isArray(rawStudent.lessons)) {
-      const lessonData = rawStudent.lessons[selectedLesson];
+      const lessonData = getStudentLesson(rawStudent.lessons, selectedLesson);
       if (lessonData && lessonData.hwDone !== undefined && lessonData.hwDone !== null) {
         previousHwDone = lessonData.hwDone;
       }
@@ -1724,7 +1725,7 @@ export default function QR() {
                   {student.name} (ID: {student.id})
                 </div>
                 <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
-                  {student.grade} • {student.main_center}
+                  {[student.course, student.courseType, student.main_center].filter(Boolean).join(' • ')}
                 </div>
               </button>
             ))}
@@ -1897,7 +1898,7 @@ export default function QR() {
 
       {student && selectedLesson && attendanceCenter && rawStudent?.account_state !== 'Deactivated' && 
        (!isPaymentSystemEnabled || (rawStudent?.payment?.numberOfSessions || 0) > 0 || 
-        (rawStudent?.lessons && rawStudent?.lessons[selectedLesson] && rawStudent?.lessons[selectedLesson].paid === true)) && (
+        (getStudentLesson(rawStudent?.lessons, selectedLesson)?.paid === true)) && (
         <div className="student-card">
           {console.log('📋 Student card rendering:', {
             studentName: student.name,
@@ -1990,7 +1991,7 @@ export default function QR() {
               
               // Read from lessons object
               if (rawStudent?.lessons && selectedLesson && typeof rawStudent.lessons === 'object' && !Array.isArray(rawStudent.lessons)) {
-                const lessonData = rawStudent.lessons[selectedLesson];
+                const lessonData = getStudentLesson(rawStudent.lessons, selectedLesson);
                 if (lessonData) {
                   dbHwDone = lessonData.hwDone;
                 }
@@ -2018,7 +2019,7 @@ export default function QR() {
                 
                 // First, try to read directly from rawStudent.lessons (source of truth)
                 if (rawStudent?.lessons && selectedLesson && typeof rawStudent.lessons === 'object' && !Array.isArray(rawStudent.lessons)) {
-                  const lessonData = rawStudent.lessons[selectedLesson];
+                  const lessonData = getStudentLesson(rawStudent.lessons, selectedLesson);
                   if (lessonData) {
                     dbHwDone = lessonData.hwDone;
                     dbHwDegree = lessonData.homework_degree;
@@ -2242,7 +2243,7 @@ export default function QR() {
                           // Get previous homework state from rawStudent.lessons
                           let previousHwDone = null;
                           if (rawStudent?.lessons && selectedLesson && typeof rawStudent.lessons === 'object' && !Array.isArray(rawStudent.lessons)) {
-                            const lessonData = rawStudent.lessons[selectedLesson];
+                            const lessonData = getStudentLesson(rawStudent.lessons, selectedLesson);
                             if (lessonData && lessonData.hwDone !== undefined && lessonData.hwDone !== null) {
                               previousHwDone = lessonData.hwDone;
                             }

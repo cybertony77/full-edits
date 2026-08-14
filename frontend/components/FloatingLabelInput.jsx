@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TextInput, PasswordInput } from '@mantine/core';
-import classes from './FloatingLabelInput.module.css';
+import classes from '../styles/FloatingLabelInput.module.css';
 
 export function FloatingLabelInput({ label, value, onChange, type = 'text', ...props }) {
   const [focused, setFocused] = useState(false);

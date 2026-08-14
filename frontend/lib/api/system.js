@@ -3,7 +3,7 @@ import apiClient from '../axios';
 
 export const systemKeys = {
   all: ['system'],
-  config: () => [...systemKeys.all, 'config', 'grades-v1'],
+  config: () => [...systemKeys.all, 'config', 'features-v2'],
 };
 
 const systemApi = {
@@ -17,10 +17,12 @@ export const useSystemConfig = (options = {}) => {
   return useQuery({
     queryKey: systemKeys.config(),
     queryFn: () => systemApi.getConfig(),
-    // Override _app.js defaults (staleTime: Infinity, refetchOnMount: false)
-    // so GRADES_OR_COURSES updates from env.config are picked up.
+    // Always re-read feature flags from env.config (no long-lived cache).
     staleTime: 0,
+    gcTime: 0,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 1,
     ...options,
   });

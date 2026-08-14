@@ -2,6 +2,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
+import { questionAnswerKeyForResult } from '../../../lib/onlineQuestionApiNormalize';
 
 function loadEnvConfig() {
   try {
@@ -72,15 +73,7 @@ export default async function handler(req, res) {
         lesson_name: homework.lesson_name,
         timer: homework.timer,
         week: homework.week || null,
-        questions: homework.questions.map(q => ({
-          question_picture: q.question_picture,
-          question: q.question,
-          question_text: q.question_text,
-          answers: q.answers,
-          answer_texts: q.answer_texts || [],
-          correct_answer: q.correct_answer,
-          question_level: q.question_level
-        }))
+        questions: homework.questions.map(q => questionAnswerKeyForResult(q))
       }
     });
   } catch (error) {

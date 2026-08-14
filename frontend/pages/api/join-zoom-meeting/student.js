@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware, isAuthError } from '../../../lib/authMiddleware';
+import { getStudentLesson } from '../../../lib/studentLessons';
 
 function loadEnvConfig() {
   try {
@@ -166,10 +167,8 @@ export default async function handler(req, res) {
 
     // Check if the student already attended this meeting's lesson
     const meetingLesson = meeting.lesson || null;
-    const studentAlreadyAttended = meetingLesson && 
-      student.lessons && 
-      student.lessons[meetingLesson] && 
-      student.lessons[meetingLesson].attended === true;
+    const meetingLessonData = meetingLesson ? getStudentLesson(student.lessons, meetingLesson) : null;
+    const studentAlreadyAttended = !!(meetingLessonData && meetingLessonData.attended === true);
 
     // Check deadline (Egypt/Cairo): if deadline exists and deadline <= now, hide
     // BUT if the student already attended this lesson, don't hide (they may need to rejoin)

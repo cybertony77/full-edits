@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import styles from './AppVideosModal.module.css';
+import styles from '../styles/AppVideosModal.module.css';
 
 function detectLinkKind(url) {
   const lower = String(url || '').toLowerCase();
@@ -48,7 +48,7 @@ function toPreviewSrc(url) {
   const kind = detectLinkKind(url);
   if (kind === 'youtube') {
     const id = extractYoutubeId(url);
-    if (id) return `https://www.youtube.com/embed/${id}?rel=0&playsinline=1&modestbranding=1`;
+    if (id) return `/api/youtube/${encodeURIComponent(id)}?hw=1`;
     return null;
   }
   if (kind === 'drive') {

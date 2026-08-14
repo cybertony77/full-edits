@@ -1172,7 +1172,7 @@ export default function StudentInfo() {
                       <span style={{ fontFamily: 'monospace' }}>{student.phone || 'N/A'}</span>
                     </div>
                     <div style={{ fontSize: "0.9rem", color: "#6c757d", marginTop: 2 }}>
-                    {student.grade} • {student.main_center}
+                    {[student.course, student.courseType, student.main_center].filter(Boolean).join(' • ')}
                   </div>
                 </button>
               ))}

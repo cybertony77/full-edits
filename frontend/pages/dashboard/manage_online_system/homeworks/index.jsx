@@ -516,8 +516,16 @@ export default function Homeworks() {
                     borderRadius: '12px',
                     padding: '20px',
                     display: 'flex',
-                    justifyContent: 'space-between',
                     alignItems: 'center',
+                    alignContent: 'flex-start',
+                    justifyContent: 'flex-start',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    minWidth: 0,
+                    height: 'auto',
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
@@ -529,8 +537,8 @@ export default function Homeworks() {
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px' }}>
+                  <div className="item-info" style={{ flex: '1 1 260px', minWidth: 0, maxWidth: '100%' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {[homework.course, homework.courseType, homework.center, homework.lesson, homework.lesson_name].filter(Boolean).join(' • ')}
                     </div>
                     <div style={{ color: '#6c757d', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -627,7 +635,7 @@ export default function Homeworks() {
                       )}
                     </div>
                   </div>
-                  <div className="homework-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div className="homework-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: '0 1 auto', maxWidth: '100%', marginLeft: 'auto', justifyContent: 'flex-end' }}>
                     {homework.homework_type !== 'pages_from_book' && homework.homework_type !== 'pdf' && (
                       <button
                         onClick={() => openAnalytics(homework)}
@@ -1085,17 +1093,58 @@ export default function Homeworks() {
           }
           .homework-item {
             flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 16px;
+            align-items: stretch !important;
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 12px !important;
+            padding: 16px !important;
+            height: auto !important;
+          }
+          .homework-item .item-info {
+            flex: 0 0 auto !important;
+            width: 100%;
+            max-width: 100%;
           }
           .homework-buttons {
             width: 100%;
+            flex: 0 0 auto !important;
             flex-direction: column;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
           }
           .homework-buttons button,
           .homework-buttons a,
           .homework-buttons .hw-action-btn {
             width: 100%;
+            flex: 0 0 auto;
+            min-width: 0;
+          }
+        }
+        @media (max-width: 992px) {
+          .homework-item {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 12px !important;
+            height: auto !important;
+          }
+          .homework-item .item-info {
+            flex: 0 0 auto !important;
+            width: 100%;
+          }
+          .homework-buttons {
+            width: 100%;
+            flex: 0 0 auto !important;
+            justify-content: flex-start !important;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
+          }
+          .homework-buttons button,
+          .homework-buttons a,
+          .homework-buttons .hw-action-btn {
+            flex: 1 1 calc(50% - 6px);
+            min-width: 140px;
           }
         }
         @media (max-width: 480px) {

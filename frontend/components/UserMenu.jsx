@@ -42,6 +42,16 @@ export default function UserMenu() {
     staleTime: 30_000,
   });
 
+  const { data: publicTestimonialsData } = useQuery({
+    queryKey: ['public_testimonials'],
+    queryFn: async () => (await apiClient.get('/api/public_testimonials')).data,
+    enabled: Boolean(isMarketingSystemEnabled),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 10_000,
+  });
+  const publicTestimonialsPending = publicTestimonialsData?.pendingCount || 0;
+
   // Fallback user object if data is not available yet
   const userData = user || { name: '', id: '', phone: '', role: '' };
 
@@ -481,6 +491,44 @@ export default function UserMenu() {
                     >
                       <Image src="/marketing.svg" alt="Marketing" width={20} height={20} style={{ marginRight: '8px' }} />
                       Manage Marketing Page
+                    </button>
+                  )}
+                  {isMarketingSystemEnabled && (
+                    <button
+                      style={{
+                        ...menuBtnStyle,
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        router.push('/dashboard/students_reviews');
+                      }}
+                    >
+                      <Image src="/testimonials2.svg" alt="Students Reviews" width={20} height={20} style={{ marginRight: '8px' }} />
+                      Students Reviews
+                      {publicTestimonialsPending > 0 ? (
+                        <span
+                          style={{
+                            marginLeft: '8px',
+                            minWidth: '20px',
+                            height: '20px',
+                            borderRadius: '999px',
+                            background: '#dc3545',
+                            color: '#fff',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0 6px',
+                          }}
+                          aria-label={`${publicTestimonialsPending} pending reviews`}
+                        >
+                          {publicTestimonialsPending > 99 ? '99+' : publicTestimonialsPending}
+                        </span>
+                      ) : null}
                     </button>
                   )}
                   {isScoringEnabled && (

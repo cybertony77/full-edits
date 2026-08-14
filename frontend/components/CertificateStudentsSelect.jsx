@@ -170,7 +170,7 @@ export default function CertificateStudentsSelect({ value = '', onChange, error 
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.02rem' }}>Select Students</div>
               <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600, marginTop: 2 }}>
-                {selectedIds.length} selected · shown as id : name • course • course type
+                {selectedIds.length} selected · shown as id : name • course • course type • main center
               </div>
             </div>
           </div>
@@ -392,8 +392,7 @@ export default function CertificateStudentsSelect({ value = '', onChange, error 
                           wordBreak: 'break-word',
                         }}
                       >
-                        {s.course || '—'} • {s.courseType || '—'}
-                        {s.center ? ` • ${s.center}` : ''}
+                        {[s.course || '—', s.courseType || '—', s.main_center || s.center || '—'].join(' • ')}
                       </span>
                     </span>
                   </label>

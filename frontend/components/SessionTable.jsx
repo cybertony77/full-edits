@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import cx from 'clsx';
 import { ScrollArea, Table, Modal } from '@mantine/core';
-import classes from './TableScrollArea.module.css';
+import classes from '../styles/TableScrollArea.module.css';
 import WhatsAppButton from './WhatsAppButton.jsx';
 import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
@@ -595,8 +595,15 @@ export function SessionTable({
         radius="md"
         size="lg"
         withCloseButton={false}
+        zIndex={10050}
         overlayProps={{ opacity: 0.3, blur: 2 }}
         styles={{
+          inner: {
+            zIndex: 10050,
+          },
+          overlay: {
+            zIndex: 10049,
+          },
           content: {
             background: '#ffffff',
             boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
@@ -607,6 +614,7 @@ export function SessionTable({
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
+            zIndex: 10051,
             '@media (max-width: 768px)': {
               margin: '5px',
               maxWidth: '98vw',

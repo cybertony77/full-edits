@@ -1,7 +1,45 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import ZoomRecordingSelect from './ZoomRecordingSelect';
+import GoogleMeetRecordingSelect from './GoogleMeetRecordingSelect';
 import { useSystemConfig } from '../lib/api/system';
+import styles from '../styles/VideoInput.module.css';
+
+function extractYouTubeId(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  const match = raw.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtube\.com\/v\/)([A-Za-z0-9_-]{11})/
+  );
+  if (match?.[1]) return match[1];
+  if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+  return '';
+}
+
+function isFeatureEnabled(value) {
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
+
+function TabButton({ active, onClick, iconSrc, label, tintIcon = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${styles.tab} ${active ? styles.tabActive : ''} ${tintIcon && !active ? styles.tabTintIdle : ''}`}
+    >
+      {tintIcon ? (
+        <span
+          className={styles.tabIconTint}
+          style={{ WebkitMaskImage: `url(${iconSrc})`, maskImage: `url(${iconSrc})` }}
+          aria-hidden
+        />
+      ) : (
+        <img src={iconSrc} alt="" className={styles.tabIcon} />
+      )}
+      <span className={styles.tabLabel}>{label}</span>
+    </button>
+  );
+}
 
 export default function VideoInput({
   index,
@@ -11,6 +49,8 @@ export default function VideoInput({
   onZoomMeetingIdChange,
   onClearYouTubeUrl,
   onClearZoomMeetingId,
+  onGoogleMeetIdChange,
+  onClearGoogleMeetId,
   onR2Upload,
   onClearR2Upload,
   onVideoSourceChange,
@@ -22,25 +62,31 @@ export default function VideoInput({
   hideVideoName = false,
 }) {
   const { data: systemConfig } = useSystemConfig();
-  const showZoomTab =
-    systemConfig?.zoom_integrations === true || systemConfig?.zoom_integrations === 'true';
+  const showZoomTab = isFeatureEnabled(systemConfig?.zoom_integrations);
+  const showGoogleMeetTab = isFeatureEnabled(systemConfig?.google_meet_integrations);
+  const showUploadFromConfig = isFeatureEnabled(systemConfig?.cloudflare_r2);
+  const canShowUploadTab = Boolean(showUploadTab) && showUploadFromConfig;
 
   const initialTab = (() => {
-    if (video.video_source === 'r2' && showUploadTab) return 'upload';
+    if (video.video_source === 'r2' && canShowUploadTab) return 'upload';
     if (video.video_source === 'zoom' && showZoomTab) return 'zoom';
+    if (video.video_source === 'google_meet' && showGoogleMeetTab) return 'google_meet';
     return 'youtube';
   })();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [uploadProgress, setUploadProgress] = useState(video.upload_progress || 0);
-  /** 'sending' = bytes leaving browser; 'finishing' = bytes sent, waiting for HTTP OK (R2 or server→R2) */
   const [uploadPhase, setUploadPhase] = useState('idle');
-  const [uploadStatus, setUploadStatus] = useState(video.upload_status || 'idle'); // idle | uploading | done | error
+  const [uploadStatus, setUploadStatus] = useState(video.upload_status || 'idle');
   const [uploadFileName, setUploadFileName] = useState(video.upload_file_name || '');
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
   const xhrRef = useRef(null);
 
-  // If Zoom integration is off but this video was saved as zoom, move off zoom tab and clear zoom fields
+  const youtubePreviewId = useMemo(
+    () => extractYouTubeId(video.youtube_url),
+    [video.youtube_url]
+  );
+
   useEffect(() => {
     if (systemConfig === undefined) return;
     if (!showZoomTab && video.video_source === 'zoom') {
@@ -48,35 +94,82 @@ export default function VideoInput({
       onClearZoomMeetingId(index);
       setActiveTab('youtube');
     }
-  }, [systemConfig, showZoomTab, video.video_source, index, onVideoSourceChange, onClearZoomMeetingId]);
+    if (!showGoogleMeetTab && video.video_source === 'google_meet') {
+      onVideoSourceChange(index, 'youtube');
+      onClearGoogleMeetId?.(index);
+      setActiveTab('youtube');
+    }
+    if (!canShowUploadTab && video.video_source === 'r2') {
+      onVideoSourceChange(index, 'youtube');
+      onClearR2Upload(index);
+      setActiveTab('youtube');
+    }
+  }, [
+    systemConfig,
+    showZoomTab,
+    showGoogleMeetTab,
+    canShowUploadTab,
+    video.video_source,
+    index,
+    onVideoSourceChange,
+    onClearZoomMeetingId,
+    onClearGoogleMeetId,
+    onClearR2Upload,
+  ]);
 
-  // Sync activeTab when video data changes (e.g. edit page loads session data async)
   useEffect(() => {
-    if (video.video_source === 'r2' && showUploadTab) {
+    if (video.video_source === 'r2' && canShowUploadTab) {
       setActiveTab('upload');
       setUploadStatus(video.upload_status || (video.r2_key ? 'done' : 'idle'));
       setUploadProgress(video.upload_progress || (video.r2_key ? 100 : 0));
       setUploadFileName(video.upload_file_name || '');
     } else if (video.video_source === 'zoom' && showZoomTab) {
       setActiveTab('zoom');
-    } else {
+    } else if (video.video_source === 'google_meet' && showGoogleMeetTab) {
+      setActiveTab('google_meet');
+    } else if (
+      (video.video_source === 'r2' && !canShowUploadTab) ||
+      (video.video_source === 'zoom' && !showZoomTab) ||
+      (video.video_source === 'google_meet' && !showGoogleMeetTab) ||
+      video.video_source === 'youtube'
+    ) {
       setActiveTab('youtube');
     }
-  }, [video.video_source, video.r2_key, showUploadTab, showZoomTab]);
+  }, [
+    video.video_source,
+    video.r2_key,
+    canShowUploadTab,
+    showZoomTab,
+    showGoogleMeetTab,
+  ]);
 
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
-    onVideoSourceChange(index, tab === 'upload' ? 'r2' : tab === 'zoom' ? 'zoom' : 'youtube');
-    // When switching tabs, clear the other tab's data
+    const source =
+      tab === 'upload'
+        ? 'r2'
+        : tab === 'zoom'
+          ? 'zoom'
+          : tab === 'google_meet'
+            ? 'google_meet'
+            : 'youtube';
+    onVideoSourceChange(index, source);
     if (tab === 'youtube') {
       onClearR2Upload(index);
       onClearZoomMeetingId(index);
+      onClearGoogleMeetId?.(index);
     } else if (tab === 'upload') {
       onClearYouTubeUrl(index);
       onClearZoomMeetingId(index);
+      onClearGoogleMeetId?.(index);
     } else if (tab === 'zoom') {
       onClearYouTubeUrl(index);
       onClearR2Upload(index);
+      onClearGoogleMeetId?.(index);
+    } else if (tab === 'google_meet') {
+      onClearYouTubeUrl(index);
+      onClearR2Upload(index);
+      onClearZoomMeetingId(index);
     }
   };
 
@@ -84,14 +177,12 @@ export default function VideoInput({
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
     if (!allowedTypes.includes(file.type)) {
       setUploadError('❌ Invalid file type. Please upload a video file (MP4, WebM, OGG, MOV, AVI, MKV).');
       return;
     }
 
-    // Validate file size (max 5GB)
     if (file.size > 5 * 1024 * 1024 * 1024) {
       setUploadError('❌ File size exceeds 5GB limit.');
       return;
@@ -115,7 +206,6 @@ export default function VideoInput({
           'Unknown CORS setup error';
       }
 
-      // Step 1: Key + presigned PUT URL from our API (also applies bucket CORS when possible)
       const { data } = await axios.post('/api/upload/r2-signed-url', {
         fileName: file.name,
         contentType: file.type || 'application/octet-stream',
@@ -128,13 +218,11 @@ export default function VideoInput({
         new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhrRef.current = xhr;
-          // Large videos: avoid browser default timeout (often none, but some stacks cap)
           xhr.timeout = 0;
 
           xhr.upload.addEventListener('progress', (event) => {
             if (event.lengthComputable && event.total > 0) {
               const raw = (event.loaded / event.total) * 100;
-              // Never show 100% until xhr 'load' — bytes may be sent but storage still confirming / server still pushing to R2
               const capped = Math.min(99, Math.round(raw));
               setUploadProgress(capped);
               setUploadPhase(event.loaded >= event.total ? 'finishing' : 'sending');
@@ -162,7 +250,6 @@ export default function VideoInput({
           opts.openSend(xhr);
         });
 
-      // Step 2: Browser -> R2 direct PUT only (no server proxy uploads).
       try {
         await runXhr({
           label: 'direct:',
@@ -182,10 +269,8 @@ export default function VideoInput({
         );
       }
 
-      // Step 3: Success - save the R2 key
       setUploadStatus('done');
       onR2Upload(index, key, file.name);
-
     } catch (error) {
       setUploadPhase('idle');
       if (error.message === 'Upload cancelled') {
@@ -218,278 +303,164 @@ export default function VideoInput({
     }
   };
 
-  const tabStyle = (isActive) => ({
-    flex: 1,
-    padding: '10px 16px',
-    border: 'none',
-    borderBottom: isActive ? '3px solid #1FA8DC' : '3px solid transparent',
-    backgroundColor: isActive ? '#f0f8ff' : 'transparent',
-    color: isActive ? '#1FA8DC' : '#666',
-    fontWeight: isActive ? '600' : '400',
-    fontSize: '0.95rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    borderRadius: '6px 6px 0 0',
-  });
-
   return (
-    <div style={{
-      marginBottom: '24px',
-      padding: '20px',
-      border: '2px solid #e9ecef',
-      borderRadius: '8px',
-      backgroundColor: '#f8f9fa'
-    }}>
-      {/* Header with Video number and Remove button */}
+    <div className={styles.shell}>
       {(!hideTitle || canRemove) && (
-        <div className="video-input-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          {!hideTitle ? (
-            <h4 style={{ margin: 0, color: '#333' }}>Video {index + 1}</h4>
-          ) : (
-            <span />
-          )}
+        <div className={styles.header}>
+          {!hideTitle ? <h4 className={styles.title}>Video {index + 1}</h4> : <span />}
           {canRemove && (
-            <button
-              type="button"
-              onClick={() => onRemove(index)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                cursor: 'pointer'
-              }}
-            >
-              ❌ Remove
+            <button type="button" onClick={() => onRemove(index)} className={styles.removeBtn}>
+              <img src="/trash.svg" alt="" className={styles.removeIcon} />
+              Remove
             </button>
           )}
         </div>
       )}
 
-      {/* Tabs */}
-      {(
-        <div className="video-input-tabs" style={{
-          display: 'flex',
-          borderBottom: '1px solid #e9ecef',
-          marginBottom: '16px',
-          gap: '4px',
-        }}>
-          <button
-            type="button"
-            onClick={() => handleTabSwitch('youtube')}
-            style={tabStyle(activeTab === 'youtube')}
-          >
-            YouTube
-          </button>
-          {showUploadTab && (
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('upload')}
-              style={tabStyle(activeTab === 'upload')}
-            >
-              Upload
-            </button>
-          )}
-          {showZoomTab && (
-            <button
-              type="button"
-              onClick={() => handleTabSwitch('zoom')}
-              style={tabStyle(activeTab === 'zoom')}
-            >
-              Zoom
-            </button>
-          )}
-        </div>
-      )}
+      <div className={styles.tabs}>
+        <TabButton
+          active={activeTab === 'youtube'}
+          onClick={() => handleTabSwitch('youtube')}
+          iconSrc="/youtube.svg"
+          label="YouTube"
+        />
+        {canShowUploadTab && (
+          <TabButton
+            active={activeTab === 'upload'}
+            onClick={() => handleTabSwitch('upload')}
+            iconSrc="/upload.svg"
+            label="Upload"
+            tintIcon
+          />
+        )}
+        {showZoomTab && (
+          <TabButton
+            active={activeTab === 'zoom'}
+            onClick={() => handleTabSwitch('zoom')}
+            iconSrc="/zoom.svg"
+            label="Zoom"
+          />
+        )}
+        {showGoogleMeetTab && (
+          <TabButton
+            active={activeTab === 'google_meet'}
+            onClick={() => handleTabSwitch('google_meet')}
+            iconSrc="/google-meet.svg"
+            label="Google Meet"
+          />
+        )}
+      </div>
 
-      {/* Video Name Input - shown in both tabs */}
       {!hideVideoName && (
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: '500' }}>
-            Video Name
-          </label>
+          <label className={styles.label}>Video Name</label>
           <input
             type="text"
             value={video.video_name || ''}
             onChange={(e) => onVideoNameChange(index, e.target.value)}
             placeholder={`Video ${index + 1}`}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              boxSizing: 'border-box'
-            }}
+            className={styles.input}
           />
         </div>
       )}
 
-      {/* YouTube Tab Content */}
       {activeTab === 'youtube' && (
-        <div style={{ marginBottom: '0' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: '500' }}>
-            YouTube URL <span style={{ color: 'red' }}>*</span>
+        <div>
+          <label className={styles.label}>
+            YouTube URL <span className={styles.required}>*</span>
           </label>
           <input
             type="text"
             value={video.youtube_url || ''}
             onChange={(e) => onYouTubeUrlChange(index, e.target.value)}
             placeholder="Enter YouTube Video URL"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: errors[`video_${index}_youtube_url`] ? '2px solid #dc3545' : '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              boxSizing: 'border-box'
-            }}
+            className={`${styles.input} ${errors[`video_${index}_youtube_url`] ? styles.inputError : ''}`}
           />
           {errors[`video_${index}_youtube_url`] && (
-            <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '4px' }}>
-              {errors[`video_${index}_youtube_url`]}
+            <div className={styles.errorText}>{errors[`video_${index}_youtube_url`]}</div>
+          )}
+          {youtubePreviewId && (
+            <div className={styles.youtubePreview}>
+              <iframe
+                title={`YouTube preview ${index + 1}`}
+                src={`https://www.youtube.com/embed/${youtubePreviewId}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className={styles.youtubePreviewFrame}
+              />
             </div>
           )}
         </div>
       )}
 
-      {/* Upload Tab Content */}
-      {activeTab === 'upload' && showUploadTab && (
+      {activeTab === 'upload' && canShowUploadTab && (
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: '500' }}>
-            Upload Video <span style={{ color: 'red' }}>*</span>
+          <label className={styles.label}>
+            Upload Video <span className={styles.required}>*</span>
           </label>
 
-          {/* Upload area */}
           {uploadStatus === 'idle' && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              style={{
-                border: errors[`video_${index}_upload`] ? '2px dashed #dc3545' : '2px dashed #ccc',
-                borderRadius: '8px',
-                padding: '32px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                backgroundColor: '#fff',
-                transition: 'border-color 0.2s ease',
-              }}
-              onMouseOver={(e) => { if (!errors[`video_${index}_upload`]) e.currentTarget.style.borderColor = '#1FA8DC'; }}
-              onMouseOut={(e) => { if (!errors[`video_${index}_upload`]) e.currentTarget.style.borderColor = '#ccc'; }}
+              className={`${styles.uploadDrop} ${errors[`video_${index}_upload`] ? styles.uploadDropError : ''}`}
             >
-              <div style={{ fontSize: '2rem', marginBottom: '8px', color: '#999' }}>
-                +
+              <div className={styles.uploadIconWrap}>
+                <span
+                  className={styles.uploadDropIconTint}
+                  style={{ WebkitMaskImage: 'url(/upload.svg)', maskImage: 'url(/upload.svg)' }}
+                  aria-hidden
+                />
               </div>
-              <div style={{ color: '#666', fontSize: '0.95rem' }}>
-                Click to select a video file
-              </div>
-              <div style={{ color: '#999', fontSize: '0.8rem', marginTop: '4px' }}>
-                MP4, WebM, OGG, MOV, AVI, MKV (max 5GB)
-              </div>
+              <div className={styles.uploadTitle}>Click to select a video file</div>
+              <div className={styles.uploadHint}>MP4, WebM, OGG, MOV, AVI, MKV (max 5GB)</div>
             </div>
           )}
 
-          {/* Uploading state with progress bar */}
           {uploadStatus === 'uploading' && (
-            <div style={{
-              border: '2px solid #1FA8DC',
-              borderRadius: '8px',
-              padding: '20px',
-              backgroundColor: '#fff',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#333', fontSize: '0.9rem', fontWeight: '500' }}>
-                  {uploadPhase === 'finishing'
-                    ? 'Finishing'
-                    : 'Uploading'}
-                  : {uploadFileName}
+            <div className={`${styles.panel} ${styles.panelUploading}`}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 }}>
+                <span style={{ color: '#0f172a', fontSize: '0.9rem', fontWeight: 650 }}>
+                  {uploadPhase === 'finishing' ? 'Finishing' : 'Uploading'}: {uploadFileName}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleCancelUpload}
-                  style={{
-                    padding: '4px 10px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                  }}
-                >
+                <button type="button" onClick={handleCancelUpload} className={styles.ghostDangerBtn}>
                   Cancel
                 </button>
               </div>
-              {/* Progress bar */}
-              <div style={{
-                width: '100%',
-                height: '8px',
-                backgroundColor: '#e9ecef',
-                borderRadius: '4px',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${uploadProgress}%`,
-                  height: '100%',
-                  backgroundColor: '#1FA8DC',
-                  borderRadius: '4px',
-                  transition: uploadPhase === 'finishing' ? 'none' : 'width 0.2s ease-out',
-                }} />
+              <div className={styles.progressTrack}>
+                <div
+                  className={styles.progressFill}
+                  style={{
+                    width: `${uploadProgress}%`,
+                    transition: uploadPhase === 'finishing' ? 'none' : 'width 0.2s ease-out',
+                  }}
+                />
               </div>
-              <div style={{ textAlign: 'right', marginTop: '6px', color: '#666', fontSize: '0.85rem' }}>
+              <div style={{ textAlign: 'right', marginTop: 6, color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
                 {uploadProgress}%
               </div>
             </div>
           )}
 
-          {/* Upload done state */}
           {uploadStatus === 'done' && (
-            <div style={{
-              border: '2px solid #28a745',
-              borderRadius: '8px',
-              padding: '16px 20px',
-              backgroundColor: '#f0fff4',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
+            <div className={`${styles.panel} ${styles.panelDone}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div style={{ color: '#28a745', fontWeight: '600', fontSize: '0.9rem' }}>
-                  ✅ Uploaded successfully
+                <div style={{ color: '#15803d', fontWeight: 700, fontSize: '0.9rem' }}>
+                  Uploaded successfully
                 </div>
-                <div style={{ color: '#666', fontSize: '0.85rem', marginTop: '2px' }}>
+                <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 2 }}>
                   {uploadFileName}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleRemoveUpload}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                }}
-              >
-                ❌ Remove
+              <button type="button" onClick={handleRemoveUpload} className={styles.ghostDangerBtn}>
+                Remove
               </button>
             </div>
           )}
 
-          {/* Upload error state */}
           {uploadStatus === 'error' && (
-            <div style={{
-              border: '2px solid #dc3545',
-              borderRadius: '8px',
-              padding: '16px 20px',
-              backgroundColor: '#fff5f5',
-            }}>
-              <div style={{ color: '#dc3545', fontWeight: '500', fontSize: '0.9rem', marginBottom: '8px' }}>
-                ❌ Upload failed: {uploadError}
+            <div className={`${styles.panel} ${styles.panelError}`}>
+              <div style={{ color: '#b91c1c', fontWeight: 600, fontSize: '0.9rem', marginBottom: 10 }}>
+                Upload failed: {uploadError}
               </div>
               <button
                 type="button"
@@ -501,22 +472,13 @@ export default function VideoInput({
                   setUploadError('');
                   if (fileInputRef.current) fileInputRef.current.value = '';
                 }}
-                style={{
-                  padding: '6px 14px',
-                  backgroundColor: '#1FA8DC',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                }}
+                className={styles.primaryBtn}
               >
                 Try Again
               </button>
             </div>
           )}
 
-          {/* Hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -526,39 +488,26 @@ export default function VideoInput({
           />
 
           {errors[`video_${index}_upload`] && (
-            <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '4px' }}>
-              {errors[`video_${index}_upload`]}
-            </div>
+            <div className={styles.errorText}>{errors[`video_${index}_upload`]}</div>
           )}
         </div>
       )}
 
-      {/* Zoom Tab Content */}
       {showZoomTab && activeTab === 'zoom' && (
-        <div className="zoom-tab-content" style={{ marginBottom: '0' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: '#333', fontWeight: '500' }}>
-            Zoom Meeting ID (or UUID) <span style={{ color: 'red' }}>*</span>
+        <div>
+          <label className={styles.label}>
+            Zoom Meeting ID (or UUID) <span className={styles.required}>*</span>
           </label>
           <input
             type="text"
             value={video.zoom_meeting_id || ''}
             onChange={(e) => onZoomMeetingIdChange(index, e.target.value)}
             placeholder="Enter Zoom Meeting ID"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: errors[`video_${index}_zoom_meeting_id`] ? '2px solid #dc3545' : '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              boxSizing: 'border-box'
-            }}
+            className={`${styles.input} ${errors[`video_${index}_zoom_meeting_id`] ? styles.inputError : ''}`}
           />
           {errors[`video_${index}_zoom_meeting_id`] && (
-            <div style={{ color: '#dc3545', fontSize: '0.875rem', marginTop: '4px' }}>
-              {errors[`video_${index}_zoom_meeting_id`]}
-            </div>
+            <div className={styles.errorText}>{errors[`video_${index}_zoom_meeting_id`]}</div>
           )}
-
           <ZoomRecordingSelect
             selectedValue={video.zoom_meeting_id || ''}
             onSelect={(value) => onZoomMeetingIdChange(index, value)}
@@ -566,31 +515,22 @@ export default function VideoInput({
         </div>
       )}
 
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .video-input-header {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 10px;
-          }
-          .video-input-tabs {
-            flex-wrap: wrap;
-            gap: 6px !important;
-          }
-          .video-input-tabs button {
-            min-width: 100px;
-            flex: 1 1 calc(50% - 6px);
-          }
-          .zoom-tab-content {
-            margin-top: 4px;
-          }
-        }
-        @media (max-width: 480px) {
-          .video-input-tabs button {
-            flex: 1 1 100%;
-          }
-        }
-      `}</style>
+      {showGoogleMeetTab && activeTab === 'google_meet' && (
+        <div>
+          <label className={styles.label}>
+            Google Meet Recording <span className={styles.required}>*</span>
+          </label>
+          {errors[`video_${index}_google_meet_id`] && (
+            <div className={styles.errorText} style={{ marginBottom: 8 }}>
+              {errors[`video_${index}_google_meet_id`]}
+            </div>
+          )}
+          <GoogleMeetRecordingSelect
+            selectedValue={video.google_meet_id || ''}
+            onSelect={(value) => onGoogleMeetIdChange?.(index, value)}
+          />
+        </div>
+      )}
     </div>
   );
 }

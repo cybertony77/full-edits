@@ -2,6 +2,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import { mergeStudentLesson } from '../../../../lib/studentLessons';
 
 function loadEnvConfig() {
   try {
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
 
   const { id } = req.query;
   const student_id = parseInt(id);
-  const { week, percentage, result, student_answers, homework_id, date_of_start, date_of_end, points_added } = req.body;
+  const { week, percentage, result, student_answers, homework_id, date_of_start, date_of_end, points_added, shuffle_mapping } = req.body;
 
   if (week === undefined || percentage === undefined || !result || !student_answers || !homework_id) {
     return res.status(400).json({ error: 'Missing required fields: week, percentage, result, student_answers, homework_id' });
@@ -104,7 +105,8 @@ export default async function handler(req, res) {
       student_answers: student_answers,
       date_of_start: date_of_start || formatDate(new Date()),
       date_of_end: date_of_end || formatDate(new Date()),
-      points_added: points_added !== undefined && points_added !== null ? points_added : null
+      points_added: points_added !== undefined && points_added !== null ? points_added : null,
+      shuffle_mapping: shuffle_mapping || null
     };
 
     // Ensure online_homeworks array exists, then push the result
@@ -185,46 +187,14 @@ export default async function handler(req, res) {
 
     // Update lessons object if lesson name is available
     if (lessonName) {
-      const lessons = student.lessons || {};
-      const lessonKey = lessonName;
-      
-      // Check if lesson already exists
-      if (lessons[lessonKey]) {
-        // Update existing lesson
-        await db.collection('students').updateOne(
-          { id: student_id },
-          {
-            $set: {
-              [`lessons.${lessonKey}.hwDone`]: true,
-              [`lessons.${lessonKey}.homework_degree`]: result
-            }
-          }
-        );
-      } else {
-        // Create new lesson with default schema
-        const newLesson = {
-          lesson: lessonName,
-          attended: false,
-          lastAttendance: null,
-          lastAttendanceCenter: null,
-          attendanceDate: null,
-          hwDone: true,
-          homework_degree: result,
-          quizDegree: null,
-          comment: null,
-          message_state: false,
-          paid: false
-        };
-        
-        await db.collection('students').updateOne(
-          { id: student_id },
-          {
-            $set: {
-              [`lessons.${lessonKey}`]: newLesson
-            }
-          }
-        );
-      }
+      const nextLessons = mergeStudentLesson(student.lessons, lessonName, {
+        hwDone: true,
+        homework_degree: result,
+      });
+      await db.collection('students').updateOne(
+        { id: student_id },
+        { $set: { lessons: nextLessons } }
+      );
     }
 
     res.json({ success: true, message: 'Homework result saved successfully' });

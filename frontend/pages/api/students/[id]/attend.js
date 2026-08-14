@@ -2,6 +2,11 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import {
+  createDefaultStudentLesson,
+  getStudentLesson,
+  mergeStudentLesson,
+} from '../../../../lib/studentLessons';
 
 // Load environment variables from env.config
 function loadEnvConfig() {
@@ -31,7 +36,6 @@ function loadEnvConfig() {
 }
 
 const envConfig = loadEnvConfig();
-const JWT_SECRET = envConfig.JWT_SECRET || process.env.JWT_SECRET || 'topphysics_secret';
 const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'topphysics';
 
@@ -56,8 +60,6 @@ function normalizePayment(payment) {
 }
 
 console.log('🔗 Using Mongo URI:', MONGO_URI);
-
-// Auth middleware is now imported from shared utility
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -106,7 +108,9 @@ export default async function handler(req, res) {
     // Determine which lesson to update
     const lessonName = attendanceLesson || (lessonNames.length > 0 ? lessonNames[0] : 'Lesson 1');
     
-    // Ensure the target lesson exists; if not, create it with default schema
+    // Ensure the target lesson exists; if not, create it with default schema.
+    // IMPORTANT: never use dotted paths like `lessons.${name}` — dots in lesson
+    // names (e.g. "1. tester") would nest incorrectly in MongoDB.
     const ensureLessonExists = async () => {
       console.log(`🔍 Current student lessons structure:`, typeof student.lessons, student.lessons);
       
@@ -114,45 +118,24 @@ export default async function handler(req, res) {
       if (!student.lessons || Array.isArray(student.lessons)) {
         console.log(`🔄 Converting lessons from array to object format for student ${student_id}`);
         student.lessons = {};
-        // Update the database to use object format
         await db.collection('students').updateOne(
           { id: student_id },
           { $set: { lessons: {} } }
         );
       }
       
-      if (!student.lessons[lessonName]) {
+      if (!getStudentLesson(student.lessons, lessonName)) {
         console.log(`🧩 Creating missing lesson "${lessonName}" for student ${student_id}`);
+        const nextLessons = mergeStudentLesson(
+          student.lessons,
+          lessonName,
+          createDefaultStudentLesson(lessonName)
+        );
         await db.collection('students').updateOne(
           { id: student_id },
-          { $set: { [`lessons.${lessonName}`]: {
-            lesson: lessonName,
-            attended: false,
-            lastAttendance: null,
-            lastAttendanceCenter: null,
-            attendanceDate: null,
-            hwDone: false,
-            quizDegree: null,
-            comment: null,
-            message_state: false,
-            homework_degree: null,
-            paid: false
-          } } }
+          { $set: { lessons: nextLessons } }
         );
-        // Refresh student in-memory reference
-        student.lessons[lessonName] = {
-          lesson: lessonName,
-          attended: false,
-          lastAttendance: null,
-          lastAttendanceCenter: null,
-          attendanceDate: null,
-          hwDone: false,
-          quizDegree: null,
-          comment: null,
-          message_state: false,
-          homework_degree: null,
-          paid: false
-        };
+        student.lessons = nextLessons;
       }
     };
 
@@ -174,7 +157,8 @@ export default async function handler(req, res) {
     if (attended) {
       // Check if student has available sessions or if this lesson is already paid (only if payment system is enabled)
       const currentSessions = payment.numberOfSessions;
-      const isLessonPaid = student.lessons && student.lessons[lessonName] && student.lessons[lessonName].paid === true;
+      const existingLesson = getStudentLesson(student.lessons, lessonName);
+      const isLessonPaid = existingLesson && existingLesson.paid === true;
       
       if (PAYMENT_SYSTEM_ENABLED && currentSessions <= 0 && !isLessonPaid) {
         console.log('❌ Student has no available sessions and lesson is not paid:', student_id);
@@ -192,27 +176,27 @@ export default async function handler(req, res) {
       const getPart = (type) => egyptParts.find((p) => p.type === type)?.value || '';
       const attendanceDateOnly = `${getPart('day')}/${getPart('month')}/${getPart('year')}`;
 
-      // Mark as attended
-      const updateQuery = {
-        [`lessons.${lessonName}.attended`]: true,
-        [`lessons.${lessonName}.lastAttendance`]: lastAttendance || null,
-        [`lessons.${lessonName}.lastAttendanceCenter`]: lastAttendanceCenter || null,
-        [`lessons.${lessonName}.attendanceDate`]: attendanceDateOnly,
+      const lessonPatch = {
+        attended: true,
+        lastAttendance: lastAttendance || null,
+        lastAttendanceCenter: lastAttendanceCenter || null,
+        attendanceDate: attendanceDateOnly,
       };
 
       let sessionDelta = 0;
       if (PAYMENT_SYSTEM_ENABLED) {
-        // Mark lesson paid and consume one session (unless already paid for this lesson)
-        updateQuery[`lessons.${lessonName}.paid`] = true;
+        lessonPatch.paid = true;
         if (!isLessonPaid && currentSessions > 0) {
           sessionDelta = -1;
         }
       }
+
+      const nextLessons = mergeStudentLesson(student.lessons, lessonName, lessonPatch);
       
-      console.log('🔧 Updating database with query:', updateQuery, 'sessionDelta:', sessionDelta);
+      console.log('🔧 Updating lessons map for lesson:', lessonName, 'sessionDelta:', sessionDelta);
       const updateDoc = sessionDelta !== 0
-        ? { $set: updateQuery, $inc: { 'payment.numberOfSessions': sessionDelta } }
-        : { $set: updateQuery };
+        ? { $set: { lessons: nextLessons }, $inc: { 'payment.numberOfSessions': sessionDelta } }
+        : { $set: { lessons: nextLessons } };
 
       const result = await db.collection('students').updateOne(
         { id: student_id },
@@ -249,20 +233,21 @@ export default async function handler(req, res) {
       // Mark as not attended (unattend)
       // Also reset hw and quiz since student didn't attend
       const currentSessions = payment.numberOfSessions;
-      const wasLessonPaid = student.lessons && student.lessons[lessonName] && student.lessons[lessonName].paid === true;
+      const existingLesson = getStudentLesson(student.lessons, lessonName);
+      const wasLessonPaid = existingLesson && existingLesson.paid === true;
       
-      const updateQuery = {
-        [`lessons.${lessonName}.attended`]: false,
-        [`lessons.${lessonName}.lastAttendance`]: null,
-        [`lessons.${lessonName}.lastAttendanceCenter`]: null,
-        [`lessons.${lessonName}.attendanceDate`]: null,
-        [`lessons.${lessonName}.hwDone`]: false,
-        [`lessons.${lessonName}.quizDegree`]: null,
-        [`lessons.${lessonName}.comment`]: null,
-        [`lessons.${lessonName}.message_state`]: false,
-        [`lessons.${lessonName}.homework_degree`]: null,
-        [`lessons.${lessonName}.paid`]: false
-      };
+      const nextLessons = mergeStudentLesson(student.lessons, lessonName, {
+        attended: false,
+        lastAttendance: null,
+        lastAttendanceCenter: null,
+        attendanceDate: null,
+        hwDone: false,
+        quizDegree: null,
+        comment: null,
+        message_state: false,
+        homework_degree: null,
+        paid: false,
+      });
 
       let sessionDelta = 0;
       // Restore one session if payment is on and this lesson had consumed a session
@@ -271,8 +256,8 @@ export default async function handler(req, res) {
       }
 
       const updateDoc = sessionDelta !== 0
-        ? { $set: updateQuery, $inc: { 'payment.numberOfSessions': sessionDelta } }
-        : { $set: updateQuery };
+        ? { $set: { lessons: nextLessons }, $inc: { 'payment.numberOfSessions': sessionDelta } }
+        : { $set: { lessons: nextLessons } };
       
       const result = await db.collection('students').updateOne(
         { id: student_id },
@@ -311,4 +296,4 @@ export default async function handler(req, res) {
   } finally {
     if (client) await client.close();
   }
-} 
+}

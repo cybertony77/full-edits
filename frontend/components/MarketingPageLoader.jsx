@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { Great_Vibes } from 'next/font/google';
-import styles from './MarketingPageLoader.module.css';
+import styles from '../styles/MarketingPageLoader.module.css';
 
 const welcomeFont = Great_Vibes({
   subsets: ['latin'],

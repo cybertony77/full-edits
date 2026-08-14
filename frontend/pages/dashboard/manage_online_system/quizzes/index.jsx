@@ -516,8 +516,16 @@ export default function Quizzes() {
                     borderRadius: '12px',
                     padding: '20px',
                     display: 'flex',
-                    justifyContent: 'space-between',
                     alignItems: 'center',
+                    alignContent: 'flex-start',
+                    justifyContent: 'flex-start',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    minWidth: 0,
+                    height: 'auto',
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
@@ -529,8 +537,8 @@ export default function Quizzes() {
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px' }}>
+                  <div className="item-info" style={{ flex: '1 1 260px', minWidth: 0, maxWidth: '100%' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {[quiz.course, quiz.courseType, quiz.center, quiz.lesson, quiz.lesson_name].filter(Boolean).join(' • ')}
                     </div>
                     {quiz.quiz_type === 'pdf' ? (
@@ -595,7 +603,7 @@ export default function Quizzes() {
                     </div>
                     )}
                   </div>
-                  <div className="quiz-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div className="quiz-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', flex: '0 1 auto', maxWidth: '100%', marginLeft: 'auto', justifyContent: 'flex-end' }}>
                     {quiz.quiz_type !== 'pdf' && (
                     <button onClick={() => openAnalytics(quiz)} className="qz-action-btn"
                       style={{ padding: '8px 16px', backgroundColor: '#1FA8DC', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
@@ -1089,17 +1097,58 @@ export default function Quizzes() {
           }
           .quiz-item {
             flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 16px;
+            align-items: stretch !important;
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 12px !important;
+            padding: 16px !important;
+            height: auto !important;
+          }
+          .quiz-item .item-info {
+            flex: 0 0 auto !important;
+            width: 100%;
+            max-width: 100%;
           }
           .quiz-buttons {
             width: 100%;
+            flex: 0 0 auto !important;
             flex-direction: column;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
           }
           .quiz-buttons button,
           .quiz-buttons a,
           .quiz-buttons .qz-action-btn {
             width: 100%;
+            flex: 0 0 auto;
+            min-width: 0;
+          }
+        }
+        @media (max-width: 992px) {
+          .quiz-item {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 12px !important;
+            height: auto !important;
+          }
+          .quiz-item .item-info {
+            flex: 0 0 auto !important;
+            width: 100%;
+          }
+          .quiz-buttons {
+            width: 100%;
+            flex: 0 0 auto !important;
+            justify-content: flex-start !important;
+            margin-top: 0 !important;
+            margin-left: 0 !important;
+          }
+          .quiz-buttons button,
+          .quiz-buttons a,
+          .quiz-buttons .qz-action-btn {
+            flex: 1 1 calc(50% - 6px);
+            min-width: 140px;
           }
         }
         @media (min-width: 769px) and (max-width: 1024px) {

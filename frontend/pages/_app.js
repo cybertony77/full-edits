@@ -78,12 +78,17 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
     '/contact_developer',
     '/contact_assistants',
     '/welcome',
+    '/leave-a-review',
     '/forgot_password',
     '/404',
     '/student_not_found',
     '/student_info'
   ];
-  const isPublicPage = publicPagesList.includes(currentPath);
+  const isPublicPage =
+    publicPagesList.includes(currentPath) ||
+    currentPath.startsWith('/leave-a-review') ||
+    currentPath.startsWith('/api/youtube/') ||
+    currentPath.startsWith('/youtube-player/');
 
   // Check if user is developer
   const isDeveloper = userRole === 'developer';
@@ -296,11 +301,13 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       '/contact_developer',
       '/contact_assistants',
       '/welcome',
+      '/leave-a-review',
       '/forgot_password',
       '/404',
       '/student_not_found'
     ];
-    const isPublicPage = publicPagesList.includes(currentPath);
+    const isPublicPage =
+      publicPagesList.includes(currentPath) || currentPath.startsWith('/leave-a-review');
     
     // On public pages (without token), show message but don't redirect
     if (isPublicPage && devToolsDetected) {
@@ -472,11 +479,13 @@ function DevToolsProtection({ userRole, devtoolsBlockEnabled }) {
       '/contact_developer',
       '/contact_assistants',
       '/welcome',
+      '/leave-a-review',
       '/forgot_password',
       '/404',
       '/student_not_found'
     ];
-    const isPublicPage = publicPagesList.includes(currentPath);
+    const isPublicPage =
+      publicPagesList.includes(currentPath) || currentPath.startsWith('/leave-a-review');
     
     return (
       <>
@@ -869,20 +878,31 @@ const isStudentDashboardRoute = (path) => {
 };
 
 export default function App({ Component, pageProps, systemBackground }) {
-  const initialBg = systemBackground || DEFAULT_SYSTEM_BACKGROUND;
+  const isYtEmbed = Boolean(Component?.isYoutubeEmbedShell);
+  const initialBg = isYtEmbed ? "#000" : systemBackground || DEFAULT_SYSTEM_BACKGROUND;
   const [pageBg, setPageBg] = useState(initialBg);
 
   // Sync when getInitialProps provides a new value (SSR / client navigation)
   useLayoutEffect(() => {
+    if (Component?.isYoutubeEmbedShell) {
+      if (typeof document !== "undefined") {
+        document.documentElement.style.background = "#000";
+        document.body.style.background = "#000";
+        document.body.style.backgroundImage = "none";
+        document.documentElement.style.backgroundImage = "none";
+      }
+      return;
+    }
     if (systemBackground && systemBackground !== pageBg) {
       setPageBg(systemBackground);
     }
     applySystemBackground(systemBackground || pageBg);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [systemBackground]);
+  }, [systemBackground, Component]);
 
   // Always confirm against env via API so we never stick on the hardcoded default
   useEffect(() => {
+    if (Component?.isYoutubeEmbedShell) return undefined;
     let cancelled = false;
     const ensureEnvBackground = async () => {
       try {
@@ -902,7 +922,7 @@ export default function App({ Component, pageProps, systemBackground }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [Component]);
 
   // Create a new QueryClient instance
   const [queryClient] = useState(() => new QueryClient({
@@ -927,7 +947,7 @@ export default function App({ Component, pageProps, systemBackground }) {
 
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => !isYtEmbed);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
   const [isCheckingAdminAccess, setIsCheckingAdminAccess] = useState(false);
   const [isRouteChanging, setIsRouteChanging] = useState(false);
@@ -941,10 +961,12 @@ export default function App({ Component, pageProps, systemBackground }) {
   const [isSubscriptionEnabled, setIsSubscriptionEnabled] = useState(true); // Default to true
 
   // Define public pages using useMemo to prevent recreation on every render
-  const publicPages = useMemo(() => ["/", "/sign-up", "/contact_developer", "/contact_assistants", "/welcome", "/404", "/forgot_password", "/student_not_found", "/dashboard/student_info"], []);
+  const publicPages = useMemo(() => ["/", "/sign-up", "/contact_developer", "/contact_assistants", "/welcome", "/leave-a-review", "/404", "/forgot_password", "/student_not_found", "/dashboard/student_info"], []);
+
+  const isYoutubeEmbedShell = router.pathname.startsWith("/youtube-player");
   
   // Define pages that should never show header/footer (even if authenticated)
-  const noHeaderFooterPages = useMemo(() => ["/", "/sign-up", "/student_dashboard/my_homeworks/start", "/student_dashboard/my_quizzes/start"], []);
+  const noHeaderFooterPages = useMemo(() => ["/", "/sign-up", "/leave-a-review", "/student_dashboard/my_homeworks/start", "/student_dashboard/my_quizzes/start"], []);
   
   // Define admin-only pages
   const adminPages = useMemo(() => [
@@ -968,6 +990,7 @@ export default function App({ Component, pageProps, systemBackground }) {
 
   // Fetch DEVTOOLS_BLOCK configuration
   useEffect(() => {
+    if (Component?.isYoutubeEmbedShell) return undefined;
     const fetchConfig = async () => {
       try {
         const response = await fetch('/api/config');
@@ -983,10 +1006,11 @@ export default function App({ Component, pageProps, systemBackground }) {
       }
     };
     fetchConfig();
-  }, []);
+  }, [Component]);
 
   // Fetch SYSTEM_SUBSCRIPTION configuration
   useEffect(() => {
+    if (Component?.isYoutubeEmbedShell) return undefined;
     const fetchSystemConfig = async () => {
       try {
         const response = await fetch('/api/system/config');
@@ -1000,9 +1024,13 @@ export default function App({ Component, pageProps, systemBackground }) {
       }
     };
     fetchSystemConfig();
-  }, []);
+  }, [Component]);
 
   useEffect(() => {
+    if (Component?.isYoutubeEmbedShell) {
+      setIsLoading(false);
+      return undefined;
+    }
     const checkAuth = async () => {
       try {
         // Check authentication with server (cookies are sent automatically)
@@ -1066,7 +1094,7 @@ export default function App({ Component, pageProps, systemBackground }) {
       } catch (error) {
         // Token invalid or expired - only set to false if we're not on a public page
         // This prevents redirect loops when the API call fails temporarily
-        if (!publicPages.includes(router.pathname)) {
+        if (!publicPages.includes(router.pathname) && !router.pathname.startsWith("/youtube-player")) {
           setIsAuthenticated(false);
           setUserRole(null);
         }
@@ -1076,7 +1104,7 @@ export default function App({ Component, pageProps, systemBackground }) {
     };
 
     checkAuth();
-  }, [router.pathname, adminPages, developerPages, publicPages, router]);
+  }, [router.pathname, adminPages, developerPages, publicPages, router, Component]);
 
   // Handle route changes for main preloader
   useEffect(() => {
@@ -1105,7 +1133,7 @@ export default function App({ Component, pageProps, systemBackground }) {
 
   // Redirect to login if not authenticated and trying to access protected page
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !publicPages.includes(router.pathname)) {
+    if (!isLoading && !isAuthenticated && !publicPages.includes(router.pathname) && !isYoutubeEmbedShell) {
       // Show redirect to login preloader before redirect
       setShowRedirectToLogin(true);
       
@@ -1121,7 +1149,7 @@ export default function App({ Component, pageProps, systemBackground }) {
         router.push("/");
       }, 1000); // Show preloader for 1 second
     }
-  }, [isLoading, isAuthenticated, router.pathname, publicPages, router]);
+  }, [isLoading, isAuthenticated, router.pathname, publicPages, router, isYoutubeEmbedShell]);
 
   // Check admin access for current route
   useEffect(() => {
@@ -1520,6 +1548,17 @@ export default function App({ Component, pageProps, systemBackground }) {
   // Note: Token expiry checking removed since we now use HTTP-only cookies
   // The server will handle token validation and expiry
 
+  // Bare YouTube embed shell — detect via page flag (SSR-safe; never show system preloader)
+  if (isYtEmbed || Component?.isYoutubeEmbedShell) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <Component {...pageProps} />
+        </ErrorBoundary>
+      </QueryClientProvider>
+    );
+  }
+
   // Show loading while checking authentication, subscription, or during route changes
   if (isLoading || (isSubscriptionEnabled && isAuthenticated && isLoadingSubscription && !publicPages.includes(router.pathname)) || isRouteChanging) {
     return <Preloader background={pageBg} />;
@@ -1559,7 +1598,7 @@ export default function App({ Component, pageProps, systemBackground }) {
                   <Component {...pageProps} />
                 </div>
               </div>
-            ) : router.pathname === "/welcome" ? (
+            ) : router.pathname === "/welcome" || router.pathname === "/leave-a-review" ? (
               <div
                 style={{
                   display: "flex",
@@ -1568,7 +1607,7 @@ export default function App({ Component, pageProps, systemBackground }) {
                 }}
               >
                 <Component {...pageProps} />
-                <Footer />
+                {router.pathname === "/welcome" ? <Footer /> : null}
               </div>
             ) : (
               <Component {...pageProps} />
@@ -1742,6 +1781,16 @@ export default function App({ Component, pageProps, systemBackground }) {
 // "NextRouter was not mounted" while prerendering pages.
 App.getInitialProps = async (appContext) => {
   const appProps = await NextJsApp.getInitialProps(appContext);
+  const path = String(appContext.ctx?.asPath || appContext.ctx?.pathname || "");
+  const isYoutubeEmbed =
+    path.includes("/api/youtube/") ||
+    path.includes("/youtube-player/") ||
+    appContext.Component?.isYoutubeEmbedShell;
+
+  if (isYoutubeEmbed) {
+    return { ...appProps, systemBackground: "#000" };
+  }
+
   let systemBackground = DEFAULT_SYSTEM_BACKGROUND;
 
   if (typeof window === 'undefined') {

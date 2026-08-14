@@ -700,7 +700,7 @@ export default function EditStudent() {
                   {student.name} (ID: {student.id})
                 </div>
                 <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
-                  {student.grade} • {student.main_center}
+                  {[student.course, student.courseType, student.main_center].filter(Boolean).join(' • ')}
                 </div>
               </button>
             ))}

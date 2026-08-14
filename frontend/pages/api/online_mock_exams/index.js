@@ -8,6 +8,7 @@ import {
   normalizeDeadlineTimeField,
   parseDeadlineTime,
 } from '../../../lib/deadlineTimeEgypt';
+import { validateOnlineQuestionPayload, serializeOnlineQuestionForDb } from '../../../lib/onlineQuestionApiNormalize';
 
 function loadEnvConfig() {
   try {
@@ -38,19 +39,6 @@ function loadEnvConfig() {
 const envConfig = loadEnvConfig();
 const MONGO_URI = envConfig.MONGO_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/topphysics';
 const DB_NAME = envConfig.DB_NAME || process.env.DB_NAME || 'mr-george-magdy';
-
-function getQuestionPicturesFromPayload(question = {}) {
-  const pictures = [];
-  pictures[0] = question.question_picture || null;
-  Object.keys(question)
-    .filter((key) => /^question_picture_\d+$/.test(key))
-    .sort((a, b) => Number(a.split('_').pop()) - Number(b.split('_').pop()))
-    .forEach((key) => {
-      const idx = Number(key.split('_').pop()) - 1;
-      if (idx >= 1) pictures[idx] = question[key] || null;
-    });
-  return pictures.filter((pic) => !!pic);
-}
 
 function normalizeQuestionPictures(question = {}) {
   const pictures = [question.question_picture || null];
@@ -125,31 +113,9 @@ export default async function handler(req, res) {
 
       if (effectiveType === 'questions') {
         for (let i = 0; i < questions.length; i++) {
-          const q = questions[i];
-          const hasQuestionText = q.question_text && q.question_text.trim() !== '';
-          const hasQuestionImage = getQuestionPicturesFromPayload(q).length > 0;
-          if (!hasQuestionText && !hasQuestionImage) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Question must have at least question text or image (or both)` });
-          }
-          if (!Array.isArray(q.answers) || q.answers.length < 2) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: At least 2 answers (A and B) are required` });
-          }
-          for (let j = 0; j < q.answers.length; j++) {
-            const expectedLetter = String.fromCharCode(65 + j);
-            if (q.answers[j] !== expectedLetter) {
-              return res.status(400).json({ error: `❌ Question ${i + 1}: Answers must be letters A, B, C, D, etc. in order` });
-            }
-          }
-          if (!q.correct_answer) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Correct answer is required` });
-          }
-          const correctAnswerLetter = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-          const correctLetterUpper = correctAnswerLetter.toUpperCase();
-          if (!q.answers.includes(correctLetterUpper)) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Correct answer must be one of the provided answers` });
-          }
-          if (q.answer_texts && Array.isArray(q.answer_texts) && q.answer_texts.length !== q.answers.length) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Answer texts array must match answers array length` });
+          const validationError = validateOnlineQuestionPayload(questions[i], i);
+          if (validationError) {
+            return res.status(400).json({ error: validationError });
           }
         }
       }
@@ -218,26 +184,7 @@ export default async function handler(req, res) {
         mockExamDoc.pdf_url = pdf_url.trim();
         mockExamDoc.allow_downloading = allow_downloading === false || allow_downloading === 'false' ? false : true;
       } else {
-        mockExamDoc.questions = questions.map(q => {
-          const hasText = q.answer_texts && q.answer_texts.length > 0 && q.answer_texts.some(text => text && text.trim() !== '');
-          const correctAnswerLetter = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-          const correctAnswerLetterLower = correctAnswerLetter.toLowerCase();
-          const correctAnswerIdx = q.answers.indexOf(correctAnswerLetterLower.toUpperCase());
-          const correctAnswerText = (correctAnswerIdx !== -1 && q.answer_texts && q.answer_texts[correctAnswerIdx]) 
-            ? q.answer_texts[correctAnswerIdx] 
-            : null;
-          
-          return {
-            question_text: q.question_text || '',
-            ...normalizeQuestionPictures(q),
-            answers: q.answers,
-            answer_texts: q.answer_texts || [],
-            correct_answer: hasText && correctAnswerText 
-              ? [correctAnswerLetterLower, correctAnswerText]
-              : correctAnswerLetterLower,
-            question_explanation: q.question_explanation || ''
-          };
-        });
+        mockExamDoc.questions = questions.map(q => serializeOnlineQuestionForDb(q, normalizeQuestionPictures));
       }
 
       const result = await db.collection('mock_exams').insertOne(mockExamDoc);
@@ -286,31 +233,9 @@ export default async function handler(req, res) {
 
       if (effectiveType === 'questions') {
         for (let i = 0; i < questions.length; i++) {
-          const q = questions[i];
-          const hasQuestionText = q.question_text && q.question_text.trim() !== '';
-          const hasQuestionImage = getQuestionPicturesFromPayload(q).length > 0;
-          if (!hasQuestionText && !hasQuestionImage) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Question must have at least question text or image (or both)` });
-          }
-          if (!Array.isArray(q.answers) || q.answers.length < 2) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: At least 2 answers (A and B) are required` });
-          }
-          for (let j = 0; j < q.answers.length; j++) {
-            const expectedLetter = String.fromCharCode(65 + j);
-            if (q.answers[j] !== expectedLetter) {
-              return res.status(400).json({ error: `❌ Question ${i + 1}: Answers must be letters A, B, C, D, etc. in order` });
-            }
-          }
-          if (!q.correct_answer) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Correct answer is required` });
-          }
-          const correctAnswerLetter = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-          const correctLetterUpper = correctAnswerLetter.toUpperCase();
-          if (!q.answers.includes(correctLetterUpper)) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Correct answer must be one of the provided answers` });
-          }
-          if (q.answer_texts && Array.isArray(q.answer_texts) && q.answer_texts.length !== q.answers.length) {
-            return res.status(400).json({ error: `❌ Question ${i + 1}: Answer texts array must match answers array length` });
+          const validationError = validateOnlineQuestionPayload(questions[i], i);
+          if (validationError) {
+            return res.status(400).json({ error: validationError });
           }
         }
       }
@@ -385,26 +310,7 @@ export default async function handler(req, res) {
         updateData.allow_downloading = allow_downloading === false || allow_downloading === 'false' ? false : true;
         unsetFields = { questions: '' };
       } else {
-        updateData.questions = questions.map(q => {
-          const hasText = q.answer_texts && q.answer_texts.length > 0 && q.answer_texts.some(text => text && text.trim() !== '');
-          const correctAnswerLetter = Array.isArray(q.correct_answer) ? q.correct_answer[0] : q.correct_answer;
-          const correctAnswerLetterLower = correctAnswerLetter.toLowerCase();
-          const correctAnswerIdx = q.answers.indexOf(correctAnswerLetterLower.toUpperCase());
-          const correctAnswerText = (correctAnswerIdx !== -1 && q.answer_texts && q.answer_texts[correctAnswerIdx]) 
-            ? q.answer_texts[correctAnswerIdx] 
-            : null;
-          
-          return {
-            question_text: q.question_text || '',
-            ...normalizeQuestionPictures(q),
-            answers: q.answers,
-            answer_texts: q.answer_texts || [],
-            correct_answer: hasText && correctAnswerText 
-              ? [correctAnswerLetterLower, correctAnswerText]
-              : correctAnswerLetterLower,
-            question_explanation: q.question_explanation || ''
-          };
-        });
+        updateData.questions = questions.map(q => serializeOnlineQuestionForDb(q, normalizeQuestionPictures));
         unsetFields = { pdf_file_name: '', pdf_url: '', allow_downloading: '' };
       }
 

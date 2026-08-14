@@ -1,14 +1,24 @@
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  /* From env.config SYSTEM_COLORS — overridden at runtime by _app / _document */
-  --system-page-bg: linear-gradient(380deg, #1FA8DC 0%, #FEB954 100%);
+  --foreground: #2b2b2b;
+
+  /* Brand palette — overridden at runtime by /api/system/colors.css + _document */
+  --system-page-bg: #0f0f10;
+  --system-primary: #0f0f10;
+  --system-secondary: #c9a96a;
+  --system-secondary-hover: #b8954f;
+  --system-secondary-pressed: #a8894a;
+  --system-surface: #f7f4ee;
+  --system-soft-accent: #e9ddd0;
+  --system-body-text: #2b2b2b;
+  --system-muted-text: #8a8a8a;
+  --system-white: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f0f10;
+    --foreground: #f7f4ee;
   }
 }
 
@@ -26,7 +36,7 @@ body {
   min-height: 100vh;
   background: var(--system-page-bg);
   background-attachment: fixed;
-  color: var(--foreground);
+  color: var(--system-body-text);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,15 +49,41 @@ body {
 }
 
 a {
-  color: inherit;
+  color: var(--system-secondary);
   text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    /* Keep light UI controls — app is light-themed (avoids black sticky table headers) */
-    color-scheme: light;
-  }
+a:hover {
+  color: var(--system-secondary-hover);
+}
+
+/* Global system buttons */
+button.system-btn,
+.system-btn,
+.btn-primary,
+.addBtn,
+.saveBtn,
+.modalSaveBtn,
+.confirmDeleteBtn {
+  transition:
+    background 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease,
+    transform 0.2s ease,
+    color 0.2s ease;
+}
+
+button:not(:disabled):hover,
+.system-btn:not(:disabled):hover {
+  filter: brightness(1.03);
+}
+
+/* Map legacy cyan accents toward brand secondary where inline CSS modules still hardcode */
+:root {
+  --legacy-accent: var(--system-secondary);
 }
 
 /* PhoneInput Styles - react-phone-input-2 */
@@ -58,18 +94,24 @@ a {
 .react-tel-input .form-control {
   position: relative !important;
   font-size: 14px !important;
-  letter-spacing: .01rem !important;
+  letter-spacing: 0.01rem !important;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
   padding: 20px 20px 20px 45px !important;
   margin-left: 0 !important;
-  background: #FFFFFF !important;
-  border: 1px solid #CACACA !important;
+  background: var(--system-white) !important;
+  border: 1px solid var(--system-soft-accent) !important;
   border-radius: 7px !important;
   line-height: 25px !important;
   height: 35px !important;
   width: 100% !important;
   outline: none !important;
+  color: var(--system-body-text) !important;
+}
+
+.react-tel-input .form-control:focus {
+  border-color: var(--system-secondary) !important;
+  box-shadow: 0 0 0 3px rgba(201, 169, 106, 0.18) !important;
 }
 
 .react-tel-input .country-list {
@@ -79,8 +121,8 @@ a {
   position: absolute !important;
   padding: 0px !important;
   margin: 10px 0 10px -1px !important;
-  box-shadow: 1px 2px 10px rgba(0, 0, 0, 0.35) !important;
-  background-color: white !important;
+  box-shadow: 1px 2px 10px rgba(15, 15, 16, 0.2) !important;
+  background-color: var(--system-surface) !important;
   width: 300px !important;
   max-height: 200px !important;
   overflow-y: scroll !important;
@@ -88,7 +130,7 @@ a {
 }
 
 .react-tel-input .country-list .search-box {
-  border: 1px solid #cacaca !important;
+  border: 1px solid var(--system-soft-accent) !important;
   border-radius: 7px !important;
   font-size: 15px !important;
   line-height: 15px !important;
@@ -102,12 +144,11 @@ a {
   top: 0;
   bottom: 0;
   padding: 0;
-  background-color: #f5f5f5;
-  border: 1px solid #cacaca;
+  background-color: var(--system-soft-accent);
+  border: 1px solid var(--system-soft-accent);
   border-radius: 4px !important;
 }
 
-/* PhoneInput container and input classes (used with containerClass and inputClass props) - ensure full width */
 .phone-container {
   width: 100% !important;
 }
@@ -116,16 +157,27 @@ a {
   width: 100% !important;
 }
 
-/* Responsive styles for PhoneInput */
 @media (max-width: 768px) {
   .react-tel-input .country-list {
     width: 280px !important;
     max-height: 180px !important;
   }
-  
+
   .react-tel-input .form-control {
-    font-size: 16px !important; /* Prevents zoom on iOS */
+    font-size: 16px !important;
   }
+}
+
+/* Student essay answer inputs (homework / quiz / mock exam) */
+.essay-answer-input {
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.essay-answer-input:focus {
+  outline: none !important;
+  border-color: #1fa8dc !important;
+  box-shadow: 0 0 0 3px rgba(31, 168, 220, 0.18) !important;
 }
 
 @media (max-width: 480px) {
@@ -134,11 +186,11 @@ a {
     max-width: 280px !important;
     max-height: 160px !important;
   }
-  
+
   .react-tel-input .form-control {
-    font-size: 16px !important; /* Prevents zoom on iOS */
+    font-size: 16px !important;
   }
-  
+
   .react-tel-input .country-list .search-box {
     font-size: 14px !important;
     padding: 6px !important;

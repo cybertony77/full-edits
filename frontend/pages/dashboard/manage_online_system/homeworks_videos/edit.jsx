@@ -56,6 +56,7 @@ export default function EditHomeworkVideo() {
       video_source: 'youtube',
       r2_key: '',
       zoom_meeting_id: '',
+      google_meet_id: '',
       upload_file_name: '',
       upload_progress: 0,
       upload_status: 'idle',
@@ -120,6 +121,8 @@ export default function EditHomeworkVideo() {
             youtube_url: '',
             video_source: 'r2',
             r2_key: videoId,
+            zoom_meeting_id: '',
+            google_meet_id: '',
             upload_file_name: selectedSession[`video_name_${videoIndex}`] || 'Uploaded video',
             upload_progress: 100,
             upload_status: 'done',
@@ -131,6 +134,19 @@ export default function EditHomeworkVideo() {
             video_source: 'zoom',
             r2_key: '',
             zoom_meeting_id: videoId,
+            google_meet_id: '',
+            upload_file_name: '',
+            upload_progress: 0,
+            upload_status: 'idle',
+          });
+        } else if (videoType === 'google_meet') {
+          videos.push({
+            video_name: selectedSession[`video_name_${videoIndex}`] || '',
+            youtube_url: '',
+            video_source: 'google_meet',
+            r2_key: '',
+            zoom_meeting_id: '',
+            google_meet_id: videoId,
             upload_file_name: '',
             upload_progress: 0,
             upload_status: 'idle',
@@ -142,6 +158,7 @@ export default function EditHomeworkVideo() {
             video_source: 'youtube',
             r2_key: '',
             zoom_meeting_id: '',
+            google_meet_id: '',
             upload_file_name: '',
             upload_progress: 0,
             upload_status: 'idle',
@@ -159,6 +176,7 @@ export default function EditHomeworkVideo() {
           video_source: 'youtube',
           r2_key: '',
           zoom_meeting_id: '',
+          google_meet_id: '',
           upload_file_name: '',
           upload_progress: 0,
           upload_status: 'idle',
@@ -216,6 +234,7 @@ export default function EditHomeworkVideo() {
         video_source: 'youtube',
         r2_key: '',
         zoom_meeting_id: '',
+        google_meet_id: '',
         upload_file_name: '',
         upload_progress: 0,
         upload_status: 'idle',
@@ -257,6 +276,7 @@ export default function EditHomeworkVideo() {
         youtube_url: url,
         video_source: 'youtube',
         r2_key: '',
+        google_meet_id: '',
         upload_file_name: '',
         upload_progress: 0,
         upload_status: 'idle',
@@ -290,6 +310,7 @@ export default function EditHomeworkVideo() {
         ...(r2Key ? {
           youtube_url: '',
           zoom_meeting_id: '',
+          google_meet_id: '',
           upload_status: 'done',
           upload_progress: 100,
         } : {
@@ -329,6 +350,7 @@ export default function EditHomeworkVideo() {
         video_source: 'zoom',
         youtube_url: '',
         r2_key: '',
+        google_meet_id: '',
         upload_file_name: '',
         upload_progress: 0,
         upload_status: 'idle',
@@ -345,7 +367,38 @@ export default function EditHomeworkVideo() {
   const handleClearZoomMeetingId = (index) => {
     setFormData(prev => {
       const newVideos = [...prev.videos];
-      newVideos[index] = { ...newVideos[index], zoom_meeting_id: '' };
+      newVideos[index] = { ...newVideos[index], zoom_meeting_id: '', google_meet_id: '' };
+      return { ...prev, videos: newVideos };
+    });
+  };
+
+  const handleGoogleMeetIdChange = (index, meetId) => {
+    setFormData(prev => {
+      const newVideos = [...prev.videos];
+      newVideos[index] = {
+        ...newVideos[index],
+        google_meet_id: meetId,
+        video_source: 'google_meet',
+        youtube_url: '',
+        r2_key: '',
+        zoom_meeting_id: '',
+        upload_file_name: '',
+        upload_progress: 0,
+        upload_status: 'idle',
+      };
+      return { ...prev, videos: newVideos };
+    });
+    if (errors[`video_${index}_google_meet_id`]) {
+      const newErrors = { ...errors };
+      delete newErrors[`video_${index}_google_meet_id`];
+      setErrors(newErrors);
+    }
+  };
+
+  const handleClearGoogleMeetId = (index) => {
+    setFormData(prev => {
+      const newVideos = [...prev.videos];
+      newVideos[index] = { ...newVideos[index], google_meet_id: '' };
       return { ...prev, videos: newVideos };
     });
   };
@@ -402,7 +455,8 @@ export default function EditHomeworkVideo() {
       return (
         (video.youtube_url && video.youtube_url.trim()) ||
         (video.r2_key && video.r2_key.trim()) ||
-        (video.zoom_meeting_id && video.zoom_meeting_id.trim())
+        (video.zoom_meeting_id && video.zoom_meeting_id.trim()) ||
+        (video.google_meet_id && video.google_meet_id.trim())
       );
     });
 
@@ -416,6 +470,7 @@ export default function EditHomeworkVideo() {
       const hasYoutube = video.youtube_url && video.youtube_url.trim();
       const hasR2 = video.r2_key && video.r2_key.trim();
       const hasZoom = video.zoom_meeting_id && video.zoom_meeting_id.trim();
+      const hasGoogleMeet = video.google_meet_id && video.google_meet_id.trim();
 
       if (hasYoutube) {
         const videoId = extractYouTubeId(video.youtube_url.trim());
@@ -425,6 +480,10 @@ export default function EditHomeworkVideo() {
       } else if (hasZoom) {
         if (!extractZoomMeetingId(video.zoom_meeting_id).trim()) {
           newErrors[`video_${index}_zoom_meeting_id`] = '❌ Invalid Zoom meeting value';
+        }
+      } else if (hasGoogleMeet) {
+        if (!video.google_meet_id.trim()) {
+          newErrors[`video_${index}_google_meet_id`] = '❌ Google Meet ID is required';
         }
       } else if (!hasR2 && validVideos.length === 0) {
         newErrors[`video_${index}_youtube_url`] = '❌ YouTube URL is required';
@@ -481,6 +540,12 @@ export default function EditHomeworkVideo() {
         finalVideoData.push({
           video_type: 'zoom',
           video_id: meetingId,
+          video_name: video.video_name && video.video_name.trim() ? video.video_name.trim() : null,
+        });
+      } else if (video.google_meet_id && video.google_meet_id.trim()) {
+        finalVideoData.push({
+          video_type: 'google_meet',
+          video_id: video.google_meet_id.trim(),
           video_name: video.video_name && video.video_name.trim() ? video.video_name.trim() : null,
         });
       }
@@ -753,6 +818,8 @@ export default function EditHomeworkVideo() {
                   onZoomMeetingIdChange={handleZoomMeetingIdChange}
                   onClearYouTubeUrl={handleClearYouTubeUrl}
                   onClearZoomMeetingId={handleClearZoomMeetingId}
+                  onGoogleMeetIdChange={handleGoogleMeetIdChange}
+                  onClearGoogleMeetId={handleClearGoogleMeetId}
                   onR2Upload={handleR2Upload}
                   onClearR2Upload={handleClearR2Upload}
                   onVideoSourceChange={handleVideoSourceChange}

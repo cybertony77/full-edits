@@ -591,7 +591,7 @@ export default function PreviewStudentMockExams() {
                     {s.name} (ID: {s.id})
                   </div>
                   <div style={{ fontSize: "0.9rem", color: "#6c757d" }}>
-                    {s.name} • {s.grade} • {s.course}{s.courseType ? ` • ${s.courseType}` : ''} • {s.phone} • {s.parentsPhone}
+                    {[s.course, s.courseType, s.main_center].filter(Boolean).join(' • ')}
                   </div>
                 </button>
               ))}

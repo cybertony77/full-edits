@@ -1,23 +1,15 @@
 import { newQuestionClientKey } from './onlineItemQuestionFormHelpers';
+import { createEmptyMcqQuestion, normalizeLoadedQuestion } from './onlineQuestionTypes';
 
 function mapHomeworkQuestion(q) {
-  return {
+  return normalizeLoadedQuestion({
+    ...q,
     _clientKey: q._clientKey || newQuestionClientKey(),
-    question_text: q.question_text || '',
     question_picture: q.question_picture || null,
     ...Object.keys(q || {})
       .filter((key) => /^question_picture_\d+$/.test(key))
       .reduce((acc, key) => ({ ...acc, [key]: q[key] || null }), {}),
-    answers: q.answers && q.answers.length > 0 ? [...q.answers] : ['A', 'B', 'C', 'D'],
-    answer_texts:
-      q.answer_texts && q.answer_texts.length > 0
-        ? [...q.answer_texts]
-        : q.answers
-          ? q.answers.map(() => '')
-          : ['', '', '', ''],
-    correct_answer: q.correct_answer || '',
-    question_explanation: q.question_explanation || '',
-  };
+  });
 }
 
 export function buildHomeworkImportFormState(hw) {
@@ -26,17 +18,7 @@ export function buildHomeworkImportFormState(hw) {
   const questions =
     homeworkType === 'questions' && hw.questions && Array.isArray(hw.questions)
       ? hw.questions.map(mapHomeworkQuestion)
-      : [
-          {
-            _clientKey: newQuestionClientKey(),
-            question_text: '',
-            question_picture: null,
-            answers: ['A', 'B', 'C', 'D'],
-            answer_texts: ['', '', '', ''],
-            correct_answer: '',
-            question_explanation: '',
-          },
-        ];
+      : [createEmptyMcqQuestion({ answers: ['A', 'B', 'C', 'D'], answer_texts: ['', '', '', ''] })];
 
   return {
     formData: {
@@ -70,23 +52,14 @@ export function buildHomeworkImportFormState(hw) {
 }
 
 function mapQuizQuestion(q) {
-  return {
+  return normalizeLoadedQuestion({
+    ...q,
     _clientKey: q._clientKey || newQuestionClientKey(),
-    question_text: q.question_text || '',
     question_picture: q.question_picture || null,
     ...Object.keys(q || {})
       .filter((key) => /^question_picture_\d+$/.test(key))
       .reduce((acc, key) => ({ ...acc, [key]: q[key] || null }), {}),
-    answers: q.answers && q.answers.length > 0 ? [...q.answers] : ['A', 'B'],
-    answer_texts:
-      q.answer_texts && q.answer_texts.length > 0
-        ? [...q.answer_texts]
-        : q.answers
-          ? q.answers.map(() => '')
-          : ['', ''],
-    correct_answer: q.correct_answer || '',
-    question_explanation: q.question_explanation || '',
-  };
+  });
 }
 
 export function buildQuizImportFormState(quiz) {
@@ -95,17 +68,7 @@ export function buildQuizImportFormState(quiz) {
   const questions =
     quizType === 'questions' && quiz.questions && Array.isArray(quiz.questions)
       ? quiz.questions.map(mapQuizQuestion)
-      : [
-          {
-            _clientKey: newQuestionClientKey(),
-            question_text: '',
-            question_picture: null,
-            answers: ['A', 'B'],
-            answer_texts: ['', ''],
-            correct_answer: '',
-            question_explanation: '',
-          },
-        ];
+      : [createEmptyMcqQuestion()];
 
   return {
     formData: {
@@ -141,17 +104,7 @@ export function buildMockExamImportFormState(me) {
   const questions =
     meType === 'questions' && me.questions && Array.isArray(me.questions)
       ? me.questions.map(mapQuizQuestion)
-      : [
-          {
-            _clientKey: newQuestionClientKey(),
-            question_text: '',
-            question_picture: null,
-            answers: ['A', 'B'],
-            answer_texts: ['', ''],
-            correct_answer: '',
-            question_explanation: '',
-          },
-        ];
+      : [createEmptyMcqQuestion()];
 
   return {
     formData: {

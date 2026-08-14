@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../lib/axios';
-import styles from './AttendancelessonSelect.module.css';
+import styles from '../styles/AttendancelessonSelect.module.css';
 
 /** Display order: SAT → EST → ACT → any other categories (A–Z) → All (last). */
 const PRIMARY_ORDER = ['SAT', 'EST', 'ACT'];

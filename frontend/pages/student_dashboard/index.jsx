@@ -439,6 +439,7 @@ export default function StudentDashboard() {
   const isQuizzesEnabled = systemConfig?.quizzes === true || systemConfig?.quizzes === 'true';
   const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
   const isZoomJoinMeetingEnabled = systemConfig?.zoom_join_meeting === true || systemConfig?.zoom_join_meeting === 'true';
+  const isGoogleJoinMeetingEnabled = systemConfig?.google_join_meeting === true || systemConfig?.google_join_meeting === 'true';
   const isPaymentSystemEnabled = systemConfig?.payment_system === true || systemConfig?.payment_system === 'true';
   
   // Get student ID from profile and fetch student data
@@ -483,6 +484,10 @@ export default function StudentDashboard() {
   // Zoom Meeting state
   const [zoomMeeting, setZoomMeeting] = useState(null);
   const [zoomMeetingLoading, setZoomMeetingLoading] = useState(false);
+
+  // Google Meet Meeting state
+  const [googleMeeting, setGoogleMeeting] = useState(null);
+  const [googleMeetingLoading, setGoogleMeetingLoading] = useState(false);
 
   // Check for available groups on mount and when student data changes
   // This is NOT related to SYSTEM_WHATSAPP_JOIN_GROUP - check regardless of that setting
@@ -535,6 +540,32 @@ export default function StudentDashboard() {
     return () => clearInterval(interval);
   }, [studentId]);
 
+  // Check for available Google Meet meeting on mount and when student data changes
+  useEffect(() => {
+    const checkGoogleMeeting = async () => {
+      if (!studentId) {
+        setGoogleMeeting(null);
+        return;
+      }
+
+      try {
+        const response = await apiClient.get('/api/join-google-meeting/student');
+        setGoogleMeeting(response.data.meeting || null);
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          setGoogleMeeting(null);
+          return;
+        }
+        console.warn('Error checking Google Meet meeting:', error?.message || 'unknown');
+        setGoogleMeeting(null);
+      }
+    };
+
+    checkGoogleMeeting();
+    const interval = setInterval(checkGoogleMeeting, 30000);
+    return () => clearInterval(interval);
+  }, [studentId]);
+
   const handleJoinZoomMeeting = async () => {
     if (!zoomMeeting || !zoomMeeting.link) return;
 
@@ -558,6 +589,32 @@ export default function StudentDashboard() {
           err?.response?.data?.error ||
           'Failed to record attendance';
         // Still opened Zoom; surface payment/session errors if any
+        if (err?.response?.status === 400) {
+          alert(msg);
+        }
+      }
+    }
+  };
+
+  const handleJoinGoogleMeeting = async () => {
+    if (!googleMeeting || !googleMeeting.link) return;
+
+    window.open(googleMeeting.link, '_blank', 'noopener,noreferrer');
+
+    if (googleMeeting.lesson && studentId) {
+      try {
+        await apiClient.post('/api/join-google-meeting/attend', {
+          lesson: googleMeeting.lesson,
+        });
+        if (refetchStudent) {
+          await refetchStudent();
+        }
+      } catch (err) {
+        console.error('Failed to record Google Meet attendance:', err);
+        const msg =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          'Failed to record attendance';
         if (err?.response?.status === 400) {
           alert(msg);
         }
@@ -869,6 +926,14 @@ export default function StudentDashboard() {
           .dashboard-btn.zoom-btn:hover:not(:disabled) {
             background: linear-gradient(90deg, #1a6fdb 0%, #2d8cff 100%);
             box-shadow: 0 8px 25px rgba(45, 140, 255, 0.4);
+          }
+          .dashboard-btn.google-meet-btn {
+            background: linear-gradient(200deg, #00AC47 0%, #4285F4 100%);
+            box-shadow: 0 4px 16px rgba(66, 133, 244, 0.3);
+          }
+          .dashboard-btn.google-meet-btn:hover:not(:disabled) {
+            background: linear-gradient(200deg, #4285F4 0%, #00AC47 100%);
+            box-shadow: 0 8px 25px rgba(0, 172, 71, 0.4);
           }
           .dashboard-btn.certificate-btn {
             background: linear-gradient(90deg, #eda739 0%, #e09a2e 100%);
@@ -1287,6 +1352,17 @@ export default function StudentDashboard() {
                 >
                   <Image src="/zoom.svg" alt="Zoom" width={20} height={20} />
                   Join Zoom Meeting
+                </button>
+              )}
+
+              {isGoogleJoinMeetingEnabled && googleMeeting && (!isPaymentSystemEnabled || (studentData?.payment?.numberOfSessions || 0) >= 1 || (googleMeeting.lesson && studentData?.lessons?.[googleMeeting.lesson]?.attended === true)) && (
+                <button
+                  className="dashboard-btn google-meet-btn"
+                  onClick={handleJoinGoogleMeeting}
+                  disabled={!studentId}
+                >
+                  <Image src="/google-meet.svg" alt="Google Meet" width={20} height={20} />
+                  Join Google Meeting
                 </button>
               )}
 

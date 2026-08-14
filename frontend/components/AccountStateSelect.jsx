@@ -8,7 +8,8 @@ const AccountStateSelect = ({
   disabled = false,
   style = {},
   label = "Account State",
-  error = null
+  error = null,
+  includePending = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -16,6 +17,9 @@ const AccountStateSelect = ({
   const options = [
     { value: '', label: '✕ Clear selection', color: '#dc3545', isClear: true },
     { value: 'Activated', label: '✅ Activated', color: '#28a745' },
+    ...(includePending
+      ? [{ value: 'Pending', label: '⏳ Pending', color: '#b36b00' }]
+      : []),
     { value: 'Deactivated', label: '❌ Deactivated', color: '#dc3545' }
   ];
 
@@ -41,7 +45,7 @@ const AccountStateSelect = ({
   return (
     <div className="form-group" style={{ ...style, marginBottom: '16px', textAlign: 'left' }}>
       {!style.hideLabel && (
-      <label style={{ textAlign: 'left' }}>
+      <label style={{ textAlign: 'left', display: 'block', marginBottom: 8, fontWeight: 600, color: '#495057', fontSize: '0.95rem' }}>
         {label} {required && <span style={{color: 'red'}}>*</span>}
       </label>
       )}

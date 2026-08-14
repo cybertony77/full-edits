@@ -7,6 +7,7 @@ import CourseTypeSelect from '../../../../components/CourseTypeSelect';
 import CenterSelect from '../../../../components/CenterSelect';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../../../lib/axios';
+import { useSystemConfig } from '../../../../lib/api/system';
 import Image from 'next/image';
 import ZoomableImage from '../../../../components/ZoomableImage';
 import AccountStateSelect from '../../../../components/AccountStateSelect';
@@ -21,17 +22,40 @@ import {
   reindexQuestionErrorsAfterQuestionRemoved,
   reindexDragOverAfterQuestionRemoved,
 } from '../../../../lib/onlineItemQuestionFormHelpers';
+import {
+  createEmptyMcqQuestion,
+  getQuestionType,
+  isEssayQuestion,
+  normalizeLoadedQuestion,
+  normalizeValidCorrectAnswers,
+  QUESTION_TYPE_ESSAY,
+  switchQuestionType,
+} from '../../../../lib/onlineQuestionTypes';
+import QuestionTypeTabs from '../../../../components/online/QuestionTypeTabs';
+import EssayValidAnswersEditor from '../../../../components/online/EssayValidAnswersEditor';
 import DeadlineTimeRow from '../../../../components/DeadlineTimeRow';
 import AllowDownloadingRadio from '../../../../components/AllowDownloadingRadio';
+import UseDesmosInQuestionRadio from '../../../../components/online/UseDesmosInQuestionRadio';
 import {
   isDeadlineStrictlyInFutureEgypt,
   normalizeDeadlineTimeField,
   parseDeadlineTime,
 } from '../../../../lib/deadlineTimeEgypt';
+import { isMockExamFormReady } from '../../../../lib/onlineItemFormReady';
+
+function createDefaultMcqQuestion(desmosEnabled) {
+  return {
+    ...createEmptyMcqQuestion(),
+    use_desmos: desmosEnabled ? true : false,
+  };
+}
 
 export default function EditMockExam() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: systemConfig } = useSystemConfig();
+  const desmosEnabled =
+    systemConfig?.desmos_integrations === true || systemConfig?.desmos_integrations === 'true';
   const { id } = router.query;
   const [formData, setFormData] = useState({
     lesson_name: '',
@@ -47,15 +71,7 @@ export default function EditMockExam() {
     pdf_file_name: '',
     pdf_url: '',
     allow_downloading: true,
-    questions: [{
-      _clientKey: newQuestionClientKey(),
-      question_text: '',
-      question_picture: null,
-      answers: ['A', 'B'],
-      answer_texts: ['', ''],
-      correct_answer: '',
-      question_explanation: ''
-    }] || []
+    questions: [createDefaultMcqQuestion(desmosEnabled)]
   });
   const [activeTab, setActiveTab] = useState('questions');
   const [pdfUploading, setPdfUploading] = useState(false);
@@ -143,6 +159,11 @@ export default function EditMockExam() {
     [mockExams, id]
   );
 
+  const isFormReady = useMemo(
+    () => isMockExamFormReady({ formData, selectedCourse, selectedMockExam, accountState }),
+    [formData, selectedCourse, selectedMockExam, accountState]
+  );
+
   const handleImportApply = async () => {
     if (!importSelectedId) return;
     const me = mockExams.find((m) => String(m._id) === importSelectedId);
@@ -214,27 +235,17 @@ export default function EditMockExam() {
         pdf_url: mockExamData.pdf_url || '',
         allow_downloading: mockExamData.allow_downloading !== false && mockExamData.allow_downloading !== 'false',
         questions: meType === 'questions' && mockExamData.questions && Array.isArray(mockExamData.questions)
-          ? mockExamData.questions.map(q => ({
-              _clientKey: q._id ? String(q._id) : newQuestionClientKey(),
-              question_text: q.question_text || '',
-              question_picture: q.question_picture || null,
-              ...Object.keys(q)
-                .filter((key) => /^question_picture_\d+$/.test(key))
-                .reduce((acc, key) => ({ ...acc, [key]: q[key] || null }), {}),
-              answers: q.answers && q.answers.length > 0 ? q.answers : ['A', 'B'],
-              answer_texts: q.answer_texts && q.answer_texts.length > 0 ? q.answer_texts : (q.answers ? q.answers.map(() => '') : ['', '']),
-              correct_answer: q.correct_answer || '',
-              question_explanation: q.question_explanation || ''
-            }))
-          : [{
-              _clientKey: newQuestionClientKey(),
-              question_text: '',
-              question_picture: null,
-              answers: ['A', 'B'],
-              answer_texts: ['', ''],
-              correct_answer: '',
-              question_explanation: ''
-            }]
+          ? mockExamData.questions.map((q) =>
+              normalizeLoadedQuestion({
+                ...q,
+                _clientKey: q._id ? String(q._id) : newQuestionClientKey(),
+                question_picture: q.question_picture || null,
+                ...Object.keys(q)
+                  .filter((key) => /^question_picture_\d+$/.test(key))
+                  .reduce((acc, key) => ({ ...acc, [key]: q[key] || null }), {}),
+              })
+            )
+          : [createDefaultMcqQuestion(desmosEnabled)]
       });
       setDataLoaded(true);
       dataLoadedRef.current = true; // Mark as loaded in ref
@@ -695,18 +706,25 @@ export default function EditMockExam() {
     });
   };
 
+  const setQuestionType = (questionIndex, nextType) => {
+    setFormData((prev) => {
+      const newQuestions = [...prev.questions];
+      newQuestions[questionIndex] = switchQuestionType(newQuestions[questionIndex], nextType);
+      return { ...prev, questions: newQuestions };
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[`question_${questionIndex}_answers`];
+      delete next[`question_${questionIndex}_correct`];
+      delete next[`question_${questionIndex}_valid`];
+      return next;
+    });
+  };
+
   const addQuestion = () => {
     setFormData(prev => ({
       ...prev,
-      questions: [...prev.questions, {
-        _clientKey: newQuestionClientKey(),
-        question_text: '',
-        question_picture: null,
-        answers: ['A', 'B'],
-        answer_texts: ['', ''],
-        correct_answer: '',
-        question_explanation: ''
-      }]
+      questions: [...prev.questions, createDefaultMcqQuestion(desmosEnabled)]
     }));
   };
 
@@ -778,11 +796,17 @@ export default function EditMockExam() {
           if (!hasQuestionText && !hasQuestionImage) {
             newErrors[`question_${qIdx}_text_or_image`] = '❌ Question must have at least question text or image (or both)';
           }
-          if (!q.answers || q.answers.length < 2) {
-            newErrors[`question_${qIdx}_answers`] = '❌ At least 2 answers (A and B) are required';
-          }
-          if (!q.correct_answer) {
-            newErrors[`question_${qIdx}_correct`] = '❌ Please select the correct answer';
+          if (isEssayQuestion(q)) {
+            if (normalizeValidCorrectAnswers(q.valid_correct_answers).length < 1) {
+              newErrors[`question_${qIdx}_valid`] = '❌ At least one valid correct answer is required';
+            }
+          } else {
+            if (!q.answers || q.answers.length < 2) {
+              newErrors[`question_${qIdx}_answers`] = '❌ At least 2 answers (A and B) are required';
+            }
+            if (!q.correct_answer) {
+              newErrors[`question_${qIdx}_correct`] = '❌ Please select the correct answer';
+            }
           }
         });
       }
@@ -884,14 +908,32 @@ export default function EditMockExam() {
       submitData.pdf_url = formData.pdf_url.trim();
       submitData.allow_downloading = formData.allow_downloading !== false;
     } else {
-      submitData.questions = formData.questions && Array.isArray(formData.questions) ? formData.questions.map(({ _clientKey, ...q }) => ({
-        question_text: q.question_text || '',
-        ...buildQuestionPicturesPayload(getQuestionPictures(q)),
-        answers: q.answers,
-        answer_texts: q.answer_texts || [],
-        correct_answer: q.correct_answer,
-        question_explanation: q.question_explanation || ''
-      })) : [];
+      submitData.questions = formData.questions && Array.isArray(formData.questions) ? formData.questions.map(({ _clientKey, ...q }) => {
+        const type = getQuestionType(q);
+        const base = {
+          question_type: type,
+          question_text: q.question_text || '',
+          ...buildQuestionPicturesPayload(getQuestionPictures(q)),
+          question_explanation: q.question_explanation || '',
+          use_desmos: q.use_desmos === true || q.use_desmos === 'true',
+        };
+        if (type === QUESTION_TYPE_ESSAY) {
+          return {
+            ...base,
+            valid_correct_answers: normalizeValidCorrectAnswers(q.valid_correct_answers),
+            answers: [],
+            answer_texts: [],
+            correct_answer: '',
+          };
+        }
+        return {
+          ...base,
+          answers: q.answers,
+          answer_texts: q.answer_texts || [],
+          correct_answer: q.correct_answer,
+          valid_correct_answers: [],
+        };
+      }) : [];
     }
 
     console.log('Submitting mock exam data:', {
@@ -964,6 +1006,9 @@ export default function EditMockExam() {
       </div>
     );
   }
+
+  const isUploading = Object.keys(uploadingImages).length > 0;
+  const isSaveDisabled = !isFormReady || updateMockExamMutation.isPending || isUploading;
 
   return (
     <div style={{ 
@@ -1178,7 +1223,7 @@ export default function EditMockExam() {
                   style={{ padding: '12px 24px', border: 'none', borderBottom: activeTab === 'questions' ? '3px solid #1FA8DC' : '3px solid transparent', backgroundColor: 'transparent', color: activeTab === 'questions' ? '#1FA8DC' : '#6c757d', fontWeight: activeTab === 'questions' ? '600' : '500', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s ease' }}>
                   Questions
                 </button>
-                <button type="button" onClick={() => { setActiveTab('pdf'); setFormData({ ...formData, mock_exam_type: 'pdf', questions: [{ _clientKey: newQuestionClientKey(), question_text: '', question_picture: null, answers: ['A', 'B'], answer_texts: ['', ''], correct_answer: '', question_explanation: '' }], timer_type: 'no_timer', timer: null }); }}
+                <button type="button" onClick={() => { setActiveTab('pdf'); setFormData({ ...formData, mock_exam_type: 'pdf', questions: [{ _clientKey: newQuestionClientKey(), question_text: '', question_picture: null, answers: ['A', 'B', 'C', 'D'], answer_texts: ['', '', '', ''], correct_answer: '', question_explanation: '', use_desmos: desmosEnabled ? true : false }], timer_type: 'no_timer', timer: null }); }}
                   style={{ padding: '12px 24px', border: 'none', borderBottom: activeTab === 'pdf' ? '3px solid #1FA8DC' : '3px solid transparent', backgroundColor: 'transparent', color: activeTab === 'pdf' ? '#1FA8DC' : '#6c757d', fontWeight: activeTab === 'pdf' ? '600' : '500', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.2s ease' }}>
                   PDF
                 </button>
@@ -1526,6 +1571,11 @@ export default function EditMockExam() {
                   )}
                 </div>
 
+                <QuestionTypeTabs
+                  value={getQuestionType(question)}
+                  onChange={(type) => setQuestionType(qIdx, type)}
+                />
+
                 {/* Question Image Uploads */}
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6c757d', marginBottom: '8px' }}>
@@ -1599,13 +1649,22 @@ export default function EditMockExam() {
                   )}
                 </div>
 
-                {/* Answers */}
+                {/* Answers (MCQ) / Valid Correct Answers (Essay) */}
+                {isEssayQuestion(question) ? (
+                  <EssayValidAnswersEditor
+                    questionIndex={qIdx}
+                    values={question.valid_correct_answers || []}
+                    error={errors[`question_${qIdx}_valid`]}
+                    onChange={(next) => handleQuestionChange(qIdx, 'valid_correct_answers', next)}
+                  />
+                ) : (
+                <>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', textAlign: 'left' }}>
                     Answers
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {question.answers.map((answerLetter, aIdx) => {
+                    {(question.answers || []).map((answerLetter, aIdx) => {
                       const isLastAnswer = aIdx === question.answers.length - 1;
                       const hasTrashButton = aIdx >= 2;
                       const showAddButton = isLastAnswer && (aIdx === 1 || hasTrashButton);
@@ -1724,7 +1783,7 @@ export default function EditMockExam() {
                     Correct Answer <span style={{ color: 'red' }}>*</span>
                   </label>
                   <div className="correct-answer-radio" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {question.answers.map((answerLetter, aIdx) => {
+                    {(question.answers || []).map((answerLetter, aIdx) => {
                       const answerText = question.answer_texts && question.answer_texts[aIdx] ? question.answer_texts[aIdx] : '';
                       // Check if this answer is selected - handle both string and array formats
                       const isCorrect = Array.isArray(question.correct_answer) 
@@ -1771,6 +1830,14 @@ export default function EditMockExam() {
                     </div>
                   )}
                 </div>
+                </>
+                )}
+
+                <UseDesmosInQuestionRadio
+                  name={`use_desmos_${qIdx}`}
+                  value={question.use_desmos === true || question.use_desmos === 'true'}
+                  onChange={(next) => handleQuestionChange(qIdx, 'use_desmos', next)}
+                />
 
                 {/* Question Explanation */}
                 <div style={{ marginBottom: '16px' }}>
@@ -1844,17 +1911,17 @@ export default function EditMockExam() {
             <div className="submit-buttons" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
                 type="submit"
-                disabled={updateMockExamMutation.isPending || Object.keys(uploadingImages).length > 0}
+                disabled={isSaveDisabled}
                 style={{
                   padding: '12px 24px',
                   background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  cursor: (updateMockExamMutation.isPending || Object.keys(uploadingImages).length > 0) ? 'not-allowed' : 'pointer',
+                  cursor: isSaveDisabled ? 'not-allowed' : 'pointer',
                   fontSize: '1rem',
                   fontWeight: '600',
-                  opacity: (updateMockExamMutation.isPending || Object.keys(uploadingImages).length > 0) ? 0.7 : 1
+                  opacity: isSaveDisabled ? 0.7 : 1
                 }}
               >
                 {updateMockExamMutation.isPending ? 'Saving...' : 'Save'}

@@ -86,7 +86,7 @@ export default function MyQuizzes() {
       const response = await apiClient.get('/api/quizzes/student');
       return response.data;
     },
-    // No auto refetch interval here; fetch on mount/reconnect only (no window focus to prevent auto-refresh)
+    refetchInterval: 15000,
     refetchOnWindowFocus: false, // Disabled to prevent auto-refresh on window focus
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -194,7 +194,7 @@ export default function MyQuizzes() {
       }
     },
     enabled: !!profile?.id,
-    // No auto refetch interval; rely on mount/reconnect + manual invalidation (no window focus to prevent auto-refresh)
+    refetchInterval: 15000,
     refetchOnWindowFocus: false, // Disabled to prevent auto-refresh on window focus
     refetchOnMount: true,
     refetchOnReconnect: true,
@@ -221,6 +221,21 @@ export default function MyQuizzes() {
       })
     : [];
 
+  // Fetch student's online_quizzes to check quizDegree
+  const fetchStudentData = async () => {
+    if (!profile?.id) return;
+    try {
+      const response = await apiClient.get(`/api/students/${profile.id}`);
+      if (response.data) {
+        if (Array.isArray(response.data.online_quizzes)) {
+          setOnlineQuizzes(response.data.online_quizzes);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching student data:', err);
+    }
+  };
+
   // Refetch chart data when returning to this page
   useEffect(() => {
     const handleRouteChange = () => {
@@ -228,6 +243,8 @@ export default function MyQuizzes() {
       if (profile?.id) {
         queryClient.invalidateQueries({ queryKey: ['quiz-performance', profile.id] });
         queryClient.invalidateQueries({ queryKey: ['quizzes-student'] });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        fetchStudentData();
       }
     };
 
@@ -236,6 +253,8 @@ export default function MyQuizzes() {
       if (document.visibilityState === 'visible' && profile?.id) {
         refetchChart();
         queryClient.invalidateQueries({ queryKey: ['quizzes-student'] });
+        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        fetchStudentData();
       }
     };
 
@@ -243,6 +262,8 @@ export default function MyQuizzes() {
     if (profile?.id) {
       queryClient.invalidateQueries({ queryKey: ['quiz-performance', profile.id] });
       queryClient.invalidateQueries({ queryKey: ['quizzes-student'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      fetchStudentData();
     }
 
     // Listen for route changes
@@ -256,24 +277,17 @@ export default function MyQuizzes() {
     };
   }, [router, queryClient, profile?.id, refetchChart]);
 
-  // Fetch student's weeks data and online_quizzes to check quizDegree
   useEffect(() => {
-    if (!profile?.id) return;
-
-    const fetchStudentData = async () => {
-      try {
-        const response = await apiClient.get(`/api/students/${profile.id}`);
-        if (response.data) {
-          if (Array.isArray(response.data.online_quizzes)) {
-            setOnlineQuizzes(response.data.online_quizzes);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching student data:', err);
-      }
-    };
-
     fetchStudentData();
+  }, [profile?.id]);
+
+  // Keep Done/Start buttons in sync with admin resets (same cadence as charts)
+  useEffect(() => {
+    if (!profile?.id) return undefined;
+    const id = setInterval(() => {
+      fetchStudentData();
+    }, 15000);
+    return () => clearInterval(id);
   }, [profile?.id]);
 
   // Check which quizzes exist in online_quizzes array

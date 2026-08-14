@@ -24,7 +24,7 @@ export default function AddStudent() {
     gender: "",
     grade: "",
     course: "",
-    courseType: "basics", // Default to basics
+    courseType: "basics to advanced", // Default to basics
     school: "",
     homeschooling: false,
     phone: "",

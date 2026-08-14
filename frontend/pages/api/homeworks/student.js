@@ -2,8 +2,8 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
-import { pickQuestionPictureFields } from '../../../lib/questionPictures';
 import { itemCenterMatchesStudentMainCenter } from '../../../lib/studentCenterMatch';
+import { sanitizeQuestionForStudent } from '../../../lib/onlineQuestionApiNormalize';
 
 function loadEnvConfig() {
   try {
@@ -160,14 +160,7 @@ export default async function handler(req, res) {
 
           // Add questions if applicable (only for questions type)
           if (hw.homework_type === 'questions' && hw.questions && Array.isArray(hw.questions)) {
-            sanitized.questions = hw.questions.map(q => ({
-              question_text: q.question_text || '',
-              question_picture: q.question_picture || null,
-              ...pickQuestionPictureFields(q),
-              answers: q.answers || [],
-              answer_texts: q.answer_texts || []
-              // Note: correct_answer is intentionally excluded for students
-            }));
+            sanitized.questions = hw.questions.map(q => sanitizeQuestionForStudent(q));
           } else {
             sanitized.questions = [];
           }

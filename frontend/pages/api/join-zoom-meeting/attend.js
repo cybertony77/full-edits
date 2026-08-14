@@ -2,6 +2,7 @@ import { MongoClient } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware, isAuthError } from '../../../lib/authMiddleware';
+import { getStudentLesson, mergeStudentLesson } from '../../../lib/studentLessons';
 
 function loadEnvConfig() {
   try {
@@ -107,7 +108,7 @@ export default async function handler(req, res) {
     }
 
     // Check if lesson already exists and is attended
-    const lessonData = student.lessons[lesson];
+    const lessonData = getStudentLesson(student.lessons, lesson);
     const alreadyAttended = lessonData && lessonData.attended === true;
 
     if (alreadyAttended) {
@@ -145,46 +146,25 @@ export default async function handler(req, res) {
       });
     }
 
-    const updateQuery = {};
+    const lessonPatch = {
+      attended: true,
+      lastAttendance: attendanceString,
+      lastAttendanceCenter: 'Online',
+      attendanceDate: attendanceDateOnly,
+    };
+
     let sessionDelta = 0;
-
-    if (lessonData) {
-      // Lesson exists but not attended - update it
-      updateQuery[`lessons.${lesson}.attended`] = true;
-      updateQuery[`lessons.${lesson}.lastAttendance`] = attendanceString;
-      updateQuery[`lessons.${lesson}.lastAttendanceCenter`] = 'Online';
-      updateQuery[`lessons.${lesson}.attendanceDate`] = attendanceDateOnly;
-    } else {
-      // Lesson doesn't exist - create it with full schema
-      updateQuery[`lessons.${lesson}`] = {
-        lesson: lesson,
-        attended: true,
-        lastAttendance: attendanceString,
-        lastAttendanceCenter: 'Online',
-        attendanceDate: attendanceDateOnly,
-        hwDone: false,
-        quizDegree: null,
-        comment: null,
-        message_state: false,
-        homework_degree: null,
-        paid: false,
-      };
-    }
-
     if (PAYMENT_SYSTEM_ENABLED) {
-      if (lessonData) {
-        updateQuery[`lessons.${lesson}.paid`] = true;
-      } else {
-        updateQuery[`lessons.${lesson}`].paid = true;
-      }
+      lessonPatch.paid = true;
       if (!isLessonPaid && currentSessions > 0) {
         sessionDelta = -1;
       }
     }
 
+    const nextLessons = mergeStudentLesson(student.lessons, lesson, lessonPatch);
     const updateDoc = sessionDelta !== 0
-      ? { $set: updateQuery, $inc: { 'payment.numberOfSessions': sessionDelta } }
-      : { $set: updateQuery };
+      ? { $set: { lessons: nextLessons }, $inc: { 'payment.numberOfSessions': sessionDelta } }
+      : { $set: { lessons: nextLessons } };
 
     // Apply the update
     await db.collection('students').updateOne(

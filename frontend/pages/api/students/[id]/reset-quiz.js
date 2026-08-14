@@ -2,6 +2,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../../lib/authMiddleware';
+import { getStudentLesson, mergeStudentLesson } from '../../../../lib/studentLessons';
 
 function loadEnvConfig() {
   try {
@@ -111,8 +112,10 @@ export default async function handler(req, res) {
       weeks: updatedWeeks,
     };
 
-    if (lessonName && student.lessons && student.lessons[lessonName]) {
-      updateFields[`lessons.${lessonName}.quizDegree`] = null;
+    if (lessonName && getStudentLesson(student.lessons, lessonName)) {
+      updateFields.lessons = mergeStudentLesson(student.lessons, lessonName, {
+        quizDegree: null,
+      });
     }
 
     // Update student document

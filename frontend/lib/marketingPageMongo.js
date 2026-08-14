@@ -49,6 +49,7 @@ export function defaultMarketingDoc() {
     contact_people: null,
     links: null,
     students_testimonials: null,
+    testimonials_to_show: null,
     outro_text: null,
     note: null,
   };

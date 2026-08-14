@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useEffect } from 'react';
-import styles from './ImportExistingOnlineItemModal.module.css';
+import styles from '../styles/ImportExistingOnlineItemModal.module.css';
 
 /**
  * Same full-page spinner card used after homework/quiz import load.

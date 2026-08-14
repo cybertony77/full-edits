@@ -2,6 +2,8 @@ import { MongoClient, ObjectId } from 'mongodb';
 import fs from 'fs';
 import path from 'path';
 import { authMiddleware } from '../../../lib/authMiddleware';
+import { resolveGoogleMeetVideoForSave } from '../../../lib/googleServer';
+import { maskGoogleMeetIdsInDocuments } from '../../../lib/googleVideoIds';
 
 function loadEnvConfig() {
   try {
@@ -99,7 +101,7 @@ export default async function handler(req, res) {
         .sort({ course: 1, courseType: 1, lesson: 1, date: -1 })
         .toArray();
       
-      res.json({ sessions });
+      res.json({ sessions: maskGoogleMeetIdsInDocuments(sessions) });
 
     } else if (req.method === 'POST') {
       // Create new homework video
@@ -157,8 +159,24 @@ export default async function handler(req, res) {
               if (video.video_name && video.video_name.trim()) {
                 videoData[`video_name_${index + 1}`] = video.video_name.trim();
               }
+            } else if (video.video_type === 'google_meet') {
+              const resolved = resolveGoogleMeetVideoForSave(
+                video.video_id,
+                user.assistant_id ?? user.id
+              );
+              if (!resolved?.fileId) {
+                return res.status(400).json({
+                  error: `Invalid Google Meet recording at position ${index + 1}. Re-select the recording.`,
+                });
+              }
+              videoData[`video_ID_${index + 1}`] = resolved.fileId;
+              videoData[`video_type_${index + 1}`] = 'google_meet';
+              videoData[`video_google_owner_${index + 1}`] = resolved.ownerUserId;
+              if (video.video_name && video.video_name.trim()) {
+                videoData[`video_name_${index + 1}`] = video.video_name.trim();
+              }
             } else {
-              return res.status(400).json({ error: `Invalid video type at position ${index + 1}. Supported types: youtube, r2, zoom.` });
+              return res.status(400).json({ error: `Invalid video type at position ${index + 1}. Supported types: youtube, r2, zoom, google_meet.` });
             }
           } else if (video && video.video_id) {
             // If no video_type specified, assume YouTube and extract ID from URL if needed
@@ -288,8 +306,24 @@ export default async function handler(req, res) {
               if (video.video_name && video.video_name.trim()) {
                 videoData[`video_name_${index + 1}`] = video.video_name.trim();
               }
+            } else if (video.video_type === 'google_meet') {
+              const resolved = resolveGoogleMeetVideoForSave(
+                video.video_id,
+                user.assistant_id ?? user.id
+              );
+              if (!resolved?.fileId) {
+                return res.status(400).json({
+                  error: `Invalid Google Meet recording at position ${index + 1}. Re-select the recording.`,
+                });
+              }
+              videoData[`video_ID_${index + 1}`] = resolved.fileId;
+              videoData[`video_type_${index + 1}`] = 'google_meet';
+              videoData[`video_google_owner_${index + 1}`] = resolved.ownerUserId;
+              if (video.video_name && video.video_name.trim()) {
+                videoData[`video_name_${index + 1}`] = video.video_name.trim();
+              }
             } else {
-              return res.status(400).json({ error: `Invalid video type at position ${index + 1}. Supported types: youtube, r2, zoom.` });
+              return res.status(400).json({ error: `Invalid video type at position ${index + 1}. Supported types: youtube, r2, zoom, google_meet.` });
             }
           } else if (video && video.video_id) {
             // If no video_type specified, assume YouTube and extract ID from URL if needed
@@ -359,9 +393,9 @@ export default async function handler(req, res) {
         updateData.state = finalState;
       }
 
-      // Remove old video_ID, video_type, and video_name fields that are not in the new list
+      // Remove old video_ID, video_type, video_name, and google owner fields that are not in the new list
       const keysToRemove = Object.keys(session).filter(key => 
-        (key.startsWith('video_ID_') || key.startsWith('video_type_') || key.startsWith('video_name_')) && 
+        (key.startsWith('video_ID_') || key.startsWith('video_type_') || key.startsWith('video_name_') || key.startsWith('video_google_owner_')) && 
         !videoData[key]
       );
       

@@ -48,7 +48,10 @@ function toPreviewSrc(url) {
   const kind = detectLinkKind(url);
   if (kind === 'youtube') {
     const id = extractYoutubeId(url);
-    if (id) return `/api/youtube/${encodeURIComponent(id)}?hw=1`;
+    // Normal YouTube embed with native controls (not the secure /api/youtube shell).
+    if (id) {
+      return `https://www.youtube.com/embed/${id}?rel=0&playsinline=1&modestbranding=1&controls=1&fs=1`;
+    }
     return null;
   }
   if (kind === 'drive') {
@@ -483,7 +486,7 @@ export default function AppVideosModal({ isOpen, onClose, role = '' }) {
                                   title={item.label}
                                   width="100%"
                                   height="100%"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                                   allowFullScreen
                                   loading="eager"
                                   referrerPolicy="strict-origin-when-cross-origin"

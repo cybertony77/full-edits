@@ -247,12 +247,26 @@ export default function YoutubePlayerCore({
       }
     };
 
+    const disableCaptions = (player) => {
+      try {
+        player?.unloadModule?.("captions");
+        player?.unloadModule?.("cc");
+        player?.setOption?.("captions", "track", {});
+        player?.setOption?.("cc", "track", {});
+      } catch {
+        /* ignore */
+      }
+    };
+
     const onStateChange = (event) => {
       if (destroyed) return;
       const state = event.data;
       setIsLoading(state === YT_BUFFERING || state === -1);
       setPaused(state !== YT_PLAYING);
       setEnded(state === YT_ENDED);
+      if (state === YT_PLAYING) {
+        disableCaptions(event.target);
+      }
       if (state === YT_PLAYING || state === YT_PAUSED || state === YT_CUED) {
         syncFromPlayer();
       }
@@ -280,6 +294,8 @@ export default function YoutubePlayerCore({
           playsinline: 1,
           showinfo: 0,
           cc_load_policy: 0,
+          // Keep captions/CC off (also enforced in onReady).
+          hl: "en",
           autohide: 1,
         },
         events: {
@@ -290,6 +306,8 @@ export default function YoutubePlayerCore({
               e.target.setVolume?.(100);
               e.target.unMute?.();
               e.target.setPlaybackRate?.(1);
+              // Force captions / CC closed.
+              disableCaptions(e.target);
               const rates = e.target.getAvailablePlaybackRates?.();
               if (Array.isArray(rates) && rates.length) {
                 setPlaybackRates(rates.filter((r) => Number(r) > 0));

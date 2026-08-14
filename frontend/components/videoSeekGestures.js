@@ -214,18 +214,35 @@ export async function togglePlayerFullscreen(container, video) {
   }
 }
 
-function IconPlay({ size = 22 }) {
+function IconPlay({ size = 22, className }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M8 5v14l11-7z" />
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+      style={{ display: 'block' }}
+    >
+      {/* Geometrically balanced play triangle (centroid near 12,12) */}
+      <path d="M9 6.75v10.5L18 12 9 6.75z" />
     </svg>
   );
 }
 
-function IconPause({ size = 22 }) {
+function IconPause({ size = 22, className }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M6 5h4v14H6zm8 0h4v14h-4z" />
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+      style={{ display: 'block' }}
+    >
+      <path d="M7 5h3.5v14H7zm6.5 0H17v14h-3.5z" />
     </svg>
   );
 }
@@ -1245,10 +1262,40 @@ export function VideoPlayerChromeStyles() {
       .video-seek-feedback-root .video-seek-circle {
         width: clamp(64px, 14vmin, 112px);
         height: clamp(64px, 14vmin, 112px);
+        display: grid !important;
+        place-items: center !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+      }
+      .video-seek-feedback-root .video-seek-icon {
+        position: absolute !important;
+        inset: 0 !important;
+        display: grid !important;
+        place-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: auto !important;
+        height: auto !important;
+        line-height: 0 !important;
+        pointer-events: none !important;
+        z-index: 2;
       }
       .video-seek-feedback-root .video-seek-icon svg {
-        width: clamp(24px, 5.5vmin, 36px);
-        height: clamp(24px, 5.5vmin, 36px);
+        width: 44% !important;
+        height: 44% !important;
+        max-width: 40px;
+        max-height: 40px;
+        min-width: 20px;
+        min-height: 20px;
+        display: block !important;
+        margin: 0 !important;
+      }
+      /* Tiny optical nudge — play tip still reads slightly left otherwise */
+      .video-seek-feedback-root .video-seek-icon.is-play svg {
+        transform: translateX(6%);
+      }
+      .video-seek-feedback-root .video-seek-icon.is-pause svg {
+        transform: none;
       }
       .video-seek-feedback-root .video-seek-chevrons svg {
         width: clamp(18px, 4.5vmin, 28px);
@@ -1297,8 +1344,12 @@ export function VideoPlayerChromeStyles() {
           height: clamp(56px, 20vw, 92px) !important;
         }
         .video-seek-feedback-root .video-seek-icon svg {
-          width: clamp(22px, 7vw, 32px) !important;
-          height: clamp(22px, 7vw, 32px) !important;
+          width: 46% !important;
+          height: 46% !important;
+          max-width: 34px !important;
+          max-height: 34px !important;
+          min-width: 18px !important;
+          min-height: 18px !important;
         }
         .video-seek-feedback-root .video-seek-chevrons svg {
           width: clamp(16px, 5.5vw, 24px) !important;
@@ -1392,9 +1443,8 @@ export function VideoSeekFeedback({ feedback }) {
     WebkitBackdropFilter: 'blur(12px)',
     boxShadow:
       '0 10px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.14)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: 'grid',
+    placeItems: 'center',
     position: 'relative',
     overflow: 'hidden',
     flexShrink: 0,
@@ -1472,8 +1522,10 @@ export function VideoSeekFeedback({ feedback }) {
         />
         <div className="video-seek-circle" style={circleStyle}>
           {gloss}
-          <span className="video-seek-icon">
-            {kind === 'play' ? <IconPlay size={36} /> : <IconPause size={36} />}
+          <span
+            className={`video-seek-icon${kind === 'play' ? ' is-play' : ' is-pause'}`}
+          >
+            {kind === 'play' ? <IconPlay /> : <IconPause />}
           </span>
         </div>
         {keyframes}

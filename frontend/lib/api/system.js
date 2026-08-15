@@ -13,14 +13,22 @@ const systemApi = {
   },
 };
 
+/**
+ * Feature flags are stored as booleans or string booleans in env.config.
+ * Treat missing config as unknown (false here); callers must check loading first.
+ */
+export function isFeatureEnabled(config, feature) {
+  const value = config?.[feature];
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
+
 export const useSystemConfig = (options = {}) => {
   return useQuery({
     queryKey: systemKeys.config(),
     queryFn: () => systemApi.getConfig(),
-    // Always re-read feature flags from env.config (no long-lived cache).
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     retry: 1,

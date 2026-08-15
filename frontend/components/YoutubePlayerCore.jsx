@@ -91,6 +91,7 @@ export default function YoutubePlayerCore({
   const lastTapRef = useRef({ at: 0, side: null });
   const pendingClickRef = useRef(null);
   const lastTouchAtRef = useRef(0);
+  const menuOpenRef = useRef(false);
 
   const reactId = useId().replace(/:/g, "");
   const playerDivId = `yt-prog-${reactId}`;
@@ -132,6 +133,10 @@ export default function YoutubePlayerCore({
     pausedRef.current = paused;
   }, [paused]);
 
+  useEffect(() => {
+    menuOpenRef.current = speedOpen;
+  }, [speedOpen]);
+
   const armKeys = useCallback(() => {
     keysArmedRef.current = true;
     isHoveredRef.current = true;
@@ -156,7 +161,7 @@ export default function YoutubePlayerCore({
     clearHideTimer();
     hideTimerRef.current = setTimeout(() => {
       hideTimerRef.current = null;
-      if (!scrubbingRef.current) {
+      if (!scrubbingRef.current && !menuOpenRef.current) {
         setControlsVisible(false);
         setSpeedOpen(false);
       }
@@ -784,6 +789,7 @@ export default function YoutubePlayerCore({
           cursor: "pointer",
           background: blockNativeChrome ? "rgba(0,0,0,0.35)" : "transparent",
           touchAction: "manipulation",
+          pointerEvents: speedOpen ? "none" : "auto",
         }}
       />
 
@@ -839,14 +845,15 @@ export default function YoutubePlayerCore({
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 10,
+          zIndex: 250,
           padding: "10px 12px max(12px, env(safe-area-inset-bottom, 0px))",
           background:
             "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)",
           opacity: controlsVisible ? 1 : 0,
-          pointerEvents: controlsVisible ? "auto" : "none",
+          pointerEvents: controlsVisible || speedOpen ? "auto" : "none",
           transition: "opacity 0.18s ease",
           boxSizing: "border-box",
+          overflow: "visible",
         }}
       >
         <input
@@ -1002,7 +1009,7 @@ export default function YoutubePlayerCore({
                   display: "flex",
                   flexDirection: "column",
                   gap: 2,
-                  zIndex: 20,
+                  zIndex: 400,
                 }}
               >
                 {playbackRates.map((rate) => {
@@ -1072,6 +1079,7 @@ export default function YoutubePlayerCore({
         .yt-safe-player {
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
+          container-type: size;
         }
         .yt-safe-player:fullscreen,
         .yt-safe-player:-webkit-full-screen {
@@ -1084,34 +1092,49 @@ export default function YoutubePlayerCore({
         .yt-safe-iframe-wrap iframe {
           pointer-events: none !important;
           border: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+        .yt-safe-player .video-seek-circle {
+          width: clamp(56px, 22cqmin, 88px) !important;
+          height: clamp(56px, 22cqmin, 88px) !important;
+        }
+        .yt-safe-player .vc-speed-menu {
+          z-index: 420 !important;
+          pointer-events: auto !important;
         }
         @media (max-width: 768px) {
           .yt-safe-controls {
-            padding: 8px 10px max(10px, env(safe-area-inset-bottom, 0px)) !important;
+            padding: 4px 8px max(6px, env(safe-area-inset-bottom, 0px)) !important;
           }
           .yt-safe-progress {
-            height: 10px !important;
-            margin-bottom: 10px !important;
+            height: 4px !important;
+            margin-bottom: 4px !important;
           }
           .yt-safe-buttons {
-            gap: 4px !important;
-            min-height: 44px !important;
+            gap: 2px !important;
+            min-height: 28px !important;
           }
           .yt-safe-btn {
-            width: 44px !important;
-            height: 44px !important;
-            min-width: 44px !important;
-            min-height: 44px !important;
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            min-height: 28px !important;
+            border-radius: 6px !important;
+          }
+          .yt-safe-btn svg {
+            width: 16px !important;
+            height: 16px !important;
           }
           .yt-safe-time {
-            font-size: clamp(11px, 3.2vw, 13px) !important;
+            font-size: clamp(10px, 2.8vw, 12px) !important;
           }
           .yt-safe-volume {
-            width: 48px !important;
+            width: 40px !important;
           }
           .yt-safe-speed-btn {
-            min-width: 48px !important;
-            font-size: 13px !important;
+            min-width: 34px !important;
+            font-size: 10px !important;
           }
         }
         @media (max-width: 420px) {
@@ -1119,22 +1142,22 @@ export default function YoutubePlayerCore({
             display: none !important;
           }
           .yt-safe-time {
-            font-size: 11px !important;
+            font-size: 10px !important;
           }
         }
         @media (orientation: landscape) and (max-height: 480px) {
           .yt-safe-controls {
-            padding: 6px 10px max(8px, env(safe-area-inset-bottom, 0px)) !important;
+            padding: 3px 8px max(4px, env(safe-area-inset-bottom, 0px)) !important;
           }
           .yt-safe-progress {
-            height: 8px !important;
-            margin-bottom: 6px !important;
+            height: 3px !important;
+            margin-bottom: 3px !important;
           }
           .yt-safe-btn {
-            width: 40px !important;
-            height: 40px !important;
-            min-width: 40px !important;
-            min-height: 40px !important;
+            width: 26px !important;
+            height: 26px !important;
+            min-width: 26px !important;
+            min-height: 26px !important;
           }
         }
       `}</style>

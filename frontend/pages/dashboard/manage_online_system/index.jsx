@@ -2,20 +2,24 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Image from 'next/image';
 import { useProfile } from '../../../lib/api/auth';
-import { useSystemConfig } from '../../../lib/api/system';
+import { useSystemConfig, isFeatureEnabled } from '../../../lib/api/system';
 import Title from '../../../components/Title';
 
 export default function ManageOnlineSystem() {
   const router = useRouter();
   const { data: profile, isLoading } = useProfile();
-  const { data: systemConfig } = useSystemConfig();
-  const isOnlineVideosEnabled = systemConfig?.online_videos === true || systemConfig?.online_videos === 'true';
-  const isHomeworksVideosEnabled = systemConfig?.homeworks_videos === true || systemConfig?.homeworks_videos === 'true';
-  const isHomeworksEnabled = systemConfig?.homeworks === true || systemConfig?.homeworks === 'true';
-  const isMaterialEnabled = systemConfig?.material === true || systemConfig?.material === 'true';
-  const isQuizzesEnabled = systemConfig?.quizzes === true || systemConfig?.quizzes === 'true';
-  const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
-  const isDeviceLimitationsEnabled = systemConfig?.device_limitations === true || systemConfig?.device_limitations === 'true';
+  const {
+    data: systemConfig,
+    isError: systemConfigError,
+    refetch: refetchSystemConfig,
+  } = useSystemConfig();
+  const isOnlineVideosEnabled = isFeatureEnabled(systemConfig, 'online_videos');
+  const isHomeworksVideosEnabled = isFeatureEnabled(systemConfig, 'homeworks_videos');
+  const isHomeworksEnabled = isFeatureEnabled(systemConfig, 'homeworks');
+  const isMaterialEnabled = isFeatureEnabled(systemConfig, 'material');
+  const isQuizzesEnabled = isFeatureEnabled(systemConfig, 'quizzes');
+  const isMockExamsEnabled = isFeatureEnabled(systemConfig, 'mock_exams');
+  const isDeviceLimitationsEnabled = isFeatureEnabled(systemConfig, 'device_limitations');
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
@@ -38,8 +42,19 @@ export default function ManageOnlineSystem() {
         justifyContent: 'center',
         minHeight: '50vh'
       }}>
-        <div style={{ color: '#6c757d', fontSize: '1.1rem' }}>Loading...</div>
+        <div style={{
+          width: "50px",
+          height: "50px",
+          border: "4px solid rgba(31, 168, 220, 0.2)",
+          borderTop: "4px solid #1FA8DC",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite"
+        }} />
         <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
           @media (max-width: 480px) {
             .page-wrapper {
               padding: 10px 15px 5px 15px;
@@ -272,6 +287,44 @@ export default function ManageOnlineSystem() {
         `}</style>
         
         <div style={{ marginTop: 30, marginBottom: 20 }}>
+          {!systemConfig && !systemConfigError ? (
+            <div style={{ textAlign: 'center', padding: '28px 0' }}>
+              <div style={{
+                width: "44px",
+                height: "44px",
+                border: "4px solid rgba(31, 168, 220, 0.2)",
+                borderTop: "4px solid #1FA8DC",
+                borderRadius: "50%",
+                margin: "0 auto 12px",
+                animation: "spin 1s linear infinite"
+              }} />
+              <p style={{ color: '#6c757d', fontSize: '0.95rem', margin: 0 }}>Loading features...</p>
+            </div>
+          ) : systemConfigError && !systemConfig ? (
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '16px',
+              padding: '28px 24px',
+              textAlign: 'center',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)'
+            }}>
+              <p style={{ color: '#495057', fontSize: '1.05rem', fontWeight: 700, margin: '0 0 8px 0' }}>
+                Could not load online system features
+              </p>
+              <p style={{ color: '#6c757d', fontSize: '0.95rem', margin: '0 0 20px 0' }}>
+                Please try again. Feature buttons will appear once configuration loads.
+              </p>
+              <button
+                type="button"
+                className="dashboard-btn"
+                onClick={() => refetchSystemConfig()}
+                style={{ marginBottom: 0 }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <>
           {isOnlineVideosEnabled && (
             <button
               className="dashboard-btn"
@@ -424,6 +477,8 @@ export default function ManageOnlineSystem() {
               <Image src="/exam.svg" alt="Preview Mock Exams" width={20} height={20} />
               Preview Student Mock Exams
             </button>
+          )}
+            </>
           )}
 
         </div>

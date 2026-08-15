@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import UserMenu from './UserMenu';
 import { useRouter } from 'next/router';
+import { Skeleton } from '@mantine/core';
 import { useProfile } from '../lib/api/auth';
 import { useSystemConfig } from '../lib/api/system';
 
@@ -10,7 +11,8 @@ export default function Header() {
   const { data: user } = useProfile();
   const { data: systemConfig } = useSystemConfig();
   const userRole = user?.role || '';
-  const systemName = systemConfig?.name || 'System Name';
+  const systemName = systemConfig?.name || '';
+  const isSystemNameLoading = !systemName;
   
   const handleLogoClick = () => {
     if (userRole === 'student') {
@@ -38,7 +40,7 @@ export default function Header() {
         <span onClick={handleLogoClick} style={{ cursor: 'pointer', display: 'inline-block' }}>
           <img
             src="/logo.png"
-            alt={`${systemName} Logo`}
+            alt={systemName ? `${systemName} Logo` : 'Logo'}
             width={60}
             height={60}
             style={{ 
@@ -72,18 +74,36 @@ export default function Header() {
             }}
           />
         </span>
-        <span style={{
-          fontWeight: 900,
-          fontSize: 26,
-          color: '#FFFFFF',
-          letterSpacing: 1.2,
-          textShadow: '0 2px 8px rgba(31,168,220,0.10)'
-        }}>
-          {systemName}
-        </span>
+        {isSystemNameLoading ? (
+          <div className="header-system-name-skeleton">
+            <Skeleton className="header-skel" height={10} width={220} radius="xl" animate />
+            <Skeleton className="header-skel" height={8} mt={6} width="70%" radius="xl" animate />
+          </div>
+        ) : (
+          <span style={{
+            fontWeight: 900,
+            fontSize: 26,
+            color: '#FFFFFF',
+            letterSpacing: 1.2,
+            textShadow: '0 2px 8px rgba(31,168,220,0.10)'
+          }}>
+            {systemName}
+          </span>
+        )}
       </div>
       <UserMenu />
       <style jsx>{`
+        .header-system-name-skeleton {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-width: min(220px, 42vw);
+        }
+        .header-system-name-skeleton :global(.header-skel) {
+          --skeleton-color: rgba(255, 255, 255, 0.28);
+          --skeleton-highlight-color: rgba(255, 255, 255, 0.55);
+          background-color: rgba(255, 255, 255, 0.28) !important;
+        }
         @media (max-width: 768px) {
           span {
             font-size: 20px !important;

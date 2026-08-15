@@ -279,7 +279,9 @@ export default async function handler(req, res) {
       if ('teacher_description' in body) {
         const v = body.teacher_description;
         updates.teacher_description =
-          v === null || v === '' || v === undefined ? null : String(v);
+          v === null || v === '' || v === undefined
+            ? null
+            : String(v).slice(0, 600);
       }
       if ('students_teached' in body) {
         const v = body.students_teached;

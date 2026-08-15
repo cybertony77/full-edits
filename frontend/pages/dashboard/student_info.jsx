@@ -701,20 +701,19 @@ export default function StudentInfo() {
     !publicStudentLoading &&
     (!!publicStudent || !!publicStudentError || studentDeleted);
   const showPublicWelcomeLoader =
-    (isAuthPending || isPublicGuest) &&
-    (!minLoaderElapsed ||
-      isAuthPending ||
-      (isPublicGuest && !!router.query.sig && !publicContentReady));
+    isPublicGuest &&
+    (!minLoaderElapsed || (!!router.query.sig && !publicContentReady));
 
   return (
     <div style={{ position: 'relative', minHeight: '100%' }}>
-      {(isAuthPending || isPublicGuest) && (
+      {isPublicGuest && (
         <MarketingPageLoader
           active={showPublicWelcomeLoader}
           label="Welcome"
           keyword="Parents"
         />
       )}
+      {!isAuthPending && (
     <div style={{ 
       padding: "20px 5px 20px 5px"
     }}>
@@ -2044,6 +2043,7 @@ export default function StudentInfo() {
         )}
       </div>
     </div>
+      )}
     </div>
   );
 }

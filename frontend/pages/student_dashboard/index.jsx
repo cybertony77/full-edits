@@ -4,8 +4,9 @@ import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { useProfile } from '../../lib/api/auth';
 import { useStudent } from '../../lib/api/students';
-import { useSystemConfig } from '../../lib/api/system';
+import { useSystemConfig, isFeatureEnabled } from '../../lib/api/system';
 import apiClient from '../../lib/axios';
+import DashboardButtonsSkeleton from '../../components/DashboardButtonsSkeleton';
 
 // Join WhatsApp Group Popup Component (separate from button)
 function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, setShowMessagePopup, messagePopupContent, groups, handleJoinGroup }) {
@@ -428,19 +429,23 @@ function JoinWhatsAppGroupPopups({ showPopup, setShowPopup, showMessagePopup, se
 export default function StudentDashboard() {
   const router = useRouter();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: systemConfig } = useSystemConfig();
-  const isScoringEnabled = systemConfig?.scoring_system === true || systemConfig?.scoring_system === 'true';
-  const isWhatsAppJoinGroupEnabled = systemConfig?.whatsapp_join_group_btn === true || systemConfig?.whatsapp_join_group_btn === 'true';
-  const isOnlineVideosEnabled = systemConfig?.online_videos === true || systemConfig?.online_videos === 'true';
-  const isHomeworksVideosEnabled = systemConfig?.homeworks_videos === true || systemConfig?.homeworks_videos === 'true';
-  const isHomeworksEnabled = systemConfig?.homeworks === true || systemConfig?.homeworks === 'true';
-  const isMaterialEnabled = systemConfig?.material === true || systemConfig?.material === 'true';
-  const isCertificatesEnabled = systemConfig?.certificates === true || systemConfig?.certificates === 'true';
-  const isQuizzesEnabled = systemConfig?.quizzes === true || systemConfig?.quizzes === 'true';
-  const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
-  const isZoomJoinMeetingEnabled = systemConfig?.zoom_join_meeting === true || systemConfig?.zoom_join_meeting === 'true';
-  const isGoogleJoinMeetingEnabled = systemConfig?.google_join_meeting === true || systemConfig?.google_join_meeting === 'true';
-  const isPaymentSystemEnabled = systemConfig?.payment_system === true || systemConfig?.payment_system === 'true';
+  const {
+    data: systemConfig,
+    isError: systemConfigError,
+    refetch: refetchSystemConfig,
+  } = useSystemConfig();
+  const isScoringEnabled = isFeatureEnabled(systemConfig, 'scoring_system');
+  const isWhatsAppJoinGroupEnabled = isFeatureEnabled(systemConfig, 'whatsapp_join_group_btn');
+  const isOnlineVideosEnabled = isFeatureEnabled(systemConfig, 'online_videos');
+  const isHomeworksVideosEnabled = isFeatureEnabled(systemConfig, 'homeworks_videos');
+  const isHomeworksEnabled = isFeatureEnabled(systemConfig, 'homeworks');
+  const isMaterialEnabled = isFeatureEnabled(systemConfig, 'material');
+  const isCertificatesEnabled = isFeatureEnabled(systemConfig, 'certificates');
+  const isQuizzesEnabled = isFeatureEnabled(systemConfig, 'quizzes');
+  const isMockExamsEnabled = isFeatureEnabled(systemConfig, 'mock_exams');
+  const isZoomJoinMeetingEnabled = isFeatureEnabled(systemConfig, 'zoom_join_meeting');
+  const isGoogleJoinMeetingEnabled = isFeatureEnabled(systemConfig, 'google_join_meeting');
+  const isPaymentSystemEnabled = isFeatureEnabled(systemConfig, 'payment_system');
   
   // Get student ID from profile and fetch student data
   const studentId = profile?.id ? profile.id.toString() : null;
@@ -943,6 +948,16 @@ export default function StudentDashboard() {
             background: linear-gradient(90deg,rgb(231, 159, 50) 0%,rgb(218, 146, 45) 100%);
             box-shadow: 0 8px 25px rgba(200, 134, 40, 0.4);
           }
+          .dashboard-config-error {
+            width: 450px;
+            max-width: 100%;
+            margin: 0 auto 20px auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 28px 24px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+          }
           
           @media (max-width: 768px) {
             .welcome-message {
@@ -1095,6 +1110,28 @@ export default function StudentDashboard() {
                   <Image src="/waving-hand.svg" alt="Waving Hand" width={24} height={24} />
                 </h2>
               </div>
+
+              {!systemConfig && !systemConfigError ? (
+                <DashboardButtonsSkeleton cards={2} />
+              ) : systemConfigError && !systemConfig ? (
+                <div className="dashboard-config-error">
+                  <p style={{ color: "#495057", fontSize: "1.05rem", fontWeight: 700, margin: "0 0 8px 0" }}>
+                    Could not load dashboard features
+                  </p>
+                  <p style={{ color: "#6c757d", fontSize: "0.95rem", margin: "0 0 20px 0" }}>
+                    Please try again. Feature buttons will appear once configuration loads.
+                  </p>
+                  <button
+                    type="button"
+                    className="dashboard-btn"
+                    onClick={() => refetchSystemConfig()}
+                    style={{ marginBottom: 0 }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+              <>
 
               {/* Sessions Remaining Reminder - only show when payment system is enabled and <= 3 */}
               {isPaymentSystemEnabled && studentData && remainingSessions <= 3 && (
@@ -1460,6 +1497,8 @@ export default function StudentDashboard() {
                   <Image src="/whatsapp2.svg" alt="WhatsApp" width={20} height={20} />
                   {whatsappGroupsLoading ? 'Loading...' : 'Join WhatsApp Group'}
                 </button>
+              )}
+              </>
               )}
             </>
           )}

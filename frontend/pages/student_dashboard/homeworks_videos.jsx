@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import Image from 'next/image';
 import Title from '../../components/Title';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../lib/axios';
 import { useProfile } from '../../lib/api/auth';
-import { useStudent } from '../../lib/api/students';
+import { useStudent, studentKeys } from '../../lib/api/students';
 import { useSystemConfig } from '../../lib/api/system';
 import StudentLessonSelect from '../../components/StudentLessonSelect';
 import NeedHelp from '../../components/NeedHelp';
@@ -43,6 +43,32 @@ function buildEmbedUrl(videoId) {
   return `https://www.youtube.com/embed/${videoId}?controls=0&rel=0&modestbranding=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1`;
 }
 
+const VHC_UNLOCK_STORAGE_PREFIX = 'vhc-unlocked:';
+
+function readUnlockMap(studentId) {
+  if (typeof window === 'undefined' || !studentId) return new Map();
+  try {
+    const raw = window.sessionStorage.getItem(`${VHC_UNLOCK_STORAGE_PREFIX}${studentId}`);
+    if (!raw) return new Map();
+    const entries = JSON.parse(raw);
+    return Array.isArray(entries) ? new Map(entries) : new Map();
+  } catch {
+    return new Map();
+  }
+}
+
+function writeUnlockMap(studentId, map) {
+  if (typeof window === 'undefined' || !studentId) return;
+  try {
+    window.sessionStorage.setItem(
+      `${VHC_UNLOCK_STORAGE_PREFIX}${studentId}`,
+      JSON.stringify([...map.entries()])
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 
 export default function HomeworksVideos() {
   const router = useRouter();
@@ -71,6 +97,8 @@ export default function HomeworksVideos() {
   const watchedTenPercentRef = useRef(false); // Attendance/watch marker at >=10%
   const selectedVideoRef = useRef(null);
   const vhcViewsDecrementDoneRef = useRef(false);
+  const attendancePostedRef = useRef(false);
+  const lastUnlockStudentIdRef = useRef(null);
   const [vhcPopupOpen, setVhcPopupOpen] = useState(false);
   const [vhc, setVhc] = useState('');
   const [vhcError, setVhcError] = useState('');
@@ -80,7 +108,11 @@ export default function HomeworksVideos() {
 
   // Fetch student data to check attendance
   const studentId = profile?.id ? profile.id.toString() : null;
-  const { data: studentData } = useStudent(studentId, { enabled: !!studentId });
+  const queryClient = useQueryClient();
+  const { data: studentData } = useStudent(studentId, {
+    enabled: !!studentId,
+    refetchOnMount: 'always',
+  });
 
   // Fetch homeworks videos
   const { data: sessionsData, isLoading } = useQuery({
@@ -155,7 +187,11 @@ export default function HomeworksVideos() {
       // Update unlocked sessions state
       console.log('[RESTORE VHC] Restored', newUnlocked.size, 'unlocked sessions');
       if (newUnlocked.size > 0) {
-        setUnlockedSessions(newUnlocked);
+        setUnlockedSessions((prev) => {
+          const merged = new Map(prev);
+          newUnlocked.forEach((value, key) => merged.set(key, value));
+          return merged;
+        });
       }
     };
 
@@ -313,8 +349,26 @@ export default function HomeworksVideos() {
     if (videoPopupOpen) {
       vhcViewsDecrementDoneRef.current = false;
       watchedTenPercentRef.current = false;
+      attendancePostedRef.current = false;
     }
   }, [videoPopupOpen, selectedVideo?._id]);
+
+  useEffect(() => {
+    if (!studentId) return;
+    if (lastUnlockStudentIdRef.current !== studentId) {
+      lastUnlockStudentIdRef.current = studentId;
+      const stored = readUnlockMap(studentId);
+      if (stored.size > 0) {
+        setUnlockedSessions((prev) => {
+          const merged = new Map(stored);
+          prev.forEach((value, key) => merged.set(key, value));
+          return merged;
+        });
+      }
+      return;
+    }
+    writeUnlockMap(studentId, unlockedSessions);
+  }, [studentId, unlockedSessions]);
 
   // Handle search
   const handleSearch = () => {
@@ -383,10 +437,32 @@ export default function HomeworksVideos() {
     }
   }, []);
 
+  const postWatchAttendance = useCallback(async (currentVideo) => {
+    if (attendancePostedRef.current) return;
+    if (!currentVideo || !profile?.id || !currentVideo._id) return;
+    attendancePostedRef.current = true;
+    try {
+      const sessionId = typeof currentVideo._id === 'string'
+        ? currentVideo._id
+        : currentVideo._id.toString();
+
+      await apiClient.post(`/api/students/${profile.id}/watch-homework-video`, {
+        session_id: sessionId,
+        action: 'finish',
+        payment_state: currentVideo.payment_state,
+        lesson: currentVideo.lesson
+      });
+    } catch (err) {
+      attendancePostedRef.current = false;
+      console.error('Failed to mark homework video as finished:', err);
+    }
+  }, [profile?.id]);
+
   const handleWatchTenPercentHomework = useCallback(async () => {
     watchedTenPercentRef.current = true;
     await tryDecrementVhcViewsOnWatchProgress();
-  }, [tryDecrementVhcViewsOnWatchProgress]);
+    await postWatchAttendance(selectedVideoRef.current);
+  }, [tryDecrementVhcViewsOnWatchProgress, postWatchAttendance]);
 
   const handleR2VideoCompleteHomework = useCallback(() => {
     r2CompletedRef.current = true;
@@ -436,6 +512,7 @@ export default function HomeworksVideos() {
       videoStartTimeRef.current = Date.now();
       r2CompletedRef.current = false;
       watchedTenPercentRef.current = false;
+      attendancePostedRef.current = false;
     } else {
       // Video is locked - require VHC
       setPendingVideo({ session, videoId, videoIndex, videoType });
@@ -486,6 +563,23 @@ export default function HomeworksVideos() {
           deadline_date: response.data.deadline_date || null
         });
         setUnlockedSessions(newUnlocked);
+
+        if (studentId) {
+          queryClient.setQueryData(studentKeys.detail(studentId), (old) => {
+            if (!old) return old;
+            const list = Array.isArray(old.homeworks_videos) ? [...old.homeworks_videos] : [];
+            const entry = {
+              video_id: sessionId,
+              vhc_id: String(response.data.vhc_id),
+              date: new Date().toISOString(),
+            };
+            const idx = list.findIndex((s) => String(s.video_id) === sessionId);
+            if (idx !== -1) list[idx] = entry;
+            else list.push(entry);
+            return { ...old, homeworks_videos: list };
+          });
+          queryClient.invalidateQueries({ queryKey: studentKeys.detail(studentId) });
+        }
         
         setVhcPopupOpen(false);
         setSelectedVideo({ 
@@ -501,6 +595,7 @@ export default function HomeworksVideos() {
         videoStartTimeRef.current = Date.now();
         r2CompletedRef.current = false;
         watchedTenPercentRef.current = false;
+        attendancePostedRef.current = false;
         setPendingVideo(null);
         setVhc('');
       } else {
@@ -521,14 +616,12 @@ export default function HomeworksVideos() {
     setVhcError('');
   };
 
-  // Close video popup and mark view_homework_video
+  // Close video popup; attendance is marked at >=10% watch (fallback if still pending)
   const closeVideoPopup = async () => {
-    // Prevent multiple calls
     if (isClosingVideoRef.current) {
       return;
     }
     
-    // Close popup immediately (UI feedback)
     const currentVideo = selectedVideo;
     setVideoPopupOpen(false);
     setSelectedVideo(null);
@@ -536,24 +629,11 @@ export default function HomeworksVideos() {
     r2CompletedRef.current = false;
     const videoWasWatched = watchedTenPercentRef.current;
     watchedTenPercentRef.current = false;
-    
-    // Call watch-homework-video API to set view_homework_video=true and mark attendance
-    if (currentVideo && profile?.id && currentVideo._id && videoWasWatched) {
+
+    if (videoWasWatched) {
       isClosingVideoRef.current = true;
       try {
-        // Convert _id to string if it's an ObjectId
-        const sessionId = typeof currentVideo._id === 'string' 
-          ? currentVideo._id 
-          : currentVideo._id.toString();
-        
-        await apiClient.post(`/api/students/${profile.id}/watch-homework-video`, {
-          session_id: sessionId,
-          action: 'finish',
-          payment_state: currentVideo.payment_state, // Pass payment state to API
-          lesson: currentVideo.lesson // Pass lesson name to mark attendance
-        });
-      } catch (err) {
-        console.error('Failed to mark homework video as finished:', err);
+        await postWatchAttendance(currentVideo);
       } finally {
         isClosingVideoRef.current = false;
       }

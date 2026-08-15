@@ -1,10 +1,12 @@
+import { Skeleton } from '@mantine/core';
 import { useSystemConfig } from '../lib/api/system';
 
 export default function Footer() {
   const year = new Date().getFullYear();
   const { data: systemConfig } = useSystemConfig();
-  const systemName = systemConfig?.name || 'System Name';
-  
+  const systemName = systemConfig?.name || '';
+  const isSystemNameLoading = !systemName;
+
   return (
     <footer className="footer" style={{
       width: '100%',
@@ -19,9 +21,29 @@ export default function Footer() {
       marginTop: 'auto',
       flexShrink: 0
     }}>
-      Copyright &copy; {year} - {systemName}
+      {isSystemNameLoading ? (
+        <div className="footer-system-name-skeleton">
+          <Skeleton className="footer-skel" height={10} width={220} radius="xl" animate />
+          <Skeleton className="footer-skel" height={8} mt={6} width="70%" radius="xl" animate />
+        </div>
+      ) : (
+        <>Copyright &copy; {year} - {systemName}</>
+      )}
 
       <style jsx>{`
+        .footer-system-name-skeleton {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto;
+          width: min(220px, 70%);
+        }
+        .footer-system-name-skeleton :global(.footer-skel) {
+          --skeleton-color: rgba(255, 255, 255, 0.28);
+          --skeleton-highlight-color: rgba(255, 255, 255, 0.55);
+          background-color: rgba(255, 255, 255, 0.28) !important;
+        }
         @media (max-width: 768px) {
           .footer {
             font-size: 14px !important;
@@ -38,4 +60,4 @@ export default function Footer() {
       `}</style>
     </footer>
   );
-} 
+}

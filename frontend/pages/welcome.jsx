@@ -53,6 +53,7 @@ import mp from '../styles/marketing_page.module.css';
 const playfair = Playfair_Display({ subsets: ['latin'], weight: ['400', '500', '600'] });
 const caveat = Caveat({ subsets: ['latin'], weight: ['400', '600', '700'] });
 const lora = Lora({ subsets: ['latin'], weight: ['400', '500', '600'] });
+const TEACHER_DESCRIPTION_MAX = 600;
 
 function extractYouTubeId(url) {
   const raw = String(url || '').trim();
@@ -512,7 +513,7 @@ export default function MarketingPage() {
       setImagePreview(json.teacher_picture_url || null);
     }
     setTeacherName(json.teacher_name || '');
-    setTeacherDescription(json.teacher_description || '');
+    setTeacherDescription(String(json.teacher_description || '').slice(0, TEACHER_DESCRIPTION_MAX));
     setOutroText(json.outro_text || '');
     setNoteText(json.note || '');
     setStudentsTeached(
@@ -1104,7 +1105,7 @@ export default function MarketingPage() {
     await patch({
       teacher_picture: teacherPicture,
       teacher_name: teacherName.trim() || null,
-      teacher_description: teacherDescription.trim() || null,
+      teacher_description: teacherDescription.trim().slice(0, TEACHER_DESCRIPTION_MAX) || null,
       students_teached: studentsTeached === '' ? null : Number(studentsTeached),
       years_of_experience: yearsExperience === '' ? null : Number(yearsExperience),
       session_video_type: sessionPlayback?.type || null,
@@ -1590,10 +1591,16 @@ export default function MarketingPage() {
                           className="form-input"
                           rows={5}
                           value={teacherDescription}
-                          onChange={(e) => setTeacherDescription(e.target.value)}
+                          onChange={(e) =>
+                            setTeacherDescription(e.target.value.slice(0, TEACHER_DESCRIPTION_MAX))
+                          }
+                          maxLength={TEACHER_DESCRIPTION_MAX}
                           placeholder="Write a short introduction…"
                           style={{ resize: 'vertical', minHeight: 120 }}
                         />
+                        <small style={{ color: '#94a3b8', fontSize: '0.8rem', display: 'block', marginTop: 6, textAlign: 'right' }}>
+                          {teacherDescription.length}/{TEACHER_DESCRIPTION_MAX}
+                        </small>
                       </div>
                     </Stack>
                   )}
@@ -1742,13 +1749,13 @@ export default function MarketingPage() {
               {canEdit && (
                 <div className={`${mp.editForm} ${mp.editFormHero} ${mp.testimonialsEdit}`}>
                   <Title order={4} className={mp.testimonialsEditTitle}>
-                    Students testimonials
+                    Student reviews
                   </Title>
                   <p className={mp.testimonialsEditLead}>
-                  Only activated testimonials will show.
+                  Only activated student reviews will show.
                   </p>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Number of testimonials to show</label>
+                    <label className="form-label">Number of student reviews to show</label>
                     <input
                       className="form-input"
                       type="number"

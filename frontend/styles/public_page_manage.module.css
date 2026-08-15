@@ -467,7 +467,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: 20px;
   overflow-y: auto;
 }
@@ -920,6 +920,9 @@
   box-shadow: 0 20px 50px rgba(15, 40, 70, 0.22);
   max-width: 400px;
   width: 100%;
+  margin: auto;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
   text-align: center;
   animation: fadeUp 0.35s ease both;
 }
@@ -1044,7 +1047,7 @@
 
   .formModal {
     padding: 12px;
-    align-items: flex-start;
+    align-items: center;
   }
 
   .formModalContent,

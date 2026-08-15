@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
@@ -29,6 +30,15 @@ const PUBLIC_PATH = '/leave-a-review';
 function buildPublicUrl() {
   if (typeof window === 'undefined') return PUBLIC_PATH;
   return `${window.location.origin}${PUBLIC_PATH}`;
+}
+
+function ModalPortal({ children }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
+  return createPortal(children, document.body);
 }
 
 export function InputWithButton({ onButtonClick, onKeyDown, ...props }) {
@@ -908,6 +918,7 @@ export default function StudentsReviewsPage() {
         </div>
       </div>
 
+      <ModalPortal>
       {/* Add Modal */}
       {showAddForm ? (
         <div
@@ -1636,6 +1647,7 @@ export default function StudentsReviewsPage() {
           </div>
         </div>
       ) : null}
+      </ModalPortal>
     </div>
   );
 }

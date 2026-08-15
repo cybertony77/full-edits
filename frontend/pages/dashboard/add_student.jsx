@@ -527,6 +527,46 @@ Best regards
             background: white;
             box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.1);
           }
+          :global(.react-tel-input .form-control),
+          :global(.phone-input) {
+            border: 2px solid #e9ecef !important;
+            border-radius: 10px !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            box-shadow: none !important;
+          }
+          :global(.react-tel-input .flag-dropdown),
+          :global(.react-tel-input .flag-dropdown:hover),
+          :global(.react-tel-input .flag-dropdown:focus),
+          :global(.react-tel-input .flag-dropdown.open),
+          :global(.react-tel-input .selected-flag),
+          :global(.react-tel-input .selected-flag:hover),
+          :global(.react-tel-input .selected-flag:focus),
+          :global(.react-tel-input .selected-flag:focus-visible),
+          :global(.phone-flag-btn),
+          :global(.phone-flag-btn:hover),
+          :global(.phone-flag-btn:focus),
+          :global(.phone-flag-btn:focus-visible),
+          :global(.phone-flag-btn.open) {
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+          }
+          :global(.react-tel-input .form-control:focus),
+          :global(.phone-input:focus) {
+            outline: none !important;
+            border-color: #87CEEB !important;
+            background: white !important;
+            box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.1) !important;
+          }
+          :global(.react-tel-input:has(.flag-dropdown.open) .form-control),
+          :global(.react-tel-input:has(.flag-dropdown.open) .form-control:focus) {
+            border-color: #e9ecef !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+          }
           .form-input::placeholder {
             color: #adb5bd;
           }

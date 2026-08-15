@@ -1055,6 +1055,8 @@ export function VideoPlayerChromeStyles() {
       .video-player-root {
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
+        container-type: size;
+        container-name: video-player;
       }
       .video-player-root > video {
         touch-action: manipulation;
@@ -1113,6 +1115,7 @@ export function VideoPlayerChromeStyles() {
         transform: translateY(8px);
         transition: opacity 0.18s ease, transform 0.18s ease;
         box-sizing: border-box;
+        overflow: visible;
       }
       .video-player-root .custom-video-controls.is-visible {
         opacity: 1;
@@ -1134,6 +1137,9 @@ export function VideoPlayerChromeStyles() {
         gap: 8px;
         color: #fff;
         min-height: 36px;
+        overflow: visible;
+        position: relative;
+        z-index: 2;
       }
       .video-player-root .vc-btn {
         appearance: none;
@@ -1203,7 +1209,8 @@ export function VideoPlayerChromeStyles() {
         display: flex;
         flex-direction: column;
         gap: 2px;
-        z-index: 120;
+        z-index: 400;
+        pointer-events: auto;
       }
       .video-player-root .vc-speed-option {
         appearance: none;
@@ -1260,12 +1267,20 @@ export function VideoPlayerChromeStyles() {
         box-sizing: border-box !important;
       }
       .video-seek-feedback-root .video-seek-circle {
-        width: clamp(64px, 14vmin, 112px);
-        height: clamp(64px, 14vmin, 112px);
+        /* Size from the player box, not the page/iframe viewport — YouTube
+           runs in a 16:9 iframe that would otherwise match "tiny landscape". */
+        width: clamp(56px, 22cqmin, 88px) !important;
+        height: clamp(56px, 22cqmin, 88px) !important;
         display: grid !important;
         place-items: center !important;
         position: relative !important;
         box-sizing: border-box !important;
+      }
+      @supports not (width: 1cqmin) {
+        .video-seek-feedback-root .video-seek-circle {
+          width: clamp(56px, 18cqi, 88px) !important;
+          height: clamp(56px, 18cqi, 88px) !important;
+        }
       }
       .video-seek-feedback-root .video-seek-icon {
         position: absolute !important;
@@ -1283,10 +1298,10 @@ export function VideoPlayerChromeStyles() {
       .video-seek-feedback-root .video-seek-icon svg {
         width: 44% !important;
         height: 44% !important;
-        max-width: 40px;
-        max-height: 40px;
-        min-width: 20px;
-        min-height: 20px;
+        max-width: 36px;
+        max-height: 36px;
+        min-width: 16px;
+        min-height: 16px;
         display: block !important;
         margin: 0 !important;
       }
@@ -1298,65 +1313,59 @@ export function VideoPlayerChromeStyles() {
         transform: none;
       }
       .video-seek-feedback-root .video-seek-chevrons svg {
-        width: clamp(18px, 4.5vmin, 28px);
-        height: clamp(18px, 4.5vmin, 28px);
+        width: clamp(14px, 5.5cqmin, 24px);
+        height: clamp(14px, 5.5cqmin, 24px);
       }
       .video-seek-feedback-root .video-seek-label {
-        font-size: clamp(0.8rem, 2.4vmin, 1.1rem);
+        font-size: clamp(0.72rem, 3.6cqmin, 0.95rem);
       }
       .video-seek-feedback-root .video-seek-side {
         top: 0;
         bottom: 0;
-        gap: clamp(4px, 1.2vmin, 8px);
-        padding: 0 clamp(4px, 2vw, 8px);
+        gap: clamp(4px, 1.4cqmin, 8px);
+        padding: 0 clamp(4px, 1.5cqi, 8px);
       }
 
       @media (max-width: 768px) {
         .video-player-root .custom-video-controls {
-          padding: 8px 10px max(10px, env(safe-area-inset-bottom, 0px));
+          padding: 4px 8px max(6px, env(safe-area-inset-bottom, 0px));
         }
         .video-player-root .video-progress {
-          height: 10px;
-          margin-bottom: 10px;
+          height: 4px;
+          margin-bottom: 4px;
         }
         .video-player-root .video-control-buttons {
-          gap: 4px;
-          min-height: 44px;
+          gap: 2px;
+          min-height: 28px;
         }
         .video-player-root .vc-btn {
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-          min-height: 44px;
+          width: 28px;
+          height: 28px;
+          min-width: 28px;
+          min-height: 28px;
+          border-radius: 6px;
+        }
+        .video-player-root .vc-btn svg {
+          width: 16px;
+          height: 16px;
         }
         .video-player-root .vc-time {
-          font-size: clamp(11px, 3.2vw, 13px);
+          font-size: clamp(10px, 2.8vw, 12px);
         }
         .video-player-root .video-volume {
-          width: 48px;
+          width: 40px;
         }
         .video-player-root .vc-speed-btn {
-          min-width: 48px;
-          font-size: 13px;
+          min-width: 34px;
+          font-size: 10px;
         }
-        .video-seek-feedback-root .video-seek-circle {
-          width: clamp(56px, 20vw, 92px) !important;
-          height: clamp(56px, 20vw, 92px) !important;
+        .video-player-root .vc-speed-menu {
+          min-width: 72px;
+          padding: 4px;
         }
-        .video-seek-feedback-root .video-seek-icon svg {
-          width: 46% !important;
-          height: 46% !important;
-          max-width: 34px !important;
-          max-height: 34px !important;
-          min-width: 18px !important;
-          min-height: 18px !important;
-        }
-        .video-seek-feedback-root .video-seek-chevrons svg {
-          width: clamp(16px, 5.5vw, 24px) !important;
-          height: clamp(16px, 5.5vw, 24px) !important;
-        }
-        .video-seek-feedback-root .video-seek-label {
-          font-size: clamp(0.72rem, 3.4vw, 0.95rem) !important;
+        .video-player-root .vc-speed-option {
+          padding: 6px 8px;
+          font-size: 11px;
         }
       }
 
@@ -1365,31 +1374,23 @@ export function VideoPlayerChromeStyles() {
           display: none;
         }
         .video-player-root .vc-time {
-          font-size: 11px;
-        }
-        .video-seek-feedback-root .video-seek-circle {
-          width: clamp(52px, 22vw, 80px) !important;
-          height: clamp(52px, 22vw, 80px) !important;
+          font-size: 10px;
         }
       }
 
       @media (orientation: landscape) and (max-height: 480px) {
         .video-player-root .custom-video-controls {
-          padding: 6px 10px max(8px, env(safe-area-inset-bottom, 0px));
+          padding: 3px 8px max(4px, env(safe-area-inset-bottom, 0px));
         }
         .video-player-root .video-progress {
-          height: 8px;
-          margin-bottom: 6px;
+          height: 3px;
+          margin-bottom: 3px;
         }
         .video-player-root .vc-btn {
-          width: 40px;
-          height: 40px;
-          min-width: 40px;
-          min-height: 40px;
-        }
-        .video-seek-feedback-root .video-seek-circle {
-          width: clamp(48px, 16vh, 72px) !important;
-          height: clamp(48px, 16vh, 72px) !important;
+          width: 26px;
+          height: 26px;
+          min-width: 26px;
+          min-height: 26px;
         }
       }
     `}</style>

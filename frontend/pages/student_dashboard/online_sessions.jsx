@@ -2,11 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import Image from 'next/image';
 import Title from '../../components/Title';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../lib/axios';
 import { useProfile } from '../../lib/api/auth';
 import { useSystemConfig } from '../../lib/api/system';
-import { useStudent } from '../../lib/api/students';
+import { useStudent, studentKeys } from '../../lib/api/students';
 import StudentLessonSelect from '../../components/StudentLessonSelect';
 import NeedHelp from '../../components/NeedHelp';
 import R2VideoPlayer from '../../components/R2VideoPlayer';
@@ -42,6 +42,32 @@ function buildEmbedUrl(videoId) {
   return `https://www.youtube.com/embed/${videoId}?controls=0&rel=0&modestbranding=1&disablekb=1&fs=0&iv_load_policy=3&playsinline=1`;
 }
 
+const VVC_UNLOCK_STORAGE_PREFIX = 'vvc-unlocked:';
+
+function readUnlockMap(studentId) {
+  if (typeof window === 'undefined' || !studentId) return new Map();
+  try {
+    const raw = window.sessionStorage.getItem(`${VVC_UNLOCK_STORAGE_PREFIX}${studentId}`);
+    if (!raw) return new Map();
+    const entries = JSON.parse(raw);
+    return Array.isArray(entries) ? new Map(entries) : new Map();
+  } catch {
+    return new Map();
+  }
+}
+
+function writeUnlockMap(studentId, map) {
+  if (typeof window === 'undefined' || !studentId) return;
+  try {
+    window.sessionStorage.setItem(
+      `${VVC_UNLOCK_STORAGE_PREFIX}${studentId}`,
+      JSON.stringify([...map.entries()])
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 
 export default function OnlineSessions() {
   const { data: systemConfig } = useSystemConfig();
@@ -49,11 +75,15 @@ export default function OnlineSessions() {
   const isOnlineVideosEnabled = systemConfig?.online_videos === true || systemConfig?.online_videos === 'true';
   
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: profile } = useProfile();
   
   // Fetch student data to get available lessons
   const studentId = profile?.id ? profile.id.toString() : null;
-  const { data: studentData } = useStudent(studentId, { enabled: !!studentId });
+  const { data: studentData } = useStudent(studentId, {
+    enabled: !!studentId,
+    refetchOnMount: 'always',
+  });
   
   // Redirect if feature is disabled
   useEffect(() => {
@@ -76,6 +106,8 @@ export default function OnlineSessions() {
   const watchedTenPercentRef = useRef(false); // Attendance/watch marker at >=10%
   const selectedVideoRef = useRef(null);
   const vvcViewsDecrementDoneRef = useRef(false);
+  const attendancePostedRef = useRef(false);
+  const lastUnlockStudentIdRef = useRef(null);
   const [vvcPopupOpen, setVvcPopupOpen] = useState(false);
   const [vvc, setVvc] = useState('');
   const [vvcError, setVvcError] = useState('');
@@ -180,8 +212,26 @@ export default function OnlineSessions() {
     if (videoPopupOpen) {
       vvcViewsDecrementDoneRef.current = false;
       watchedTenPercentRef.current = false;
+      attendancePostedRef.current = false;
     }
   }, [videoPopupOpen, selectedVideo?._id]);
+
+  useEffect(() => {
+    if (!studentId) return;
+    if (lastUnlockStudentIdRef.current !== studentId) {
+      lastUnlockStudentIdRef.current = studentId;
+      const stored = readUnlockMap(studentId);
+      if (stored.size > 0) {
+        setUnlockedSessions((prev) => {
+          const merged = new Map(stored);
+          prev.forEach((value, key) => merged.set(key, value));
+          return merged;
+        });
+      }
+      return;
+    }
+    writeUnlockMap(studentId, unlockedSessions);
+  }, [studentId, unlockedSessions]);
 
   // Restore unlocked sessions from student's online_sessions on page load
   useEffect(() => {
@@ -235,7 +285,11 @@ export default function OnlineSessions() {
       // Update unlocked sessions state
       console.log('[RESTORE] Restored', newUnlocked.size, 'unlocked sessions');
       if (newUnlocked.size > 0) {
-        setUnlockedSessions(newUnlocked);
+        setUnlockedSessions((prev) => {
+          const merged = new Map(prev);
+          newUnlocked.forEach((value, key) => merged.set(key, value));
+          return merged;
+        });
       }
     };
 
@@ -355,6 +409,23 @@ export default function OnlineSessions() {
           deadline_date: response.data.deadline_date || null
         });
         setUnlockedSessions(newUnlocked);
+
+        if (studentId) {
+          queryClient.setQueryData(studentKeys.detail(studentId), (old) => {
+            if (!old) return old;
+            const list = Array.isArray(old.online_sessions) ? [...old.online_sessions] : [];
+            const entry = {
+              video_id: sessionId,
+              vvc_id: String(response.data.vvc_id),
+              date: new Date().toISOString(),
+            };
+            const idx = list.findIndex((s) => String(s.video_id) === sessionId);
+            if (idx !== -1) list[idx] = entry;
+            else list.push(entry);
+            return { ...old, online_sessions: list };
+          });
+          queryClient.invalidateQueries({ queryKey: studentKeys.detail(studentId) });
+        }
         
         setVvcPopupOpen(false);
         setSelectedVideo({ 
@@ -370,6 +441,7 @@ export default function OnlineSessions() {
         videoStartTimeRef.current = Date.now();
         r2CompletedRef.current = false;
         watchedTenPercentRef.current = false;
+        attendancePostedRef.current = false;
         setPendingVideo(null);
         setVvc('');
       } else {
@@ -432,10 +504,87 @@ export default function OnlineSessions() {
     }
   }, []);
 
+  const postWatchAttendance = useCallback(async (currentVideo) => {
+    if (attendancePostedRef.current) return;
+    if (!currentVideo || !profile?.id || !currentVideo._id) return;
+    attendancePostedRef.current = true;
+    try {
+      const sessionId = typeof currentVideo._id === 'string'
+        ? currentVideo._id
+        : currentVideo._id.toString();
+
+      await apiClient.post(`/api/students/${profile.id}/watch-video`, {
+        session_id: sessionId,
+        action: 'finish',
+        payment_state: currentVideo.payment_state
+      });
+
+      if (isScoringEnabled) {
+        try {
+          const sessionLesson = currentVideo.lesson || null;
+          let alreadyScored = false;
+          try {
+            const historyResponse = await apiClient.post('/api/scoring/get-last-history', {
+              studentId: profile.id,
+              type: 'attendance',
+              lesson: sessionLesson
+            });
+
+            if (historyResponse.data.found && historyResponse.data.history) {
+              const lastHistory = historyResponse.data.history;
+              if (lastHistory.data?.status === 'attend' &&
+                  (sessionLesson === null || lastHistory.process_lesson === sessionLesson)) {
+                const historyTime = new Date(lastHistory.timestamp);
+                const now = new Date();
+                if (now - historyTime < 3600000) {
+                  alreadyScored = true;
+                }
+              }
+            }
+          } catch (historyErr) {
+            console.error('Error checking attendance history:', historyErr);
+          }
+
+          if (!alreadyScored) {
+            let previousStatus = null;
+            try {
+              const historyResponse = await apiClient.post('/api/scoring/get-last-history', {
+                studentId: profile.id,
+                type: 'attendance',
+                lesson: sessionLesson
+              });
+              if (historyResponse.data.found && historyResponse.data.history) {
+                previousStatus = historyResponse.data.history.data?.status;
+              }
+            } catch (historyErr) {
+              console.error('Error getting attendance history:', historyErr);
+            }
+
+            await apiClient.post('/api/scoring/calculate', {
+              studentId: profile.id,
+              type: 'attendance',
+              lesson: sessionLesson,
+              data: {
+                status: 'attend',
+                previousStatus: previousStatus
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error calculating attendance score:', err);
+        }
+      }
+    } catch (err) {
+      attendancePostedRef.current = false;
+      console.error('Failed to mark video as finished:', err);
+    }
+  }, [profile?.id, isScoringEnabled]);
+
   const handleWatchTenPercent = useCallback(async () => {
     watchedTenPercentRef.current = true;
     await tryDecrementVvcViewsOnWatchProgress();
-  }, [tryDecrementVvcViewsOnWatchProgress]);
+    await postWatchAttendance(selectedVideoRef.current);
+  }, [tryDecrementVvcViewsOnWatchProgress, postWatchAttendance]);
 
   // Handle R2 video completion (>= 90% watched)
   const handleR2VideoComplete = useCallback(async (videoId, percent) => {
@@ -488,6 +637,7 @@ export default function OnlineSessions() {
       videoStartTimeRef.current = Date.now();
       r2CompletedRef.current = false;
       watchedTenPercentRef.current = false;
+      attendancePostedRef.current = false;
     } else {
       // Video is locked - require VVC
       setPendingVideo({ session, videoId, videoIndex, videoType });
@@ -497,14 +647,12 @@ export default function OnlineSessions() {
     }
   };
 
-  // Close video popup and mark attendance
+  // Close video popup; attendance is marked at >=10% watch (fallback if still pending)
   const closeVideoPopup = async () => {
-    // Prevent multiple calls
     if (isClosingVideoRef.current) {
       return;
     }
     
-    // Close popup immediately (UI feedback)
     const currentVideo = selectedVideo;
     setVideoPopupOpen(false);
     setSelectedVideo(null);
@@ -512,96 +660,16 @@ export default function OnlineSessions() {
     r2CompletedRef.current = false;
     const videoWasWatched = watchedTenPercentRef.current;
     watchedTenPercentRef.current = false;
-    
-    // Call watch-video API for both free and paid videos (mark attendance and create history)
-    if (currentVideo && profile?.id && currentVideo._id && videoWasWatched) {
+
+    if (videoWasWatched) {
       isClosingVideoRef.current = true;
       try {
-        // Convert _id to string if it's an ObjectId
-        const sessionId = typeof currentVideo._id === 'string' 
-          ? currentVideo._id 
-          : currentVideo._id.toString();
-        
-        await apiClient.post(`/api/students/${profile.id}/watch-video`, {
-          session_id: sessionId,
-          action: 'finish',
-          payment_state: currentVideo.payment_state // Pass payment state to API
-        });
-        
-        // Calculate score for attendance (watching full video = attend)
-        // Check history first to avoid duplicate scoring (only if scoring is enabled)
-        if (isScoringEnabled) {
-          try {
-            // Get session lesson if available
-          const sessionLesson = currentVideo.lesson || null;
-          
-          // Check if attendance was already scored for this session
-          let alreadyScored = false;
-          try {
-            const historyResponse = await apiClient.post('/api/scoring/get-last-history', {
-              studentId: profile.id,
-              type: 'attendance',
-              lesson: sessionLesson
-            });
-            
-            if (historyResponse.data.found && historyResponse.data.history) {
-              const lastHistory = historyResponse.data.history;
-              // Check if this is attendance for the same lesson and was scored recently (within last hour)
-              if (lastHistory.data?.status === 'attend' && 
-                  (sessionLesson === null || lastHistory.process_lesson === sessionLesson)) {
-                const historyTime = new Date(lastHistory.timestamp);
-                const now = new Date();
-                const timeDiff = now - historyTime;
-                if (timeDiff < 3600000) { // 1 hour
-                  alreadyScored = true;
-                  console.log(`[ONLINE SESSIONS] Attendance already scored for session ${sessionId}, skipping`);
-                }
-              }
-            }
-          } catch (historyErr) {
-            console.error('Error checking attendance history:', historyErr);
-          }
-          
-          if (!alreadyScored) {
-            // Get previous attendance status from history
-            let previousStatus = null;
-            try {
-              const historyResponse = await apiClient.post('/api/scoring/get-last-history', {
-                studentId: profile.id,
-                type: 'attendance',
-                lesson: sessionLesson
-              });
-              
-              if (historyResponse.data.found && historyResponse.data.history) {
-                previousStatus = historyResponse.data.history.data?.status;
-              }
-            } catch (historyErr) {
-              console.error('Error getting attendance history:', historyErr);
-            }
-            
-            await apiClient.post('/api/scoring/calculate', {
-              studentId: profile.id,
-              type: 'attendance',
-              lesson: sessionLesson,
-              data: { 
-                status: 'attend',
-                previousStatus: previousStatus
-              }
-            });
-            console.log(`[ONLINE SESSIONS] Attendance score calculated for session ${sessionId}`);
-          }
-          } catch (err) {
-            console.error('Error calculating attendance score:', err);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to mark video as finished:', err);
+        await postWatchAttendance(currentVideo);
       } finally {
         isClosingVideoRef.current = false;
       }
     }
   };
-
 
   return (
     <div className="page-wrapper" style={{ 

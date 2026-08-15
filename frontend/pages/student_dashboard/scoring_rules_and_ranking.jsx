@@ -1,50 +1,86 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { useQuery } from '@tanstack/react-query';
 import { useProfile } from '../../lib/api/auth';
 import { useStudent } from '../../lib/api/students';
-import { useSystemConfig } from '../../lib/api/system';
+import { useSystemConfig, isFeatureEnabled } from '../../lib/api/system';
 import apiClient from '../../lib/axios';
 import Title from '../../components/Title';
 import NeedHelp from '../../components/NeedHelp';
 import Image from 'next/image';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 
+function ScoringSectionError({ title, message, onRetry }) {
+  return (
+    <div style={{
+      background: 'white',
+      borderRadius: '16px',
+      padding: '28px 24px',
+      marginBottom: '24px',
+      textAlign: 'center',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+    }}>
+      <p style={{ color: '#495057', fontSize: '1.05rem', fontWeight: 700, margin: '0 0 8px 0' }}>
+        {title}
+      </p>
+      <p style={{ color: '#6c757d', fontSize: '0.95rem', margin: '0 0 16px 0' }}>
+        {message}
+      </p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          style={{
+            background: 'linear-gradient(90deg, #87CEEB 0%, #B0E0E6 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '12px 28px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(31, 168, 220, 0.3)'
+          }}
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ScoringRulesAndRanking() {
   const router = useRouter();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { data: systemConfig } = useSystemConfig();
-  const isScoringEnabled = systemConfig?.scoring_system === true || systemConfig?.scoring_system === 'true';
-  const isHomeworksEnabled = systemConfig?.homeworks === true || systemConfig?.homeworks === 'true';
-  const isQuizzesEnabled = systemConfig?.quizzes === true || systemConfig?.quizzes === 'true';
-  const isMockExamsEnabled = systemConfig?.mock_exams === true || systemConfig?.mock_exams === 'true';
-  
+  const {
+    data: systemConfig,
+    isSuccess: systemConfigSuccess,
+    isError: systemConfigError,
+    refetch: refetchSystemConfig,
+  } = useSystemConfig();
+  const isScoringEnabled = isFeatureEnabled(systemConfig, 'scoring_system');
+  const isMockExamsEnabled = isFeatureEnabled(systemConfig, 'mock_exams');
+
   // Get student ID from profile and fetch student data
   const studentId = profile?.id ? profile.id.toString() : null;
-  const { data: studentData, isLoading: studentLoading } = useStudent(studentId, { 
+  const { data: studentData, isLoading: studentLoading } = useStudent(studentId, {
     enabled: !!studentId,
     refetchInterval: 60000, // Auto-refetch every 1 minute (60,000 ms)
     refetchIntervalInBackground: true, // Continue refetching even when tab is in background
   });
 
-  // Fetch student rankings
-  const { data: rankingsData, isLoading: rankingsLoading } = useQuery({
+  // Fetch student rankings — do not swallow API errors
+  const {
+    data: rankingsData,
+    isPending: rankingsPending,
+    isError: rankingsError,
+    error: rankingsQueryError,
+    refetch: refetchRankings,
+  } = useQuery({
     queryKey: ['student-rankings', studentId],
     queryFn: async () => {
       if (!studentId) return null;
-      
-      try {
-        const response = await apiClient.get('/api/scoring/student-rankings');
-        return response.data;
-      } catch (error) {
-        console.error('Error fetching rankings:', error);
-        return {
-          centerRank: null,
-          centerTotal: null,
-          courseRank: null,
-          courseTotal: null
-        };
-      }
+      const response = await apiClient.get('/api/scoring/student-rankings');
+      return response.data;
     },
     enabled: !!studentId && isScoringEnabled,
     refetchInterval: 60000, // Auto-refetch every 1 minute (60,000 ms)
@@ -52,7 +88,13 @@ export default function ScoringRulesAndRanking() {
   });
 
   // Fetch scoring conditions (rules and bonus)
-  const { data: conditionsData, isLoading: conditionsLoading } = useQuery({
+  const {
+    data: conditionsData,
+    isPending: conditionsPending,
+    isError: conditionsError,
+    error: conditionsQueryError,
+    refetch: refetchConditions,
+  } = useQuery({
     queryKey: ['scoring-conditions-public'],
     queryFn: async () => {
       const response = await apiClient.get('/api/scoring/conditions-public');
@@ -82,19 +124,29 @@ export default function ScoringRulesAndRanking() {
     return condition.type;
   };
 
-  const isLoading = profileLoading || studentLoading || (isScoringEnabled && (rankingsLoading || conditionsLoading));
+  const scoringDisabled = systemConfigSuccess && !isScoringEnabled;
+  const isLoading =
+    profileLoading ||
+    (!systemConfigSuccess && !systemConfigError) ||
+    scoringDisabled ||
+    (isScoringEnabled && (
+      studentLoading ||
+      (!!studentId && rankingsPending) ||
+      conditionsPending
+    ));
 
-  // Redirect if scoring system is disabled
+  // Redirect only after a successful config fetch proves scoring is disabled.
+  // Do not treat missing/in-flight config as disabled — that bounces the page.
   useEffect(() => {
-    if (!profileLoading && !systemConfig && isScoringEnabled === false) {
-      router.push('/student_dashboard');
+    if (scoringDisabled) {
+      router.replace('/student_dashboard');
     }
-  }, [profileLoading, systemConfig, isScoringEnabled, router]);
+  }, [scoringDisabled, router]);
 
   if (isLoading) {
     return (
-      <div style={{ 
-        minHeight: "100vh", 
+      <div style={{
+        minHeight: "100vh",
         padding: "20px 5px 20px 5px"
       }}>
         <div style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
@@ -105,6 +157,29 @@ export default function ScoringRulesAndRanking() {
             </div>
           </Title>
           <LoadingSkeleton type="table" rows={8} columns={1} />
+        </div>
+      </div>
+    );
+  }
+
+  if (systemConfigError && !systemConfig) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        padding: "20px 5px 20px 5px"
+      }}>
+        <div style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
+          <Title backText="Back" href="/student_dashboard">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Image src="/stars.svg" alt="Scoring Rules and Ranking" width={32} height={32} />
+              Scoring Rules and Ranking
+            </div>
+          </Title>
+          <ScoringSectionError
+            title="Could not load system configuration"
+            message="Scoring availability could not be determined. Please try again."
+            onRetry={() => refetchSystemConfig()}
+          />
         </div>
       </div>
     );
@@ -135,10 +210,19 @@ export default function ScoringRulesAndRanking() {
     );
   }
 
+  const rankingsErrorMessage =
+    rankingsQueryError?.response?.data?.error ||
+    rankingsQueryError?.message ||
+    'Unable to load rankings.';
+  const conditionsErrorMessage =
+    conditionsQueryError?.response?.data?.error ||
+    conditionsQueryError?.message ||
+    'Unable to load scoring rules.';
+
   return (
-    <div style={{ 
-      minHeight: "100vh", 
-      padding: "20px 5px 20px 5px" 
+    <div style={{
+      minHeight: "100vh",
+      padding: "20px 5px 20px 5px"
     }}>
       <div style={{ maxWidth: 800, margin: "40px auto", padding: "12px" }}>
         <Title backText="Back" href="/student_dashboard">
@@ -386,30 +470,44 @@ export default function ScoringRulesAndRanking() {
         </div>
 
         {/* Rankings */}
-        <div className="rankings-container">
-          <div className="ranking-card">
-            <div className="ranking-label">rank / {rankingsData?.mainCenter || 'Main Center'}</div>
-            <div className="ranking-value">
-              {rankingsData?.centerRank !== null && rankingsData?.centerRank !== undefined
-                ? rankingsData.centerRank
-                : '-'}
+        {rankingsError ? (
+          <ScoringSectionError
+            title="Could not load rankings"
+            message={rankingsErrorMessage}
+            onRetry={() => refetchRankings()}
+          />
+        ) : (
+          <div className="rankings-container">
+            <div className="ranking-card">
+              <div className="ranking-label">rank / {rankingsData?.mainCenter || 'Main Center'}</div>
+              <div className="ranking-value">
+                {rankingsData?.centerRank !== null && rankingsData?.centerRank !== undefined
+                  ? rankingsData.centerRank
+                  : '-'}
+              </div>
+            </div>
+            <div className="ranking-card">
+              <div className="ranking-label">rank / {rankingsData?.course || 'Course'}</div>
+              <div className="ranking-value">
+                {rankingsData?.courseRank !== null && rankingsData?.courseRank !== undefined
+                  ? rankingsData.courseRank
+                  : '-'}
+              </div>
             </div>
           </div>
-          <div className="ranking-card">
-            <div className="ranking-label">rank / {rankingsData?.course || 'Course'}</div>
-            <div className="ranking-value">
-              {rankingsData?.courseRank !== null && rankingsData?.courseRank !== undefined
-                ? rankingsData.courseRank
-                : '-'}
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Scoring Rules */}
         <div className="rules-container">
           <div className="rules-title">Scoring Rules</div>
-          
-          {conditions.length === 0 ? (
+
+          {conditionsError ? (
+            <ScoringSectionError
+              title="Could not load scoring rules"
+              message={conditionsErrorMessage}
+              onRetry={() => refetchConditions()}
+            />
+          ) : conditions.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#6c757d', padding: '20px' }}>
               No scoring rules available.
             </div>

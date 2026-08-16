@@ -256,9 +256,107 @@ const QRScanner = ({ onQRCodeScanned, onError }) => {
   }, [error]);
 
   return (
-    <div style={{ background: 'white', borderRadius: 16, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.1)', marginBottom: 24 }}>
+    <div className="qr-scanner-card">
+      <style>{`
+        .qr-scanner-card {
+          background: white;
+          border-radius: 16px;
+          padding: clamp(12px, 3.5vw, 24px);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+          margin-bottom: 24px;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .qr-idle-box {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: min(42dvh, 300px);
+          background: #f8f9fa;
+          border-radius: 12px;
+          border: 2px dashed #dee2e6;
+          padding: clamp(12px, 4vw, 20px);
+          text-align: center;
+          gap: 16px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .qr-camera-stage {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          box-sizing: border-box;
+          gap: clamp(12px, 3vw, 16px);
+          min-height: min(62dvh, 420px);
+        }
+        .qr-camera-frame {
+          width: min(100%, 360px);
+          max-width: 100%;
+          aspect-ratio: 1 / 1;
+          margin: 0 auto;
+          border-radius: 12px;
+          overflow: hidden;
+          border: 2px solid #e9ecef;
+          background: #111;
+          position: relative;
+        }
+        .qr-camera-frame video {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          display: block;
+        }
+        .qr-camera-actions {
+          display: flex;
+          justify-content: center;
+          width: 100%;
+        }
+        .qr-stop-btn {
+          padding: 16px 32px;
+          border: none;
+          border-radius: 12px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: min(160px, 100%);
+          width: min(100%, 280px);
+          justify-content: center;
+          background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+          color: white;
+          box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
+          box-sizing: border-box;
+        }
+        @media (max-width: 480px) {
+          .qr-camera-stage {
+            min-height: min(54dvh, 360px);
+          }
+          .qr-stop-btn {
+            font-size: 1rem;
+            padding: 14px 20px;
+          }
+        }
+        @media (max-height: 520px) and (orientation: landscape) {
+          .qr-camera-stage {
+            min-height: 0;
+          }
+          .qr-camera-frame {
+            width: min(100%, 46dvh);
+          }
+        }
+      `}</style>
       {!isScanning ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, background: '#f8f9fa', borderRadius: 12, border: '2px dashed #dee2e6', padding: 20, textAlign: 'center', gap: 16 }}>
+        <div className="qr-idle-box">
           <div style={{ color: '#6c757d', fontSize: '1rem', fontWeight: 500, marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}><Image src="/scan2.svg" alt="Scan" width={20} height={20} /> Choose how to scan QR code</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button 
@@ -321,12 +419,12 @@ const QRScanner = ({ onQRCodeScanned, onError }) => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ width: 300, height: 300, margin: '0 auto', borderRadius: 12, overflow: 'hidden', border: '2px solid #e9ecef' }}>
-            <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} autoPlay playsInline muted />
+        <div className="qr-camera-stage">
+          <div className="qr-camera-frame">
+            <video ref={videoRef} autoPlay playsInline muted />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '0 20px' }}>
-            <button onClick={stopCamera} style={{ padding: '16px 32px', border: 'none', borderRadius: 12, fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: 8, minWidth: 160, justifyContent: 'center', background: 'linear-gradient(135deg, #dc3545 0%, #e74c3c 100%)', color: 'white', boxShadow: '0 4px 16px rgba(220, 53, 69, 0.3)' }}>
+          <div className="qr-camera-actions">
+            <button type="button" className="qr-stop-btn" onClick={stopCamera}>
               ❌ Stop Camera
             </button>
           </div>

@@ -1270,7 +1270,7 @@ export default function QR() {
       minHeight: "100vh",
       padding: "20px 5px 20px 5px",
     }}>
-      <div ref={containerRef} style={{ maxWidth: 600, margin: "40px auto", padding: 24 }}>
+      <div ref={containerRef} style={{ maxWidth: 600, width: "100%", margin: "40px auto", padding: "clamp(8px, 4vw, 24px)", boxSizing: "border-box" }}>
       <style jsx>{`
         .header {
           display: flex;
